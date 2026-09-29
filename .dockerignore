@@ -1,0 +1,15 @@
+.venv
+__pycache__
+**/__pycache__
+.pytest_cache
+.git
+.env
+.env.*
+uploads
+results
+data
+storage
+backups
+temp
+tmp
+models

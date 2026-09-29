@@ -1,0 +1,25 @@
+# Isolated project with disposable PostgreSQL; never targets the app database.
+services:
+  db-test:
+    image: postgres:17.6-bookworm@sha256:f3bd19c606e442c3d7bdfa8002e03fe260a1023351e0ea4598032022b68dd6e3
+    environment:
+      POSTGRES_USER: movement
+      POSTGRES_PASSWORD: movement
+      POSTGRES_DB: movement_test
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U movement -d movement_test"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+  tests:
+    build:
+      context: .
+      target: test
+    environment:
+      DATABASE_URL: postgresql+psycopg://movement:movement@db-test:5432/movement_test
+      TEST_DATABASE_RESET: "1"
+    depends_on:
+      db-test:
+        condition: service_healthy

@@ -1,0 +1,46 @@
+services:
+  db:
+    image: postgres:17.6-bookworm@sha256:f3bd19c606e442c3d7bdfa8002e03fe260a1023351e0ea4598032022b68dd6e3
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-movement}
+      POSTGRES_USER: ${POSTGRES_USER:-movement}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 10s
+
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
+      STORAGE_PATH: /data/storage
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-250}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AI_REASONING_ENABLED: ${AI_REASONING_ENABLED:-true}
+      AI_REASONING_MODEL: ${AI_REASONING_MODEL:-gpt-5.6-terra}
+      AI_REASONING_EFFORT: ${AI_REASONING_EFFORT:-medium}
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    volumes:
+      - app_storage:/data/storage
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  postgres_data:
+  app_storage:

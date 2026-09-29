@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Movement Coach AI — Revisa más atletas en menos tiempo</title>
+<style>
+:root{--bg:#fff;--alt:#f5f8fd;--ink:#071a3d;--muted:#5c6b85;--line:#dde6f2;--blue:#1469f7;--soft:#eef4ff;--card:#fff;--dark:#0a1b3d;--ok:#18734e;--warn:#9a5b00;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b1120;--alt:#0f1830;--ink:#eef4ff;--muted:#9fb0cc;--line:#26365a;--soft:#1a2a4b;--card:#141e33;--dark:#060d1c;--ok:#7be0b5;--warn:#f3c26b}}
+:root[data-theme="dark"]{--bg:#0b1120;--alt:#0f1830;--ink:#eef4ff;--muted:#9fb0cc;--line:#26365a;--soft:#1a2a4b;--card:#141e33;--dark:#060d1c;--ok:#7be0b5;--warn:#f3c26b}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:calc(76px + env(safe-area-inset-top,0px))}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1180px;margin:auto;padding:0 28px}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.nav{display:flex;align-items:center;gap:28px;height:68px}
+.brand{font-weight:800;font-size:20px;letter-spacing:-.04em;display:flex;align-items:center;gap:9px}
+.logo{width:26px;height:22px;background:linear-gradient(63deg,transparent 45%,var(--blue) 46% 60%,transparent 61%),linear-gradient(-63deg,transparent 45%,var(--blue) 46% 60%,transparent 61%)}
+.links{display:flex;gap:26px;margin:0 auto;font-size:14px;font-weight:600}.links a:hover{color:var(--blue)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:48px;padding:0 26px;border-radius:9px;background:var(--blue);color:#fff;font:700 15px inherit;font-family:inherit;border:0;box-shadow:0 10px 20px rgba(20,105,247,.22);cursor:pointer}
+.btn.sm{min-height:40px;padding:0 18px;font-size:14px}
+.btn.ghost{background:transparent;color:var(--blue);border:1px solid var(--blue);box-shadow:none}
+.login{font-size:14px;color:var(--muted);font-weight:600}
+.hero{display:grid;grid-template-columns:.95fr 1.05fr;gap:56px;align-items:center;padding:64px 0 72px}
+.eyebrow{color:var(--blue);font-size:11px;font-weight:800;letter-spacing:.26em}
+h1{font-size:clamp(42px,5.6vw,68px);line-height:.95;letter-spacing:-.06em;margin:16px 0 18px}h1 em{color:var(--blue);font-style:normal}
+.lead{font-size:19px;color:var(--muted);max-width:520px;margin:0 0 26px}
+.acts{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.note{margin-top:16px;font-size:13px;color:var(--muted)}
+.mock{background:var(--alt);border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 24px 50px rgba(29,85,159,.14);display:grid;grid-template-columns:1.25fr .85fr;gap:12px}
+.vid{position:relative;min-height:290px;border-radius:10px;background:linear-gradient(150deg,#0a1b3d,#23458f);color:#fff;padding:14px;overflow:hidden}
+.vid .t{display:flex;justify-content:space-between;font-size:12px;font-weight:700}
+.vid .ang{position:absolute;left:14px;top:44px;background:rgba(0,0,0,.5);border-radius:7px;padding:6px 8px;font:600 11px/1.5 ui-monospace,monospace}
+.body{position:absolute;left:46%;top:34%;width:56px;height:96px;border-radius:24px 24px 8px 8px;background:#dfe9ff;opacity:.85}.body:before{content:"";position:absolute;left:14px;top:-22px;width:26px;height:26px;border-radius:50%;background:#dfe9ff}
+.bar-b{position:absolute;left:14%;right:14%;top:70%;height:6px;border-radius:6px;background:#dfe9ff;opacity:.75}
+.tl{position:absolute;left:14px;right:14px;bottom:14px;display:flex;justify-content:space-between;font-size:11px}
+.tl span{display:flex;flex-direction:column;align-items:center;gap:5px}.tl i{width:9px;height:9px;border-radius:50%;background:#dfe9ff}.tl .a i{background:var(--blue);box-shadow:0 0 0 3px #fff}
+.ai{background:var(--card);border-radius:10px;padding:14px;font-size:13px}
+.ai h4{margin:0 0 10px;font-size:13px;border-bottom:2px solid var(--blue);padding-bottom:9px}
+.tip{display:flex;gap:8px;padding:9px 10px;border-radius:8px;background:var(--alt);margin-bottom:8px;line-height:1.35}
+.tip.g b{color:var(--ok)}.tip.w b{color:var(--warn)}
+.sug{background:var(--soft);color:var(--blue);border-radius:8px;padding:10px;font-size:12px;font-weight:600}
+section{padding:72px 0}.alt{background:var(--alt)}
+.c{text-align:center}h2{font-size:clamp(28px,3.4vw,40px);letter-spacing:-.05em;line-height:1.05;margin:0 0 10px}.sec-sub{color:var(--muted);margin:0 auto 38px;max-width:560px}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:22px;text-align:left}
+.step{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px}
+.n{display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:var(--soft);color:var(--blue);font-weight:800;margin-bottom:14px}
+.step h3,.feat h3{margin:0 0 6px;font-size:17px;letter-spacing:-.02em}.step p,.feat p{margin:0;color:var(--muted);font-size:14px}
+.feats{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;text-align:left}
+.feat{padding:24px;border:1px solid var(--line);border-radius:14px;background:var(--card)}
+.ic{width:46px;height:46px;border-radius:12px;background:var(--soft);color:var(--blue);display:grid;place-items:center;font-size:22px;margin-bottom:14px}
+.plans{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;text-align:left;align-items:stretch}
+.plan{display:flex;flex-direction:column;padding:28px;border:1px solid var(--line);border-radius:16px;background:var(--card)}
+.plan.hot{border:2px solid var(--blue);box-shadow:0 18px 36px rgba(20,105,247,.14)}
+.plan h3{margin:0;font-size:18px}.price{font-size:38px;font-weight:800;letter-spacing:-.05em;margin:10px 0 2px}.price small{font-size:14px;color:var(--muted);font-weight:500;letter-spacing:0}
+.plan ul{list-style:none;padding:0;margin:16px 0 24px;display:grid;gap:9px;font-size:14px;color:var(--muted)}.plan li:before{content:"✓ ";color:var(--blue);font-weight:800}.plan .btn{margin-top:auto}
+.badge{align-self:flex-start;background:var(--blue);color:#fff;font-size:11px;font-weight:800;padding:4px 10px;border-radius:99px;margin-bottom:10px}
+.faq{max-width:760px;margin:auto;text-align:left}
+details{border-bottom:1px solid var(--line);padding:16px 0}summary{cursor:pointer;font-weight:700;list-style:none;display:flex;justify-content:space-between}summary:after{content:"＋";color:var(--blue)}details[open] summary:after{content:"−"}
+details p{margin:10px 0 0;color:var(--muted);font-size:15px}
+.final{background:var(--dark);color:#fff;border-radius:18px;padding:56px 28px;text-align:center;position:relative;overflow:hidden}
+.final:after{content:"";position:absolute;right:8%;bottom:-40px;width:170px;height:170px;border:18px solid var(--blue);border-radius:50%;opacity:.3}
+.final h2{color:#fff;max-width:640px;margin:0 auto 10px;position:relative;z-index:1}.final p{color:#cfe0ff;margin:0 0 24px;position:relative;z-index:1}.final .btn{position:relative;z-index:1}
+footer{padding:36px 0 44px;color:var(--muted);font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+@media(max-width:960px){.hero{grid-template-columns:1fr;gap:36px;padding:40px 0 50px}.steps{grid-template-columns:1fr 1fr}.feats,.plans{grid-template-columns:1fr}.links{display:none}.nav{gap:14px}.nav .login{margin-left:auto}}
+@media(max-width:560px){.wrap{padding:0 18px}.mock{grid-template-columns:1fr}.steps{grid-template-columns:1fr}section{padding:48px 0}.nav .login{display:none}.nav .btn{margin-left:auto}}
+</style>
+</head>
+<body>
+<header><div class="wrap nav">
+  <a class="brand" href="#"><span class="logo"></span>Movement Coach AI</a>
+  <nav class="links"><a href="#como">Cómo funciona</a><a href="#coaches">Para coaches</a><a href="#precios">Precios</a><a href="#faq">Preguntas</a></nav>
+  <a class="login" href="#">Iniciar sesión</a>
+  <a class="btn sm" href="#precios">Probar gratis</a>
+</div></header>
+
+<div class="wrap">
+  <div class="hero">
+    <div>
+      <span class="eyebrow">TU MIRADA EXPERTA, POTENCIADA POR IA</span>
+      <h1>Revisa más atletas. <em>En menos tiempo.</em></h1>
+      <p class="lead">Sube un video, la IA detecta repeticiones y ángulos clave, y tú entregas feedback claro sobre el momento exacto del movimiento.</p>
+      <div class="acts"><a class="btn" href="#precios">Probar gratis →</a><a class="btn ghost" href="#demo">Ver cómo se ve</a></div>
+      <p class="note">Weightlifting, CrossFit y fuerza · Sin tarjeta para empezar</p>
+    </div>
+    <div class="mock" id="demo" aria-label="Ejemplo de revisión de video">
+      <div class="vid"><div class="t"><span>Clean · 50 kg</span><span>0:12 / 0:24</span></div>
+        <div class="ang">Rodilla 133°<br>Cadera 111°<br>Tronco 22°</div><div class="body"></div><div class="bar-b"></div>
+        <div class="tl"><span><i></i>Rep 1</span><span class="a"><i></i>Rep 2</span><span><i></i>Rep 3</span></div></div>
+      <div class="ai"><h4>✦ Análisis IA</h4>
+        <div class="tip g"><b>✓</b><span>Buena profundidad en la recepción.</span></div>
+        <div class="tip w"><b>!</b><span>Mantén el pecho arriba en la extensión.</span></div>
+        <div class="sug">Sugerencia: enfócate en una extensión más rápida.</div></div>
+    </div>
+  </div>
+</div>
+
+<section id="como" class="alt"><div class="wrap c">
+  <h2>Del video al progreso en 4 pasos</h2><p class="sec-sub">Sin planillas ni revisar video cuadro a cuadro.</p>
+  <div class="steps">
+    <div class="step"><div class="n">1</div><h3>Sube un video</h3><p>Desde el celular o el computador, en segundos.</p></div>
+    <div class="step"><div class="n">2</div><h3>La IA analiza</h3><p>Detecta repeticiones, ángulos y momentos clave.</p></div>
+    <div class="step"><div class="n">3</div><h3>Revisa y corrige</h3><p>Comenta en el instante exacto y clasifica cada rep.</p></div>
+    <div class="step"><div class="n">4</div><h3>Da feedback</h3><p>Fortalezas, foco y plan de la próxima sesión.</p></div>
+  </div></div></section>
+
+<section id="coaches"><div class="wrap c">
+  <h2>Menos trabajo. Más impacto.</h2><p class="sec-sub">Herramientas pensadas para el día a día de un coach.</p>
+  <div class="feats">
+    <div class="feat"><div class="ic">◷</div><h3>Ahorra tiempo</h3><p>La IA prepara el análisis; tú te concentras en decidir qué corregir.</p></div>
+    <div class="feat"><div class="ic">◎</div><h3>Feedback más preciso</h3><p>Video anotado con ángulos y comentarios anclados al segundo exacto.</p></div>
+    <div class="feat"><div class="ic">▥</div><h3>Seguimiento real</h3><p>Historial por atleta para ver la evolución de cada movimiento.</p></div>
+  </div></div></section>
+
+<section id="precios" class="alt"><div class="wrap c">
+  <h2>Empieza gratis, crece cuando lo necesites</h2><p class="sec-sub">Precios de ejemplo para el mockup; ajústalos a tu modelo.</p>
+  <div class="plans">
+    <div class="plan"><h3>Atleta</h3><div class="price">$0<small> / mes</small></div><p style="color:var(--muted);margin:0;font-size:14px">Para probar el análisis.</p>
+      <ul><li>3 análisis al mes</li><li>Video anotado y métricas</li><li>Historial básico</li></ul><a class="btn ghost" href="#">Empezar gratis</a></div>
+    <div class="plan hot"><span class="badge">MÁS ELEGIDO</span><h3>Coach</h3><div class="price">$19<small> / mes</small></div><p style="color:var(--muted);margin:0;font-size:14px">Para coaches independientes.</p>
+      <ul><li>Hasta 30 atletas</li><li>Bandeja de revisiones</li><li>Comentarios en el video</li><li>Resumen y plan por sesión</li></ul><a class="btn" href="#">Probar gratis</a></div>
+    <div class="plan"><h3>Club</h3><div class="price">A medida</div><p style="color:var(--muted);margin:0;font-size:14px">Para gimnasios y equipos.</p>
+      <ul><li>Varios coaches</li><li>Atletas ilimitados</li><li>Soporte prioritario</li></ul><a class="btn ghost" href="#">Hablar con nosotros</a></div>
+  </div></div></section>
+
+<section id="faq"><div class="wrap c">
+  <h2>Preguntas frecuentes</h2><p class="sec-sub"></p>
+  <div class="faq">
+    <details><summary>¿Cómo debo grabar el video?</summary><p>De lado, con el cuerpo completo en cuadro, buena luz y entre 30 y 60 segundos. Formatos MP4 o MOV.</p></details>
+    <details><summary>¿La IA reemplaza al coach?</summary><p>No. La IA detecta repeticiones y ángulos; el criterio y el feedback final los pones tú.</p></details>
+    <details><summary>¿Qué ejercicios soporta?</summary><p>Sentadilla, peso muerto, clean, snatch, press y otros movimientos.</p></details>
+    <details><summary>¿Mis videos son privados?</summary><p>Solo los ven el atleta y el coach que revisa el análisis.</p></details>
+  </div></div></section>
+
+<div class="wrap"><div class="final">
+  <h2>Convierte cada video en una oportunidad de coaching</h2>
+  <p>Menos tiempo en análisis. Más tiempo haciendo mejores atletas.</p>
+  <a class="btn" href="#precios">Probar gratis →</a></div>
+  <footer><span>© 2026 Movement Coach AI</span><span>Términos · Privacidad · Contacto</span></footer></div>
+</body>
+</html>

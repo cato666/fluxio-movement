@@ -1,0 +1,18 @@
+{
+  "id": "deadlift",
+  "aliases": ["deadlift", "peso muerto", "peso-muerto"],
+  "views": ["side"],
+  "required_landmarks": ["shoulder", "hip", "knee", "ankle"],
+  "primary_signal": "hip_angle",
+  "states": ["lockout", "setup", "ascent"],
+  "initial_state": "lockout",
+  "bottom_state": "setup",
+  "transitions": [
+    {"from": "lockout", "to": "setup", "signal": "hip_angle", "operator": "<=", "threshold": "setup_hip_max"},
+    {"from": "setup", "to": "ascent", "signal": "hip_angle", "operator": ">=", "threshold": "ascent_hip_min"},
+    {"from": "ascent", "to": "lockout", "signal": "hip_angle", "operator": ">=", "threshold": "lockout_hip_min", "completes_rep": true}
+  ],
+  "thresholds": {"setup_hip_max": 115.0, "ascent_hip_min": 145.0, "lockout_hip_min": 160.0},
+  "metrics": ["hip_angle", "knee_angle", "trunk_from_vertical"],
+  "noise": {"min_confirm_frames": 2, "max_gap_s": 0.5, "min_rep_duration_s": 0.35, "max_rep_duration_s": 12.0, "cooldown_s": 0.25}
+}

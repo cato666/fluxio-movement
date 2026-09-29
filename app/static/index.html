@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Movement Coach AI</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <main>
+    <header class="topbar">
+      <a class="brand" href="/"><span class="logo-mark" aria-hidden="true"></span><span>Movement Coach AI</span></a>
+      <nav class="marketing-nav" aria-label="Navegación principal">
+        <a href="#producto">Producto</a>
+        <a href="#como-funciona">Cómo funciona</a>
+        <a href="#para-coaches">Para coaches</a>
+        <a href="#precios">Precios</a>
+        <a href="#preguntas">Preguntas</a>
+        <a href="/demo">Demo</a>
+      </nav>
+      <nav class="functional-nav" aria-label="Navegación de la aplicación">
+        <a href="/analyses/new">Nuevo análisis</a>
+        <a href="/analyses">Mis análisis</a>
+        <a href="/coach/reviews">Bandeja coach</a>
+        <a href="/demo">Demo</a>
+      </nav>
+      <div class="auth-actions"><a href="/analyses">Iniciar sesión</a><a class="mvp-link" href="/coach/reviews">Entrar al MVP <span aria-hidden="true">→</span></a></div>
+      <div class="functional-actions"><a href="/analyses">Mis análisis</a><a class="mvp-link" href="/coach/reviews">Bandeja coach <span aria-hidden="true">→</span></a></div>
+    </header>
+
+    <section id="landing-view" class="landing" hidden>
+      <div id="producto" class="landing-hero">
+        <div>
+          <span class="landing-eyebrow">TU MIRADA EXPERTA, POTENCIADA POR IA</span>
+          <h1>Revisa más atletas.<br><em>En menos tiempo.</em></h1>
+          <p>Video + IA + tu criterio profesional para entregar feedback más claro, más rápido y más útil.</p>
+          <div class="landing-actions">
+            <a class="button-link" href="/analyses/new">Probar gratis <span aria-hidden="true">→</span></a>
+            <a class="landing-link" href="/coach/reviews">Ver demo coach</a>
+          </div>
+          <div class="hero-checks"><span>✓ <b>Más análisis</b></span><span>✓ <b>Más progreso</b></span><span>✓ <b>Mejores atletas</b></span></div>
+        </div>
+        <div class="product-mock" aria-label="Ejemplo de revisión de video">
+          <div class="mock-left">
+            <div class="mock-video"><video class="landing-demo-video" autoplay muted loop playsinline preload="metadata" aria-label="Ejemplo de levantamiento analizado"><source src="/static/landing-demo.mp4?v=20260929-1909" type="video/mp4"></video><div class="mock-video-title"><b>Press </b><span>0:12 / 0:24</span></div><small>Atleta: Gaston Barahona</small><div class="mock-controls"><b>▶</b><span class="progress"><i></i></span><b>1x</b><b>⛶</b></div></div>
+            <div class="mock-timeline"><div class="timeline-line"><i></i><i class="active"></i><i></i><i></i><i></i></div><div class="timeline-reps"><span><b>Rep 1</b><small>0.0s</small></span><span class="active"><b>Rep 2</b><small>12.7s</small></span><span><b>Rep 3</b><small>25.1s</small></span><span><b>Rep 4</b><small>37.4s</small></span><span><b>Rep 5</b><small>49.8s</small></span></div></div>
+          </div>
+          <aside class="mock-ai"><div class="mock-tabs"><b>✦ &nbsp; Análisis IA</b><span>▣ &nbsp; Notas</span></div><div class="mock-rep"><b>Rep 2</b><span>12.7s</span></div><ul><li class="good">✓ <span>Buena profundidad<br>en la recepción.</span></li><li class="warn">! <span>Mantén el pecho arriba<br>en la extensión.</span></li></ul><div class="mock-suggestion"><b>☼ &nbsp; Sugerencia</b><p>Enfócate en una extensión más rápida.</p></div></aside>
+        </div>
+      </div>
+
+      <section id="como-funciona" class="landing-section centered-section">
+        <h2>Cómo funciona</h2><p>En 4 pasos, del video al progreso.</p>
+        <div class="how-grid">
+          <article><i>↥</i><div><b>1.</b><h3>Sube un video</h3><p>Desde tu celular<br>o computadora.</p></div></article>
+          <article><i>✦</i><div><b>2.</b><h3>La IA analiza</h3><p>Detecta repeticiones<br>y momentos clave.</p></div></article>
+          <article><i>▤</i><div><b>3.</b><h3>Revisa y corrige</h3><p>Observa el análisis<br>y agrega tus notas.</p></div></article>
+          <article><i>▥</i><div><b>4.</b><h3>Da feedback</h3><p>Comparte con tu atleta<br>y haz seguimiento.</p></div></article>
+        </div>
+      </section>
+
+      <section id="para-coaches" class="landing-section centered-section benefits-section">
+        <h2>Beneficios para coaches</h2><p>Más impacto. Menos trabajo.</p>
+        <div class="benefits-grid">
+          <article><i>◷</i><div><h3>Ahorra tiempo</h3><p>Analiza más atletas<br>en menos tiempo.</p></div></article>
+          <article><i>◎</i><div><h3>Feedback más preciso</h3><p>Con IA y tu experiencia<br>profesional.</p></div></article>
+          <article><i>▥</i><div><h3>Mejores atletas</h3><p>Seguimiento claro<br>y progreso real.</p></div></article>
+        </div>
+      </section>
+
+      <section id="precios" class="landing-section pricing-section centered-section">
+        <h2>Planes simples para empezar</h2>
+        <p>Precios de ejemplo para la demo. Puedes ajustarlos cuando definas tu modelo comercial.</p>
+        <div class="pricing-grid">
+          <article class="price-card"><p class="price-kicker">Inicio</p><h3>Gratis</h3><p class="price-value">$0 <small>/ mes</small></p><p>Para probar el flujo con tus primeros atletas.</p><a href="/analyses/new" class="landing-link">Probar gratis</a></article>
+          <article class="price-card featured"><p class="price-kicker">Coach</p><h3>Profesional</h3><p class="price-value">$29 <small>/ mes</small></p><p>Para revisiones frecuentes y seguimiento de atletas.</p><a href="/coach/reviews" class="button-link">Ver demo coach</a></article>
+          <article class="price-card"><p class="price-kicker">Equipo</p><h3>Studio</h3><p class="price-value">$79 <small>/ mes</small></p><p>Para equipos que necesitan más capacidad de revisión.</p><a href="/demo" class="landing-link">Conocer el flujo</a></article>
+        </div>
+      </section>
+      <section id="preguntas" class="landing-section faq-section">
+        <div><h2>Preguntas frecuentes</h2><p>Todo lo necesario para probar una revisión de video.</p></div>
+        <div class="faq-list">
+          <details><summary>¿Qué necesito para analizar un video?</summary><p>Un video MP4 o MOV grabado de lado, con el cuerpo completo y buena luz.</p></details>
+          <details><summary>¿La IA reemplaza al coach?</summary><p>No. La IA organiza observaciones y repeticiones; el feedback final sigue siendo tu criterio profesional.</p></details>
+          <details><summary>¿El atleta puede revisar el feedback?</summary><p>Sí. Recibe las anotaciones del coach y puede saltar al momento exacto del video.</p></details>
+        </div>
+      </section>
+      <section class="landing-final">
+        <div><h2>Convierte cada video en una oportunidad de coaching</h2><p>Menos tiempo en análisis. Más tiempo haciendo mejores atletas.</p><a class="button-link" href="/coach/reviews">Ver demo coach <span aria-hidden="true">→</span></a></div>
+        <span class="final-barbell" aria-hidden="true"></span>
+      </section>
+      <footer class="landing-footer"><a class="brand" href="/"><span class="logo-mark" aria-hidden="true"></span><span>Movement Coach AI</span></a><span>Video, IA y criterio profesional para mejores atletas.</span></footer>
+    </section>
+
+    <section id="demo-view" hidden>
+      <div class="hero">
+        <span class="pill">Movement Coach · Demo</span>
+        <h1>De video a feedback humano</h1>
+        <p>Un recorrido breve para mostrar cómo atleta, análisis IA y coach trabajan sobre el mismo entrenamiento.</p>
+      </div>
+      <div class="demo-flow">
+        <article class="card"><span class="step">1</span><h2>Atleta</h2><p><b>Gastón Demo</b> sube el video y define su objetivo.</p><a class="button-link" href="/analyses/new">Nuevo análisis</a></article>
+        <article class="card"><span class="step">2</span><h2>Análisis IA</h2><p>Se generan video anotado, métricas y repeticiones detectadas.</p><a class="button-link" href="/analyses">Mis análisis</a></article>
+        <article class="card"><span class="step">3</span><h2>Coach</h2><p><b>Carlos</b> · Weightlifting<br><b>Andrea</b> · Fuerza<br><b>Pablo</b> · CrossFit</p><a class="button-link" href="/coach/reviews">Bandeja coach</a></article>
+        <article class="card"><span class="step">4</span><h2>Feedback</h2><p>El coach comenta momentos del video, clasifica repeticiones y entrega el plan de la próxima sesión.</p></article>
+      </div>
+    </section>
+
+    <section id="new-view" hidden>
+      <div class="hero">
+        <span class="pill">Gastón Demo · Atleta</span>
+        <h1>Nuevo análisis</h1>
+        <p>Sube un video para revisar tu técnica, métricas y repeticiones.</p>
+      </div>
+      <form id="analysis-form" class="card" enctype="multipart/form-data">
+        <div class="form-grid">
+          <label>Ejercicio
+            <select name="exercise" required>
+              <option value="">Selecciona un ejercicio</option>
+              <option>Sentadilla</option>
+              <option>Peso muerto</option>
+              <option>Thruster</option>
+              <option>Clean</option>
+              <option>Snatch</option>
+              <option>Press</option>
+              <option>Otro</option>
+            </select>
+          </label>
+          <label>Carga (kg) <span class="muted">· opcional</span>
+            <input name="load_kg" type="number" min="0" step="0.1" inputmode="decimal" placeholder="Ej. 60">
+          </label>
+          <label>Vista del video
+            <select name="view" id="analysis-view" required>
+              <option value="side">De lado</option>
+              <option value="front" disabled>De frente · Peso muerto</option>
+            </select>
+          </label>
+        </div>
+        <label>Objetivo
+          <textarea name="objective" required maxlength="1000" rows="3" placeholder="¿Qué quieres observar o mejorar?"></textarea>
+        </label>
+        <label class="upload-zone">Archivo de video
+          <input name="file" type="file" accept=".mp4,.mov,.m4v,.avi,video/*" required>
+          <span class="upload-zone-copy"><b>Arrastra tu video o selecciónalo desde tu equipo</b><small>MP4, MOV, M4V o AVI · cuerpo completo y buena luz. Peso muerto admite vista de lado o de frente.</small></span>
+          <video id="upload-preview" class="upload-preview" controls muted hidden></video>
+        </label>
+        <div class="form-actions">
+          <button id="go" type="submit" disabled>Ejecutar análisis</button>
+          <span id="status" role="status" aria-live="polite"></span>
+        </div>
+      </form>
+    </section>
+
+    <section id="list-view" hidden>
+      <div class="section-head">
+        <div><span class="pill">Gastón Demo · Atleta</span><h1>Mis análisis</h1></div>
+        <a class="button-link" href="/analyses/new">Nuevo análisis</a>
+      </div>
+      <p id="list-status" role="status" aria-live="polite"></p>
+      <div id="analysis-filters" class="filter-chips" aria-label="Filtrar análisis por estado"></div>
+      <div id="analysis-list"></div>
+    </section>
+
+    <section id="detail-view" hidden>
+      <a class="back-link" href="/analyses">← Mis análisis</a>
+      <div class="section-head detail-head">
+        <div><span class="pill">Gastón Demo · Atleta</span><h1 id="detail-title">Análisis</h1></div>
+        <span id="detail-status" class="state"></span>
+      </div>
+      <p id="detail-meta" class="muted"></p>
+      <p id="detail-objective"></p>
+      <div id="detail-action-feedback" class="card success-card" hidden role="status"></div>
+      <div id="detail-error" class="card error-card" hidden></div>
+      <div id="detail-completed" hidden>
+        <div class="grid">
+          <div class="card"><h2>Video original</h2><video id="original-video" controls preload="metadata"></video></div>
+          <div class="card"><h2>Video anotado</h2><video id="annotated-video" controls preload="metadata"></video></div>
+        </div>
+        <div class="card"><h2>Análisis IA</h2><div id="metrics" class="metrics"></div></div>
+        <section id="athlete-ai-observations" class="card ai-observations" hidden><h2>Observaciones automáticas</h2><p class="muted">Sugerencias generadas a partir de métricas. Tu coach mantiene la decisión final.</p><div id="athlete-ai-observations-list"></div></section>
+        <div class="card"><h2>Repeticiones detectadas</h2><div id="reps"></div></div>
+        <details class="card"><summary>JSON técnico</summary><pre id="technical-json"></pre></details>
+      </div>
+      <div id="review-status" hidden></div>
+      <div id="athlete-coach-feedback" hidden></div>
+      <div id="review-cta" class="card review-cta">
+        <h2>Solicitar revisión de coach</h2>
+        <p id="review-cta-copy">Elige un coach para recibir una revisión de este análisis.</p>
+        <a id="request-review-link" class="button-link">Solicitar revisión de coach</a>
+      </div>
+      <section id="reanalyze-card" class="card" hidden>
+        <h2>Reanalizar este video</h2>
+        <p class="muted">Crea un nuevo análisis con el mismo video y conserva el historial anterior.</p>
+        <div class="form-grid">
+          <label>Ejercicio
+            <select id="reanalyze-exercise"><option>Sentadilla</option><option>Peso muerto</option><option>Thruster</option><option>Clean</option><option>Snatch</option><option>Press</option><option>Otro</option></select>
+          </label>
+          <label>Vista
+            <select id="reanalyze-view"><option value="side">De lado</option><option value="front">De frente · Peso muerto</option></select>
+          </label>
+        </div>
+        <div class="form-actions"><button id="reanalyze-submit" type="button">Reanalizar video</button><span id="reanalyze-status" role="status"></span></div>
+      </section>
+    </section>
+
+    <section id="coach-selection-view" hidden>
+      <a id="selection-back" class="back-link">← Volver al análisis</a>
+      <div class="hero">
+        <span class="pill">Gastón Demo · Atleta</span>
+        <h1>Elige un coach</h1>
+        <p>Selecciona quién revisará tu análisis.</p>
+      </div>
+      <p id="coach-selection-status" role="status" aria-live="polite"></p>
+      <div id="coach-list" class="coach-list"></div>
+    </section>
+
+    <section id="coach-reviews-view" hidden>
+      <div class="section-head">
+        <div><span class="pill">Vista demo · Coach</span><h1>Mis revisiones</h1></div>
+        <label class="coach-switcher">Coach actual
+          <select id="current-coach" aria-label="Coach actual"></select>
+        </label>
+      </div>
+      <label class="review-filter">Estado
+        <select id="review-filter">
+          <option value="">Todas</option>
+          <option value="PENDING">Pendientes</option>
+          <option value="IN_REVIEW">En revisión</option>
+          <option value="COMPLETED">Completadas</option>
+        </select>
+      </label>
+      <p id="coach-reviews-status" role="status" aria-live="polite"></p>
+      <div id="coach-review-filters" class="filter-chips" aria-label="Filtrar revisiones por estado"></div>
+      <div id="coach-reviews-list"></div>
+    </section>
+
+    <section id="coach-review-detail-view" hidden>
+      <a id="coach-review-back" class="back-link">← Mis revisiones</a>
+      <div class="section-head detail-head">
+        <div><span class="pill">Vista demo · Coach</span><h1 id="coach-review-title">Revisión</h1></div>
+        <span id="coach-review-state" class="state"></span>
+      </div>
+      <p id="coach-review-meta" class="muted"></p>
+      <p id="coach-review-objective"></p>
+      <section id="coach-review-moments" class="card ai-observations"><h2>Momentos sugeridos por IA</h2><p class="muted">Prioriza estos puntos antes de revisar el video completo.</p><div id="coach-review-moments-list"></div></section>
+      <div id="coach-start-card" class="card" hidden>
+        <h2>Revisión pendiente</h2>
+        <p class="muted">Marca la revisión como iniciada antes de trabajar sobre ella.</p>
+        <button id="coach-start-review" type="button">Iniciar revisión</button>
+      </div>
+      <div id="coach-completed-card" class="card success-card" hidden><h2>Revisión completada</h2><p>El feedback ya está disponible para Gastón Demo. Esta revisión quedó bloqueada para edición.</p></div>
+      <div class="grid">
+        <div class="card studio-player-card">
+          <h2>Video anotado</h2>
+          <video id="coach-annotated-video" controls preload="metadata"></video>
+          <div class="video-controls" aria-label="Controles de velocidad">
+            <span>Tiempo: <b id="coach-video-time">00:00.00</b></span>
+            <button type="button" data-rate="0.25">0.25x</button>
+            <button type="button" data-rate="0.5">0.5x</button>
+            <button type="button" data-rate="1">1x</button>
+          </div>
+        </div>
+        <div class="card"><h2>Video original</h2><video id="coach-original-video" controls preload="metadata"></video></div>
+      </div>
+      <div class="card"><h2>Análisis IA</h2><div id="coach-metrics" class="metrics"></div></div>
+      <section id="coach-ai-observations" class="card ai-observations"><h2>Observaciones IA</h2><p class="muted">Sugerencias para revisar; no reemplazan tu criterio profesional.</p><div id="coach-ai-observations-list"></div></section>
+      <div class="card"><h2>Timeline</h2><div id="coach-reps"></div><div id="coach-timeline-annotations"></div></div>
+      <div id="coach-annotation-editor" class="card" hidden>
+        <h2 id="coach-annotation-editor-title">Agregar comentario</h2>
+        <p id="coach-annotation-time" class="muted"></p>
+        <label>Tipo
+          <select id="coach-annotation-type">
+            <option value="COMMENT">COMMENT</option>
+            <option value="REVIEW">REVIEW</option>
+            <option value="CORRECT">CORRECT</option>
+            <option value="PRIORITY">PRIORITY</option>
+          </select>
+        </label>
+        <label>Texto
+          <textarea id="coach-annotation-text" maxlength="2000" rows="3" required></textarea>
+        </label>
+        <label>Repetición <span class="muted">· opcional</span>
+          <select id="coach-annotation-repetition"><option value="">Sin repetición</option></select>
+        </label>
+        <div class="form-actions">
+          <button id="coach-annotation-save" type="button">Guardar comentario</button>
+          <button id="coach-annotation-cancel" class="secondary-button" type="button">Cancelar</button>
+        </div>
+      </div>
+      <div class="card coach-annotations-card">
+        <div class="section-head compact-head"><h2>Feedback del coach</h2><button id="coach-add-annotation" type="button">+ Agregar comentario</button></div>
+        <p id="coach-annotations-status" class="muted" role="status"></p>
+        <div id="coach-annotations-list"></div>
+      </div>
+      <div id="coach-summary-card" class="card">
+        <h2>Resumen del coach</h2>
+        <label>Fortalezas
+          <textarea id="coach-strengths" maxlength="4000" rows="3"></textarea>
+        </label>
+        <label>Principal punto a trabajar
+          <textarea id="coach-main-focus" maxlength="4000" rows="3"></textarea>
+        </label>
+        <label>Próxima sesión
+          <textarea id="coach-next-session" maxlength="4000" rows="3"></textarea>
+        </label>
+        <label>Resumen adicional <span class="muted">· opcional</span>
+          <textarea id="coach-summary" maxlength="4000" rows="3"></textarea>
+        </label>
+        <div class="form-actions">
+          <button id="coach-save-summary" type="button">Guardar resumen</button>
+          <button id="coach-complete-review" type="button">Finalizar revisión</button>
+          <span id="coach-summary-status" class="muted" role="status"></span>
+        </div>
+      </div>
+      <details class="card"><summary>JSON técnico</summary><pre id="coach-technical-json"></pre></details>
+      <div id="coach-review-error" class="card error-card" hidden></div>
+    </section>
+  </main>
+</body>
+</html>

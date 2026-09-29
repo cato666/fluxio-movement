@@ -1,0 +1,19 @@
+{
+  "id": "clean",
+  "aliases": ["clean", "clean and jerk", "power clean"],
+  "views": ["side"],
+  "required_landmarks": ["shoulder", "hip", "knee", "ankle"],
+  "primary_signal": "knee_angle",
+  "states": ["standing", "setup", "pull", "receive"],
+  "initial_state": "standing",
+  "bottom_state": "receive",
+  "transitions": [
+    {"from": "standing", "to": "setup", "signal": "knee_angle", "operator": "<=", "threshold": "setup_knee_max"},
+    {"from": "setup", "to": "pull", "signal": "knee_angle", "operator": ">=", "threshold": "pull_knee_min"},
+    {"from": "pull", "to": "receive", "signal": "knee_angle", "operator": "<=", "threshold": "receive_knee_max"},
+    {"from": "receive", "to": "standing", "signal": "knee_angle", "operator": ">=", "threshold": "standing_knee_min", "completes_rep": true}
+  ],
+  "thresholds": {"setup_knee_max": 135.0, "pull_knee_min": 150.0, "receive_knee_max": 125.0, "standing_knee_min": 155.0},
+  "metrics": ["knee_angle", "hip_angle", "trunk_from_vertical"],
+  "noise": {"min_confirm_frames": 2, "max_gap_s": 0.5, "min_rep_duration_s": 0.45, "max_rep_duration_s": 15.0, "cooldown_s": 0.35}
+}
