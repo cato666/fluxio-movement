@@ -29,6 +29,7 @@ Usa [.env.example](.env.example) como referencia. No subas `.env` al repositorio
 | Variable | Uso |
 | --- | --- |
 | `APP_ENV` | Entorno de ejecución, por ejemplo `production`. |
+| `SESSION_SECRET` | Secreto aleatorio largo para firmar las sesiones. Obligatorio en producción. |
 | `POSTGRES_DB` | Base de datos PostgreSQL. |
 | `POSTGRES_USER` | Usuario PostgreSQL. |
 | `POSTGRES_PASSWORD` | Contraseña PostgreSQL. |
@@ -68,10 +69,11 @@ No uses `docker compose down -v`: elimina los volúmenes persistentes.
 2. Crea un **Compose Service**.
 3. En **Source**, conecta GitHub y selecciona el repositorio **`fluxio-movement`** y la rama a desplegar.
 4. Usa el archivo `docker-compose.yml` del repositorio.
-5. En variables del servicio, crea los valores de `.env.example`. Genera una contraseña fuerte para `POSTGRES_PASSWORD` y usa la misma contraseña codificada en `DATABASE_URL`:
+5. En variables del servicio, crea los valores de `.env.example`. Define también `SESSION_SECRET` con un valor aleatorio de al menos 32 caracteres. Genera una contraseña fuerte para `POSTGRES_PASSWORD` y usa la misma contraseña codificada en `DATABASE_URL`:
 
 ```text
 DATABASE_URL=postgresql+psycopg://<POSTGRES_USER>:<POSTGRES_PASSWORD>@db:5432/<POSTGRES_DB>
+SESSION_SECRET=<secreto-aleatorio-largo>
 ```
 
 6. Mantén `STORAGE_PATH=/data/storage` y define el límite deseado en `MAX_UPLOAD_MB`.
