@@ -1,7 +1,7 @@
 {
   "id": "other",
   "aliases": ["otro", "other", "genérico", "generico"],
-  "views": ["side"],
+  "views": ["side", "front"],
   "required_landmarks": ["shoulder", "hip", "knee", "ankle"],
   "primary_signal": "knee_angle",
   "states": ["standing", "descent", "bottom", "ascent"],

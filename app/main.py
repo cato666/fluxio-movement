@@ -1,4 +1,6 @@
 from datetime import datetime, timezone
+import base64
+import json
 from math import isfinite
 from pathlib import Path
 from uuid import UUID, uuid4
@@ -7,10 +9,12 @@ import os
 import shutil
 import subprocess
 
-from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.sessions import SessionMiddleware
+from itsdangerous import BadSignature, TimestampSigner
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -22,6 +26,7 @@ from .services.analyzer import analyze_video
 from .services.ai_reasoning import run_reasoning
 from .services.exercise_validation import validate_video_exercise
 from .services.review_moments import rank_review_moments
+from .services.auth import hash_password, verify_password
 
 ROOT = Path(__file__).resolve().parents[1]
 STORAGE_PATH = Path(os.environ.get('STORAGE_PATH', '/data/storage'))
@@ -47,6 +52,106 @@ app.mount('/uploads', StaticFiles(directory=str(UPLOADS)), name='uploads')
 app.mount('/analysis', StaticFiles(directory=str(ANALYSIS_FILES)), name='analysis')
 
 
+def _authenticated_user(request: Request, session: Session) -> User:
+    user_id = request.session.get('user_id')
+    user = session.get(User, user_id) if user_id else None
+    if user is None:
+        raise HTTPException(401, 'Inicia sesión para continuar')
+    return user
+
+
+def _guard_user(request: Request, session: Session) -> User | None:
+    """Read the signed Starlette session cookie from the outer route guard."""
+    cookie = request.cookies.get('session')
+    if not cookie:
+        return None
+    try:
+        raw = TimestampSigner(os.environ.get('SESSION_SECRET', 'local-development-change-me')).unsign(cookie, max_age=60 * 60 * 24 * 14)
+        payload = json.loads(base64.b64decode(raw))
+        user_id = payload.get('user_id')
+    except (BadSignature, ValueError, TypeError, json.JSONDecodeError):
+        return None
+    return session.get(User, user_id) if user_id else None
+
+
+def require_athlete(request: Request, session: Session = Depends(get_session)) -> User:
+    user = _authenticated_user(request, session)
+    if user.role != 'ATHLETE':
+        raise HTTPException(403, 'Esta sección es solo para atletas')
+    return user
+
+
+def require_coach(request: Request, session: Session = Depends(get_session)) -> User:
+    user = _authenticated_user(request, session)
+    if user.role != 'COACH':
+        raise HTTPException(403, 'Esta sección es solo para coaches')
+    return user
+
+
+def require_internal(request: Request, session: Session = Depends(get_session)) -> User:
+    user = _authenticated_user(request, session)
+    if not user.is_internal:
+        raise HTTPException(403, 'No tienes acceso a esta vista interna')
+    return user
+
+
+@app.middleware('http')
+async def protect_application_routes(request: Request, call_next):
+    """Central guard for the SPA, API and video assets.
+
+    Endpoint-level checks still constrain ownership. This guard prevents an
+    unauthenticated browser from opening a functional route or a stored video.
+    """
+    path = request.url.path
+    public = {'/', '/demo', '/login', '/para-atletas', '/para-coaches', '/health', '/api/health', '/api/auth/login'}
+    if path in public or path.startswith('/static') or path.startswith('/docs') or path.startswith('/openapi'):
+        return await call_next(request)
+    with SessionLocal() as session:
+        try:
+            user = _guard_user(request, session)
+            if user is None:
+                raise HTTPException(401)
+        except HTTPException:
+            if path.startswith('/api/') or path.startswith(('/uploads/', '/results/', '/analysis/')):
+                return JSONResponse(status_code=401, content={'detail': 'Inicia sesión para continuar'})
+            return RedirectResponse(url=f'/login?next={path}', status_code=303)
+        if path.startswith('/internal/') or path.startswith('/api/internal/'):
+            if not user.is_internal:
+                if not path.startswith('/api/'):
+                    return RedirectResponse(url='/login', status_code=303)
+                return JSONResponse(status_code=403, content={'detail': 'No tienes acceso a esta vista interna'})
+        elif path.startswith('/coach/') or path.startswith('/api/coach/'):
+            if user.role != 'COACH':
+                if not path.startswith('/api/'):
+                    return RedirectResponse(url='/analyses', status_code=303)
+                return JSONResponse(status_code=403, content={'detail': 'Esta sección es solo para coaches'})
+            requested_coach = request.query_params.get('coach_id')
+            if requested_coach and requested_coach != str(user.id):
+                return JSONResponse(status_code=403, content={'detail': 'No puedes operar como otro coach'})
+        elif path.startswith('/analyses') or path.startswith('/api/analyses') or path == '/api/analyze' or path == '/api/coaches':
+            if user.role != 'ATHLETE':
+                if not path.startswith('/api/'):
+                    return RedirectResponse(url='/coach/reviews', status_code=303)
+                return JSONResponse(status_code=403, content={'detail': 'Esta sección es solo para atletas'})
+        if path.startswith(('/uploads/', '/results/', '/analysis/')):
+            relative = path.lstrip('/')
+            row = session.scalar(select(Analysis).where(
+                (Analysis.video_path == relative) | (Analysis.annotated_video_path == relative) |
+                (Analysis.analysis_json_path == relative) | (Analysis.thumbnail_path == relative)
+            ))
+            is_owner = row is not None and row.athlete_id == user.id
+            is_assigned_coach = row is not None and user.role == 'COACH' and session.scalar(
+                select(CoachReview.id).where(CoachReview.analysis_id == row.id, CoachReview.coach_id == user.id)
+            ) is not None
+            if not (is_owner or is_assigned_coach):
+                return JSONResponse(status_code=403, content={'detail': 'No tienes acceso a este archivo'})
+    return await call_next(request)
+
+
+# Added after the route guard so the session is available to it on each request.
+app.add_middleware(SessionMiddleware, secret_key=os.environ.get('SESSION_SECRET', 'local-development-change-me'), https_only=os.environ.get('APP_ENV') == 'production', same_site='lax')
+
+
 @app.on_event('startup')
 def recover_interrupted_analyses():
     with SessionLocal() as session:
@@ -61,14 +166,48 @@ def recover_interrupted_analyses():
 
 @app.get('/')
 @app.get('/demo')
+@app.get('/login')
+@app.get('/para-atletas')
+@app.get('/para-coaches')
 @app.get('/analyses')
 @app.get('/analyses/new')
 @app.get('/analyses/{analysis_id}/request-review')
 @app.get('/analyses/{analysis_id}')
 @app.get('/coach/reviews/{review_id}')
 @app.get('/coach/reviews')
+@app.get('/coach/analyses/new')
+@app.get('/coach/athletes/new')
+@app.get('/internal/usage')
 def home():
     return FileResponse(ROOT / 'app' / 'static' / 'index.html')
+
+
+class LoginPayload(BaseModel):
+    username: str
+    password: str
+
+
+@app.post('/api/auth/login')
+def login(payload: LoginPayload, request: Request, session: Session = Depends(get_session)):
+    username = payload.username.strip().casefold()
+    user = session.scalar(select(User).where((User.demo_key == username) | (func.lower(User.name) == username)))
+    if user is None or not verify_password(payload.password, user.password_hash):
+        raise HTTPException(401, 'Credenciales inválidas')
+    request.session['user_id'] = str(user.id)
+    next_path = '/analyses' if user.role == 'ATHLETE' else '/coach/reviews' if user.role == 'COACH' else '/internal/usage'
+    return {'id': user.id, 'name': user.name, 'role': user.role, 'is_internal': user.is_internal, 'next': next_path}
+
+
+@app.post('/api/auth/logout')
+def logout(request: Request):
+    request.session.clear()
+    return {'ok': True}
+
+
+@app.get('/api/auth/me')
+def current_user(request: Request, session: Session = Depends(get_session)):
+    user = _authenticated_user(request, session)
+    return {'id': user.id, 'name': user.name, 'role': user.role, 'is_internal': user.is_internal}
 
 
 @app.get('/api/health')
@@ -76,7 +215,7 @@ def health(session: Session = Depends(get_session)):
     try:
         session.execute(text('SELECT 1'))
         revision = session.execute(text('SELECT version_num FROM alembic_version')).scalar_one_or_none()
-        if revision != '0010_ai_review_moments':
+        if revision != '0012_system_admin':
             return JSONResponse(status_code=503, content={'ok': False, 'database': 'schema_not_ready'})
     except SQLAlchemyError:
         return JSONResponse(status_code=503, content={'ok': False, 'database': 'unavailable'})
@@ -90,6 +229,65 @@ def deployment_health(session: Session = Depends(get_session)):
     except SQLAlchemyError:
         return JSONResponse(status_code=503, content={'ok': False})
     return {'ok': True}
+
+
+@app.get('/api/internal/ai-usage')
+def internal_ai_usage(_user: User = Depends(require_internal), session: Session = Depends(get_session)):
+    """Demo-only operational view; exposes usage totals, never credentials."""
+    completed = AIReasoningRun.status == 'COMPLETED'
+    totals = session.execute(
+        select(
+            func.count(AIReasoningRun.id),
+            func.coalesce(func.sum(AIReasoningRun.input_tokens), 0),
+            func.coalesce(func.sum(AIReasoningRun.output_tokens), 0),
+            func.coalesce(func.sum(AIReasoningRun.reasoning_tokens), 0),
+        ).where(completed)
+    ).one()
+    by_model = session.execute(
+        select(
+            AIReasoningRun.model,
+            func.count(AIReasoningRun.id),
+            func.coalesce(func.sum(AIReasoningRun.input_tokens), 0),
+            func.coalesce(func.sum(AIReasoningRun.output_tokens), 0),
+        )
+        .where(completed)
+        .group_by(AIReasoningRun.model)
+        .order_by(func.sum(AIReasoningRun.input_tokens + AIReasoningRun.output_tokens).desc())
+    ).all()
+    recent = session.execute(
+        select(AIReasoningRun, Analysis)
+        .join(Analysis, Analysis.id == AIReasoningRun.analysis_id)
+        .order_by(AIReasoningRun.created_at.desc())
+        .limit(25)
+    ).all()
+    input_tokens, output_tokens, reasoning_tokens = (int(value or 0) for value in totals[1:])
+    return {
+        'totals': {
+            'completed_runs': int(totals[0] or 0),
+            'input_tokens': input_tokens,
+            'output_tokens': output_tokens,
+            'reasoning_tokens': reasoning_tokens,
+            'total_tokens': input_tokens + output_tokens,
+        },
+        'by_model': [
+            {
+                'model': model or 'Sin modelo', 'runs': int(runs),
+                'input_tokens': int(input_total or 0), 'output_tokens': int(output_total or 0),
+                'total_tokens': int(input_total or 0) + int(output_total or 0),
+            }
+            for model, runs, input_total, output_total in by_model
+        ],
+        'recent_runs': [
+            {
+                'analysis_id': run.analysis_id, 'exercise': analysis.exercise,
+                'status': run.status, 'model': run.model, 'input_tokens': run.input_tokens or 0,
+                'output_tokens': run.output_tokens or 0, 'reasoning_tokens': run.reasoning_tokens or 0,
+                'total_tokens': (run.input_tokens or 0) + (run.output_tokens or 0),
+                'latency_ms': run.latency_ms, 'created_at': run.created_at,
+            }
+            for run, analysis in recent
+        ],
+    }
 
 
 def _validate_upload(file: UploadFile):
@@ -140,6 +338,7 @@ def _validate_view(view: str) -> str:
 def _run_analysis(
     file: UploadFile, exercise: str, objective: str, load_kg: float | None,
     session: Session, legacy_response: bool = False, view: str = 'side',
+    athlete_id: UUID = DEMO_ATHLETE_ID,
 ):
     _validate_upload(file)
     exercise, objective = _validate_metadata(exercise, objective, load_kg)
@@ -151,12 +350,12 @@ def _run_analysis(
     annotated = RESULTS / job / 'annotated.mp4'
     analysis_file = ANALYSIS_FILES / job / 'analysis.json'
     analysis = Analysis(
-        id=job, athlete_id=DEMO_ATHLETE_ID, exercise=exercise,
+        id=job, athlete_id=athlete_id, exercise=exercise,
         load_kg=load_kg, objective=objective, original_filename=filename,
         video_path=f'uploads/{video.name}', view=view, status='PENDING',
     )
     try:
-        if session.get(Athlete, DEMO_ATHLETE_ID) is None:
+        if session.get(Athlete, athlete_id) is None:
             raise HTTPException(503, 'Ejecuta el seed demo antes de analizar')
         session.add(analysis)
         session.commit()
@@ -268,16 +467,21 @@ def _process_analysis(job: str, exercise: str, view: str):
             shutil.rmtree(out, ignore_errors=True)
             row = session.get(Analysis, job)
             row.result = result
-            row.status, row.progress, row.stage = 'COMPLETED', 100, None
+            row.status, row.progress, row.stage = 'PROCESSING', 97, 'generating_observations'
             row.annotated_video_path = f'results/{job}/annotated.mp4'
             row.analysis_json_path = f'analysis/{job}/analysis.json'
             row.thumbnail_path = f'results/{job}/thumbnail.jpg' if has_thumbnail else None
-            row.completed_at = datetime.now(timezone.utc)
+            row.completed_at = None
             for rep in result['repetitions']:
                 session.add(Repetition(analysis_id=job, number=rep['repetition'], start_s=rep['start_s'], bottom_s=rep['bottom_s'], end_s=rep['end_s'], metrics=rep))
             session.commit()
             _run_ai_reasoning(job, exercise, view, result)
             _generate_review_moments_safely(job, result)
+            row = session.get(Analysis, job)
+            if row is not None:
+                row.status, row.progress, row.stage = 'COMPLETED', 100, None
+                row.completed_at = datetime.now(timezone.utc)
+                session.commit()
         except Exception as exc:
             session.rollback()
             logger.exception('Async analysis %s failed', job)
@@ -356,16 +560,16 @@ def _generate_review_moments(analysis_id: str, result: dict):
         session.commit()
 
 
-def _prepare_async_analysis(file: UploadFile, exercise: str, objective: str, load_kg: float | None, view: str, session: Session) -> Analysis:
+def _prepare_async_analysis(file: UploadFile, exercise: str, objective: str, load_kg: float | None, view: str, session: Session, athlete_id: UUID = DEMO_ATHLETE_ID) -> Analysis:
     _validate_upload(file)
     exercise, objective = _validate_metadata(exercise, objective, load_kg)
     view = _validate_view(view)
     job = uuid4().hex[:12]
     filename = Path(file.filename.replace('\\', '/')).name
     video = UPLOADS / f'{job}{Path(filename).suffix.lower()}'
-    row = Analysis(id=job, athlete_id=DEMO_ATHLETE_ID, exercise=exercise, load_kg=load_kg, objective=objective, original_filename=filename, video_path=f'uploads/{video.name}', view=view, status='PENDING', progress=0, stage='uploading')
-    if session.get(Athlete, DEMO_ATHLETE_ID) is None:
-        raise HTTPException(503, 'Ejecuta el seed demo antes de analizar')
+    row = Analysis(id=job, athlete_id=athlete_id, exercise=exercise, load_kg=load_kg, objective=objective, original_filename=filename, video_path=f'uploads/{video.name}', view=view, status='PENDING', progress=0, stage='uploading')
+    if session.get(Athlete, athlete_id) is None:
+        raise HTTPException(404, 'Atleta no encontrado')
     session.add(row)
     session.commit()
     try:
@@ -487,10 +691,22 @@ class AnalysisReanalyzeRequest(BaseModel):
     view: str = 'side'
 
 
+class CoachAthleteCreate(BaseModel):
+    name: str
+    username: str
+    password: str
+
+
 @app.post('/api/analyze')
-def analyze(file: UploadFile = File(...), session: Session = Depends(get_session)):
+def analyze(
+    file: UploadFile = File(...), athlete: User = Depends(require_athlete),
+    session: Session = Depends(get_session),
+):
     """Original API contract, retained for the F1.1 client."""
-    return _run_analysis(file, 'Sin especificar', 'Análisis técnico', None, session, legacy_response=True)
+    return _run_analysis(
+        file, 'Sin especificar', 'Análisis técnico', None, session,
+        legacy_response=True, athlete_id=athlete.id,
+    )
 
 
 @app.post('/api/analyses', status_code=202)
@@ -498,21 +714,72 @@ def create_analysis(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...), exercise: str = Form(...),
     objective: str = Form(...), load_kg: float | None = Form(None), view: str = Form('side'),
-    session: Session = Depends(get_session),
+    athlete: User = Depends(require_athlete), session: Session = Depends(get_session),
 ):
-    row = _prepare_async_analysis(file, exercise, objective, load_kg, view, session)
+    row = _prepare_async_analysis(file, exercise, objective, load_kg, view, session, athlete.id)
     background_tasks.add_task(_process_analysis, row.id, exercise, view)
     session.expire_all()
-    return _get_analysis(row.id, session)
+    return _get_analysis(row.id, athlete.id, session)
+
+
+@app.get('/api/coach/athletes')
+def list_coach_athletes(_coach: User = Depends(require_coach), session: Session = Depends(get_session)):
+    rows = session.execute(select(Athlete, User).join(User, User.id == Athlete.user_id).order_by(User.name)).all()
+    return {'items': [{'id': athlete.user_id, 'name': user.name} for athlete, user in rows]}
+
+
+@app.post('/api/coach/athletes', status_code=201)
+def create_coach_athlete(payload: CoachAthleteCreate, _coach: User = Depends(require_coach), session: Session = Depends(get_session)):
+    name = payload.name.strip()
+    username = payload.username.strip().casefold()
+    if not name or len(name) > 160:
+        raise HTTPException(400, 'Indica el nombre del atleta')
+    if len(username) < 3 or len(username) > 40 or any(char not in 'abcdefghijklmnopqrstuvwxyz0123456789._-' for char in username):
+        raise HTTPException(400, 'El usuario debe tener entre 3 y 40 caracteres: letras, números, punto, guion o guion bajo')
+    if len(payload.password) < 8 or len(payload.password) > 200:
+        raise HTTPException(400, 'La contraseña debe tener entre 8 y 200 caracteres')
+    athlete_id = uuid4()
+    user = User(id=athlete_id, demo_key=username, name=name, role='ATHLETE', password_hash=hash_password(payload.password), is_internal=False)
+    try:
+        session.add(user)
+        session.flush()
+        session.add(Athlete(user_id=athlete_id))
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(409, 'Ese usuario ya está registrado')
+    except SQLAlchemyError:
+        session.rollback()
+        raise HTTPException(503, 'No se pudo registrar el atleta')
+    return {'id': athlete_id, 'name': name, 'username': username}
+
+
+@app.post('/api/coach/analyses', status_code=202)
+def create_coach_analysis(
+    background_tasks: BackgroundTasks, athlete_id: UUID = Form(...), file: UploadFile = File(...),
+    exercise: str = Form(...), objective: str = Form(...), load_kg: float | None = Form(None), view: str = Form('side'),
+    coach: User = Depends(require_coach), session: Session = Depends(get_session),
+):
+    row = _prepare_async_analysis(file, exercise, objective, load_kg, view, session, athlete_id)
+    review = CoachReview(analysis_id=row.id, athlete_id=athlete_id, coach_id=coach.id, status='PENDING')
+    try:
+        session.add(review)
+        session.commit()
+    except SQLAlchemyError:
+        session.rollback()
+        raise HTTPException(503, 'No se pudo asignar la revisión al coach')
+    background_tasks.add_task(_process_analysis, row.id, exercise, view)
+    return {'id': row.id, 'review_id': review.id, 'status': row.status, 'athlete_id': athlete_id}
 
 
 @app.post('/api/analyses/{analysis_id}/reanalyze', status_code=202)
 def reanalyze_analysis(
     analysis_id: str, payload: AnalysisReanalyzeRequest,
-    background_tasks: BackgroundTasks, session: Session = Depends(get_session),
+    background_tasks: BackgroundTasks, athlete: User = Depends(require_athlete),
+    session: Session = Depends(get_session),
 ):
     source = session.get(Analysis, analysis_id)
-    if source is None or source.athlete_id != DEMO_ATHLETE_ID:
+    if source is None or source.athlete_id != athlete.id:
         raise HTTPException(404, 'Análisis no encontrado')
     if source.status not in {'COMPLETED', 'FAILED'}:
         raise HTTPException(409, 'Espera a que el análisis actual termine antes de reanalizarlo')
@@ -522,7 +789,7 @@ def reanalyze_analysis(
     view = _validate_view(payload.view)
     job = uuid4().hex[:12]
     row = Analysis(
-        id=job, athlete_id=DEMO_ATHLETE_ID, status='PROCESSING', progress=5, stage='reanalyzing',
+        id=job, athlete_id=athlete.id, status='PROCESSING', progress=5, stage='reanalyzing',
         exercise=exercise, view=view, load_kg=source.load_kg, objective=objective,
         original_filename=source.original_filename, video_path=source.video_path, source_analysis_id=source.id,
     )
@@ -535,11 +802,11 @@ def reanalyze_analysis(
         raise HTTPException(503, 'Persistencia no disponible')
     background_tasks.add_task(_process_analysis, row.id, exercise, view)
     session.expire_all()
-    return _get_analysis(row.id, session)
+    return _get_analysis(row.id, athlete.id, session)
 
 
 @app.get('/api/analyses')
-def list_analyses(session: Session = Depends(get_session)):
+def list_analyses(athlete: User = Depends(require_athlete), session: Session = Depends(get_session)):
     counts = (
         select(Repetition.analysis_id, func.count().label('count'))
         .group_by(Repetition.analysis_id).subquery()
@@ -547,7 +814,7 @@ def list_analyses(session: Session = Depends(get_session)):
     rows = session.execute(
         select(Analysis, func.coalesce(counts.c.count, 0))
         .outerjoin(counts, counts.c.analysis_id == Analysis.id)
-        .where(Analysis.athlete_id == DEMO_ATHLETE_ID)
+        .where(Analysis.athlete_id == athlete.id)
         .order_by(Analysis.created_at.desc(), Analysis.id.desc())
     ).all()
     return {'items': [_analysis_fields(row, count) for row, count in rows]}
@@ -569,10 +836,10 @@ def list_coaches(session: Session = Depends(get_session)):
 @app.post('/api/analyses/{analysis_id}/request-review', status_code=201)
 def request_review(
     analysis_id: str, payload: CoachReviewRequest,
-    session: Session = Depends(get_session),
+    athlete: User = Depends(require_athlete), session: Session = Depends(get_session),
 ):
     analysis = session.get(Analysis, analysis_id)
-    if analysis is None or analysis.athlete_id != DEMO_ATHLETE_ID:
+    if analysis is None or analysis.athlete_id != athlete.id:
         raise HTTPException(404, 'Análisis no encontrado')
     if analysis.status != 'COMPLETED':
         raise HTTPException(409, 'Solo puedes solicitar revisión de un análisis completado')
@@ -1005,9 +1272,9 @@ def complete_coach_review(
     return {'id': review.id, 'status': review.status, 'completed_at': review.completed_at}
 
 
-def _get_analysis(analysis_id: str, session: Session):
+def _get_analysis(analysis_id: str, athlete_id: UUID, session: Session):
     row = session.get(Analysis, analysis_id)
-    if row is None or row.athlete_id != DEMO_ATHLETE_ID:
+    if row is None or row.athlete_id != athlete_id:
         raise HTTPException(404, 'Análisis no encontrado')
     reps = session.scalars(
         select(Repetition).where(Repetition.analysis_id == analysis_id).order_by(Repetition.number)
@@ -1023,6 +1290,9 @@ def _get_analysis(analysis_id: str, session: Session):
     ai_observations = session.scalars(
         select(AIObservation).where(AIObservation.analysis_id == analysis_id).order_by(AIObservation.timestamp_s, AIObservation.created_at)
     ).all()
+    review_moment_observation_ids = set(session.scalars(
+        select(AIReviewMoment.observation_id).where(AIReviewMoment.analysis_id == analysis_id)
+    ).all())
     reasoning_run = session.scalar(select(AIReasoningRun).where(AIReasoningRun.analysis_id == analysis_id))
     completed_reviews = []
     for review, coach, user in review_rows:
@@ -1068,7 +1338,13 @@ def _get_analysis(analysis_id: str, session: Session):
             for review, coach, user in review_rows
         ],
         'completed_coach_reviews': completed_reviews,
-        'ai_observations': [_ai_observation_fields(observation) for observation in ai_observations],
+        # Review moments are rendered separately for coaches. They may originate from
+        # the same IA observation and must not be repeated in the athlete view.
+        'ai_observations': [
+            _ai_observation_fields(observation)
+            for observation in ai_observations
+            if observation.id not in review_moment_observation_ids
+        ],
         'ai_reasoning': None if reasoning_run is None else {
             'status': reasoning_run.status, 'model': reasoning_run.model,
             'summary': (row.result or {}).get('ai_reasoning_summary'),
@@ -1078,5 +1354,8 @@ def _get_analysis(analysis_id: str, session: Session):
 
 
 @app.get('/api/analyses/{analysis_id}')
-def get_analysis(analysis_id: str, session: Session = Depends(get_session)):
-    return _get_analysis(analysis_id, session)
+def get_analysis(
+    analysis_id: str, athlete: User = Depends(require_athlete),
+    session: Session = Depends(get_session),
+):
+    return _get_analysis(analysis_id, athlete.id, session)

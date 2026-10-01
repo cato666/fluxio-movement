@@ -1,7 +1,7 @@
 {
   "id": "clean",
   "aliases": ["clean", "clean and jerk", "power clean"],
-  "views": ["side"],
+  "views": ["side", "front"],
   "required_landmarks": ["shoulder", "hip", "knee", "ankle"],
   "primary_signal": "knee_angle",
   "states": ["standing", "setup", "pull", "receive"],

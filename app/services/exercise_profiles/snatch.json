@@ -1,7 +1,7 @@
 {
   "id": "snatch",
   "aliases": ["snatch", "power snatch", "arrancada"],
-  "views": ["side"],
+  "views": ["side", "front"],
   "required_landmarks": ["shoulder", "hip", "knee", "ankle"],
   "primary_signal": "knee_angle",
   "states": ["standing", "setup", "pull", "receive"],

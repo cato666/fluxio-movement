@@ -61,6 +61,14 @@ def test_reasoning_rejects_more_than_five_observations(monkeypatch):
         ai_reasoning.run_reasoning('Sentadilla', 'side', RESULT)
 
 
+def test_reasoning_deduplicates_equivalent_model_observations(monkeypatch):
+    monkeypatch.setenv('AI_REASONING_ENABLED', 'true'); monkeypatch.setenv('OPENAI_API_KEY', 'test-key')
+    repeated = json.loads(response()['output_text'])['observations'][0]
+    monkeypatch.setattr(ai_reasoning, '_request', lambda *_: response([repeated, dict(repeated)]))
+    result = ai_reasoning.run_reasoning('Sentadilla', 'side', RESULT)
+    assert len(result.observations) == 1
+
+
 def test_reasoning_persists_observations_and_usage(session, monkeypatch):
     completed_analysis(session)
     monkeypatch.setattr(main, 'run_reasoning', lambda *_: ai_reasoning.ReasoningResult([json.loads(response()['output_text'])['observations'][0]], 'Resumen', 'mock-model', {'input_tokens': 12, 'output_tokens': 8}, 4))
@@ -78,6 +86,18 @@ def test_openai_error_keeps_analysis_completed_and_marks_run_failed(session, mon
     assert session.scalar(__import__('sqlalchemy').select(AIReasoningRun).where(AIReasoningRun.analysis_id == 'ai-analysis')).status == 'FAILED'
 
 
+def test_athlete_detail_excludes_review_moment_copies(client, session):
+    completed_analysis(session, 'deduplicated-detail')
+    original = AIObservation(analysis_id='deduplicated-detail', body='IA', title='Patrón', description='Texto', severity='review', confidence='medium', timestamp_s=1.0)
+    duplicate = AIObservation(analysis_id='deduplicated-detail', body='Momento', title='Patrón', description='Texto', severity='review', confidence='medium', timestamp_s=1.0, model='deterministic-review-moments')
+    session.add_all([original, duplicate]); session.flush()
+    from app.models import AIReviewMoment
+    session.add(AIReviewMoment(analysis_id='deduplicated-detail', observation_id=duplicate.id, timestamp_s=1.0, reason='ranking', confidence='medium', priority_score=.8))
+    session.commit()
+    payload = client.get('/api/analyses/deduplicated-detail').json()
+    assert [item['id'] for item in payload['ai_observations']] == [str(original.id)]
+
+
 def test_coach_can_confirm_or_dismiss_only_own_analysis(client, session):
     completed_analysis(session)
     observation = AIObservation(analysis_id='ai-analysis', body='IA', title='IA', description='Detalle', severity='review', confidence='medium')
@@ -88,3 +108,17 @@ def test_coach_can_confirm_or_dismiss_only_own_analysis(client, session):
     assert client.patch(url, json={'decision': 'DISMISSED', 'title': 'Editada', 'description': 'Texto editado'}).json()['title'] == 'Editada'
     other = UUID('00000000-0000-4000-8000-000000000003')
     assert client.patch(f'/api/coach/reviews/{review.id}/ai-observations/{observation.id}?coach_id={other}', json={'decision': 'CONFIRMED'}).status_code == 404
+
+
+def test_internal_usage_aggregates_completed_runs(client, session):
+    completed_analysis(session, 'usage-completed')
+    completed_analysis(session, 'usage-pending')
+    session.add_all([
+        AIReasoningRun(analysis_id='usage-completed', status='COMPLETED', model='test-model', input_tokens=120, output_tokens=80, reasoning_tokens=30),
+        AIReasoningRun(analysis_id='usage-pending', status='FAILED', model='test-model', input_tokens=99, output_tokens=2),
+    ])
+    session.commit()
+    payload = client.get('/api/internal/ai-usage').json()
+    assert payload['totals'] == {'completed_runs': 1, 'input_tokens': 120, 'output_tokens': 80, 'reasoning_tokens': 30, 'total_tokens': 200}
+    assert payload['by_model'] == [{'model': 'test-model', 'runs': 1, 'input_tokens': 120, 'output_tokens': 80, 'total_tokens': 200}]
+    assert {run['status'] for run in payload['recent_runs']} == {'COMPLETED', 'FAILED'}

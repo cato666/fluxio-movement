@@ -53,7 +53,8 @@ async function apiJson(url, options) {
 
 function showView(id) {
   if (id !== "detail-view" && detailPollId) { window.clearInterval(detailPollId); detailPollId = null; }
-  const marketing = id === "landing-view";
+  // Las rutas públicas no deben revelar accesos del área autenticada.
+  const marketing = ["landing-view", "demo-view", "login-view"].includes(id);
   document.body.classList.toggle("marketing", marketing);
   document.documentElement.classList.toggle("marketing", marketing);
   for (const selector of [".functional-nav", ".functional-actions"]) {
@@ -64,8 +65,118 @@ function showView(id) {
   const marketingActions = document.querySelector(".auth-actions");
   marketingNav.hidden = !marketing;
   marketingActions.hidden = !marketing;
-  for (const view of ["landing-view", "demo-view", "new-view", "list-view", "detail-view", "coach-selection-view", "coach-reviews-view", "coach-review-detail-view"]) {
+  for (const view of ["landing-view", "login-view", "usage-view", "demo-view", "new-view", "coach-new-analysis-view", "coach-new-athlete-view", "list-view", "detail-view", "coach-selection-view", "coach-reviews-view", "coach-review-detail-view"]) {
     $(`#${view}`).hidden = view !== id;
+  }
+}
+
+async function sessionUser() { return apiJson("/api/auth/me"); }
+
+function setupLogout() {
+  const button = $("#logout-button");
+  if (!button) return;
+  button.onclick = async () => {
+    await apiJson("/api/auth/logout", { method: "POST" });
+    window.location.assign("/");
+  };
+}
+
+function configureNavigation(user) {
+  for (const link of document.querySelectorAll("[data-nav-role]")) {
+    link.hidden = link.dataset.navRole !== user.role;
+  }
+}
+
+function setupLogin() {
+  showView("login-view");
+  const form = $("#login-form"); const status = $("#login-status");
+  form.onsubmit = async (event) => {
+    event.preventDefault(); const button = form.querySelector("button"); button.disabled = true; status.textContent = "Ingresando…";
+    try {
+      const user = await apiJson("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.fromEntries(new FormData(form))) });
+      const next = new URLSearchParams(window.location.search).get("next");
+      window.location.assign(next && next.startsWith("/") && !next.startsWith("//") ? next : user.next);
+    }
+    catch (error) { status.textContent = error.message; button.disabled = false; }
+  };
+}
+
+function setupCommercialAudience(audience) {
+  showView("landing-view");
+  if (audience === "athlete") {
+    $("#landing-title").innerHTML = "Mejora tu técnica.<br><em>Con feedback claro.</em>";
+    $("#landing-copy").textContent = "Sube tu video, revisa tus repeticiones y recibe el feedback de tu coach en el momento exacto.";
+  }
+  setupLandingInteractions();
+}
+
+function setupLandingInteractions() {
+  const tabs = [...document.querySelectorAll("[data-product-tab]")];
+  const selectTab = (tab) => {
+    for (const item of tabs) {
+      const active = item === tab;
+      item.classList.toggle("is-active", active);
+      item.setAttribute("aria-selected", String(active));
+      item.tabIndex = active ? 0 : -1;
+      const pane = document.getElementById(item.getAttribute("aria-controls"));
+      if (pane) { pane.hidden = !active; pane.classList.toggle("is-active", active); }
+    }
+  };
+  for (const [index, tab] of tabs.entries()) {
+    tab.onclick = () => selectTab(tab);
+    tab.onkeydown = (event) => {
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+      event.preventDefault();
+      const target = event.key === 'Home' ? tabs[0] : event.key === 'End' ? tabs.at(-1) : tabs[(index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length];
+      target.focus(); selectTab(target);
+    };
+  }
+  const priceButtons = [...document.querySelectorAll("[data-price-cycle]")];
+  for (const button of priceButtons) button.onclick = () => {
+    for (const item of priceButtons) {
+      const active = item === button;
+      item.classList.toggle("is-active", active);
+      item.setAttribute("aria-pressed", String(active));
+    }
+    for (const price of document.querySelectorAll("[data-m][data-a]")) price.textContent = `$${price.dataset[button.dataset.priceCycle]}`;
+  };
+}
+
+const number = (value) => new Intl.NumberFormat("es-CL").format(Number(value || 0));
+
+async function setupUsage() {
+  showView("usage-view");
+  const status = $("#usage-status");
+  status.textContent = "Cargando consumo…";
+  try {
+    const data = await apiJson("/api/internal/ai-usage");
+    const totals = data.totals;
+    $("#usage-totals").replaceChildren(
+      metric("Análisis completados", number(totals.completed_runs)),
+      metric("Tokens de entrada", number(totals.input_tokens)),
+      metric("Tokens de salida", number(totals.output_tokens)),
+      metric("Total facturable", number(totals.total_tokens)),
+    );
+    const models = $("#usage-by-model"); models.replaceChildren();
+    if (!data.by_model.length) models.textContent = "Aún no hay análisis con razonamiento IA completado.";
+    for (const item of data.by_model) {
+      const row = element("div", "rep");
+      row.append(element("strong", "", item.model));
+      row.append(element("span", "", ` · ${number(item.runs)} análisis · ${number(item.total_tokens)} tokens`));
+      models.append(row);
+    }
+    const recent = $("#usage-recent-runs"); recent.replaceChildren();
+    if (!data.recent_runs.length) recent.textContent = "Aún no hay ejecuciones registradas.";
+    for (const run of data.recent_runs) {
+      const row = element("div", "rep");
+      row.append(element("strong", "", run.exercise));
+      row.append(element("span", "", ` · ${fmtDate(run.created_at)} · ${run.status}`));
+      row.append(element("span", "", ` · entrada ${number(run.input_tokens)} · salida ${number(run.output_tokens)} · total ${number(run.total_tokens)}`));
+      recent.append(row);
+    }
+    status.textContent = "";
+  } catch (error) {
+    status.textContent = error.message;
   }
 }
 
@@ -88,15 +199,7 @@ function setupNew() {
   const button = $("#go");
   const status = $("#status");
   const fileInput = form.elements.file;
-  const exerciseInput = form.elements.exercise;
-  const viewInput = form.elements.view;
   const preview = $("#upload-preview");
-  const syncView = () => {
-    const front = viewInput.querySelector('option[value="front"]');
-    const supportsFront = exerciseInput.value === "Peso muerto";
-    front.disabled = !supportsFront;
-    if (!supportsFront && viewInput.value === "front") viewInput.value = "side";
-  };
   const refresh = () => { button.disabled = !form.checkValidity(); };
   fileInput.addEventListener("change", () => {
     if (preview.src) URL.revokeObjectURL(preview.src);
@@ -109,8 +212,6 @@ function setupNew() {
     refresh();
   });
   form.addEventListener("input", refresh);
-  exerciseInput.addEventListener("change", syncView);
-  syncView();
   refresh();
   form.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -132,6 +233,35 @@ function setupNew() {
     request.onerror = () => { status.textContent = "No se pudo subir el video"; button.disabled = false; };
     request.send(data);
   });
+}
+
+async function setupCoachNewAnalysis() {
+  showView("coach-new-analysis-view");
+  const form = $("#coach-analysis-form"); const status = $("#coach-upload-status"); const athlete = $("#coach-athlete");
+  try {
+    const data = await apiJson("/api/coach/athletes");
+    athlete.replaceChildren(element("option", "", "Selecciona un atleta")); athlete.options[0].value = "";
+    for (const item of data.items) { const option = element("option", "", item.name); option.value = item.id; athlete.append(option); }
+  } catch (error) { status.textContent = error.message; return; }
+  form.onsubmit = async (event) => {
+    event.preventDefault(); const button = form.querySelector("button"); button.disabled = true; status.textContent = "Subiendo y creando revisión…";
+    const data = new FormData(form); if (!data.get("load_kg")) data.delete("load_kg");
+    try { const result = await apiJson("/api/coach/analyses", { method: "POST", body: data }); window.location.assign(`/coach/reviews/${result.review_id}`); }
+    catch (error) { status.textContent = error.message; button.disabled = false; }
+  };
+}
+
+function setupCoachNewAthlete() {
+  showView("coach-new-athlete-view");
+  const form = $("#coach-athlete-form"); const status = $("#coach-athlete-status");
+  form.onsubmit = async (event) => {
+    event.preventDefault(); const button = form.querySelector("button"); button.disabled = true; status.textContent = "Registrando atleta…";
+    try {
+      const athlete = await apiJson("/api/coach/athletes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.fromEntries(new FormData(form))) });
+      setFlash(`${athlete.name} fue registrado y ya está disponible para subir un video.`);
+      window.location.assign("/coach/analyses/new");
+    } catch (error) { status.textContent = error.message; button.disabled = false; }
+  };
 }
 
 async function setupList() {
@@ -340,7 +470,8 @@ async function setupDetail(id) {
     $("#detail-title").textContent = item.exercise || "Análisis anterior";
     $("#detail-status").textContent = stateLabels[item.status] || item.status;
     $("#detail-status").classList.add(`state-${item.status.toLowerCase()}`);
-    $("#detail-meta").textContent = `${fmtDate(item.created_at)} · ${item.load_kg == null ? "Sin carga" : `${item.load_kg} kg`} · ${item.repetitions_detected} repeticiones`;
+    const viewLabel = item.view === "front" ? "Vista frontal" : "Vista de costado";
+    $("#detail-meta").textContent = `${fmtDate(item.created_at)} · ${item.load_kg == null ? "Sin carga" : `${item.load_kg} kg`} · ${viewLabel} · ${item.repetitions_detected} repeticiones`;
     $("#detail-objective").textContent = item.objective || "Sin objetivo registrado";
     const feedback = $("#detail-action-feedback");
     const flash = takeFlash();
@@ -363,13 +494,6 @@ async function setupDetail(id) {
     if (!reanalyzeCard.hidden) {
       reanalyzeExercise.value = item.exercise || "Otro";
       reanalyzeView.value = item.view || "side";
-      const syncReanalysisView = () => {
-        const front = reanalyzeView.querySelector('option[value="front"]');
-        front.disabled = reanalyzeExercise.value !== "Peso muerto";
-        if (front.disabled && reanalyzeView.value === "front") reanalyzeView.value = "side";
-      };
-      syncReanalysisView();
-      reanalyzeExercise.onchange = syncReanalysisView;
       reanalyzeSubmit.onclick = async () => {
         reanalyzeSubmit.disabled = true;
         reanalyzeStatus.textContent = "Iniciando reanálisis…";
@@ -385,11 +509,18 @@ async function setupDetail(id) {
         }
       };
     }
-    if (item.status === "COMPLETED") renderCompleted(item);
+    if (item.status === "COMPLETED") {
+      renderCompleted(item);
+      // The worker marks an analysis complete only after the optional IA layer
+      // settles. Keep this fallback for analyses created by older deployments.
+      if (["PENDING", "RUNNING"].includes(item.ai_reasoning?.status)) {
+        window.setTimeout(() => setupDetail(id), 1500);
+      }
+    }
     renderCoachReviews(item);
     renderAthleteCoachFeedback(item);
     if (item.status === "PENDING" || item.status === "PROCESSING") {
-      const stageLabels = { uploading: "Subiendo", validating_exercise: "Validando ejercicio", reanalyzing: "Reanalizando video", analyzing: "Analizando movimiento", annotating: "Generando video anotado", finalizing: "Finalizando" };
+      const stageLabels = { uploading: "Subiendo", validating_exercise: "Validando ejercicio", reanalyzing: "Reanalizando video", analyzing: "Analizando movimiento", annotating: "Generando video anotado", finalizing: "Finalizando", generating_observations: "Generando observaciones automáticas" };
       feedback.hidden = false;
       feedback.className = "card progress-card";
       feedback.replaceChildren(element("strong", "", stageLabels[item.stage] || "Preparando análisis"));
@@ -478,43 +609,27 @@ function coachReviewCard(item, coachId) {
     side.append(element("span", "muted", `Procesando · ${item.analysis.progress} %`));
   }
   const link = element("a", "button-link", "Revisar");
-  link.href = `/coach/reviews/${item.id}?coach_id=${encodeURIComponent(coachId)}`;
+  link.href = `/coach/reviews/${item.id}`;
   side.append(link);
   card.append(thumb, info, side);
   return card;
-}
-
-async function loadCoachOptions() {
-  const data = await apiJson("/api/coaches");
-  const selector = $("#current-coach");
-  selector.replaceChildren();
-  for (const coach of data.items) {
-    const option = element("option", "", `${coach.name} · ${coach.specialty}`);
-    option.value = coach.id;
-    selector.append(option);
-  }
-  const stored = window.localStorage.getItem("movement-coach-id");
-  const selected = data.items.some((coach) => coach.id === stored) ? stored : data.items[0]?.id;
-  selector.value = selected || "";
-  return selector.value;
 }
 
 async function setupCoachReviews() {
   showView("coach-reviews-view");
   const status = $("#coach-reviews-status");
   const list = $("#coach-reviews-list");
-  const selector = $("#current-coach");
   const filter = $("#review-filter");
   let coachId;
   try {
-    coachId = await loadCoachOptions();
+    const user = await sessionUser();
+    coachId = user.id;
+    $("#coach-identity").textContent = `${user.name} · Coach`;
   } catch (error) {
     status.textContent = `No se pudieron cargar los coaches: ${error.message}`;
     return;
   }
   const render = async () => {
-    coachId = selector.value;
-    window.localStorage.setItem("movement-coach-id", coachId);
     status.textContent = "Cargando revisiones…";
     list.replaceChildren();
     try {
@@ -533,7 +648,6 @@ async function setupCoachReviews() {
       status.textContent = `No se pudieron cargar las revisiones: ${error.message}`;
     }
   };
-  selector.addEventListener("change", render);
   filter.addEventListener("change", render);
   await render();
 }
@@ -655,13 +769,10 @@ function renderCoachAnnotations(annotations, editable, onEdit, onDelete) {
 async function setupCoachReviewDetail(id) {
   showView("coach-review-detail-view");
   const error = $("#coach-review-error");
-  const coachId = new URLSearchParams(window.location.search).get("coach_id") || window.localStorage.getItem("movement-coach-id");
+  let coachId;
   $("#coach-review-back").href = "/coach/reviews";
-  if (!coachId) {
-    error.hidden = false;
-    error.textContent = "Selecciona un coach desde la bandeja.";
-    return;
-  }
+  try { coachId = (await sessionUser()).id; }
+  catch (authError) { error.hidden = false; error.textContent = authError.message; return; }
   let item;
   let annotations = [];
   let editingAnnotation = null;
@@ -822,10 +933,25 @@ async function setupCoachReviewDetail(id) {
 
 const path = window.location.pathname;
 if (path === "/demo") showView("demo-view");
+else if (path === "/login") setupLogin();
+else if (path === "/para-atletas") setupCommercialAudience("athlete");
+else if (path === "/para-coaches") setupCommercialAudience("coach");
+else if (path === "/internal/usage") setupUsage();
+else if (path === "/coach/analyses/new") setupCoachNewAnalysis();
+else if (path === "/coach/athletes/new") setupCoachNewAthlete();
 else if (path === "/coach/reviews") setupCoachReviews();
 else if (path.startsWith("/coach/reviews/")) setupCoachReviewDetail(path.split("/")[3]);
 else if (path === "/analyses") setupList();
 else if (path.endsWith("/request-review")) setupCoachSelection(path.split("/")[2]);
 else if (path.startsWith("/analyses/") && path !== "/analyses/new") setupDetail(path.split("/")[2]);
-else if (path === "/") showView("landing-view");
+else if (path === "/") { showView("landing-view"); setupLandingInteractions(); }
 else setupNew();
+
+if (path !== "/" && !["/login", "/demo", "/para-atletas", "/para-coaches"].includes(path)) {
+  sessionUser().then((user) => {
+    const label = $("#session-user");
+    if (label) label.textContent = user.name;
+    configureNavigation(user);
+    setupLogout();
+  }).catch(() => {});
+}

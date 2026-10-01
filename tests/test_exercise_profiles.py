@@ -129,4 +129,11 @@ def test_unknown_exercise_and_unsupported_view_are_rejected_by_the_loader():
     with pytest.raises(UnknownExerciseProfileError):
         loader.load("Kettlebell swing", "side")
     with pytest.raises(UnsupportedViewError):
-        loader.load("clean", "front")
+        loader.load("clean", "top")
+
+
+@pytest.mark.parametrize("exercise", ["Sentadilla", "Clean", "Press", "Thruster", "Snatch", "Otro"])
+def test_configured_exercises_accept_front_and_side_views(exercise):
+    loader = ExerciseProfileLoader()
+    assert loader.load(exercise, "side").id
+    assert loader.load(exercise, "front").id

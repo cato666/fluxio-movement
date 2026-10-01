@@ -1,7 +1,7 @@
 {
   "id": "squat",
   "aliases": ["squat", "sentadilla", "back squat", "front squat"],
-  "views": ["side"],
+  "views": ["side", "front"],
   "required_landmarks": ["shoulder", "hip", "knee", "ankle"],
   "primary_signal": "knee_angle",
   "states": ["lockout", "descent", "bottom", "ascent"],

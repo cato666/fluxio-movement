@@ -77,6 +77,24 @@ def _request(payload: dict, api_key: str) -> dict:
         return json.loads(response.read().decode())
 
 
+def _unique_observations(observations: list[dict]) -> list[dict]:
+    """Keep one copy of an equivalent suggestion returned by the model."""
+    unique: list[dict] = []
+    fingerprints: set[tuple] = set()
+    for observation in observations:
+        timestamp = observation.get("timestamp")
+        fingerprint = (
+            observation.get("repetition"),
+            None if timestamp is None else round(float(timestamp), 1),
+            " ".join(str(observation.get("title", "")).casefold().split()),
+            " ".join(str(observation.get("description", "")).casefold().split()),
+        )
+        if fingerprint not in fingerprints:
+            fingerprints.add(fingerprint)
+            unique.append(observation)
+    return unique
+
+
 def run_reasoning(exercise: str, view: str, result: dict) -> ReasoningResult | None:
     if not enabled():
         return None
@@ -103,4 +121,4 @@ def run_reasoning(exercise: str, view: str, result: dict) -> ReasoningResult | N
         timestamp = observation.get("timestamp")
         if timestamp is not None and (not isinstance(timestamp, (int, float)) or timestamp < 0 or (isinstance(duration, (int, float)) and timestamp > duration)):
             raise ValueError("El timestamp de la observación IA es inválido")
-    return ReasoningResult(observations=observations, summary=data["summary"], model=model, usage=response.get("usage") or {}, latency_ms=round((time.perf_counter() - started) * 1000))
+    return ReasoningResult(observations=_unique_observations(observations), summary=data["summary"], model=model, usage=response.get("usage") or {}, latency_ms=round((time.perf_counter() - started) * 1000))

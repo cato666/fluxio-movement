@@ -1,7 +1,7 @@
 {
   "id": "thruster",
   "aliases": ["thruster", "thrusters"],
-  "views": ["side"],
+  "views": ["side", "front"],
   "required_landmarks": ["shoulder", "elbow", "wrist", "hip", "knee", "ankle"],
   "primary_signal": "knee_angle",
   "states": ["ready", "dip", "drive", "lockout"],

@@ -18,9 +18,11 @@ class User(Base):
     demo_key: Mapped[str | None] = mapped_column(String(40), unique=True)
     name: Mapped[str] = mapped_column(String(160))
     role: Mapped[str] = mapped_column(String(16))
+    password_hash: Mapped[str | None] = mapped_column(Text)
+    is_internal: Mapped[bool] = mapped_column(server_default=text('false'))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     __table_args__ = (
-        CheckConstraint("role IN ('ATHLETE', 'COACH')", name="ck_users_role"),
+        CheckConstraint("role IN ('ATHLETE', 'COACH', 'SYSTEM_ADMIN')", name="ck_users_role"),
         UniqueConstraint("id", "role", name="uq_users_id_role"),
     )
 

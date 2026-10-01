@@ -1,7 +1,7 @@
 {
   "id": "press",
   "aliases": ["press", "press militar", "overhead press", "shoulder press"],
-  "views": ["side"],
+  "views": ["side", "front"],
   "required_landmarks": ["shoulder", "elbow", "wrist"],
   "primary_signal": "wrist_lift",
   "states": ["ready", "drive", "lockout"],

@@ -30,7 +30,7 @@ def test_coaches_are_seeded_with_specialty_and_bio(client):
     response = client.get('/api/coaches')
     assert response.status_code == 200
     assert response.json()['items'] == [
-        {'id': str(ANDREA_ID), 'name': 'Andrea', 'specialty': 'Fuerza',
+        {'id': str(ANDREA_ID), 'name': 'Anais', 'specialty': 'Fuerza',
          'bio': 'Entrenamiento de fuerza para construir movimiento sólido y sostenible.'},
         {'id': str(CARLOS_ID), 'name': 'Carlos', 'specialty': 'Weightlifting',
          'bio': 'Técnica de levantamientos olímpicos y progresiones de fuerza.'},
