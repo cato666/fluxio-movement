@@ -1,0 +1,294 @@
+[
+  {
+    "width": 320,
+    "route": "/analyses/new",
+    "overflow": false,
+    "disclosures": 10,
+    "errors": 0
+  },
+  {
+    "width": 320,
+    "route": "/analyses",
+    "overflow": false,
+    "disclosures": 10,
+    "errors": 0
+  },
+  {
+    "width": 320,
+    "route": "/analyses/1",
+    "overflow": false,
+    "disclosures": 10,
+    "errors": 0
+  },
+  {
+    "width": 320,
+    "route": "/analyses/1/coaches",
+    "overflow": false,
+    "disclosures": 10,
+    "errors": 0
+  },
+  {
+    "width": 320,
+    "route": "/coach/reviews",
+    "overflow": false,
+    "disclosures": 10,
+    "errors": 0
+  },
+  {
+    "width": 320,
+    "route": "/coach/reviews/2",
+    "overflow": false,
+    "disclosures": 10,
+    "errors": 0
+  },
+  {
+    "width": 320,
+    "route": "/coach/analyses/new",
+    "overflow": false,
+    "disclosures": 10,
+    "errors": 0
+  },
+  {
+    "width": 320,
+    "route": "/coach/athletes/new",
+    "overflow": false,
+    "disclosures": 10,
+    "errors": 0
+  },
+  {
+    "width": 320,
+    "route": "/login",
+    "overflow": false,
+    "disclosures": 10,
+    "errors": 0
+  },
+  {
+    "width": 320,
+    "flow": "coach moment",
+    "passed": true
+  },
+  {
+    "width": 320,
+    "flow": "desktop resize restores disclosures",
+    "passed": true
+  },
+  {
+    "width": 375,
+    "route": "/analyses/new",
+    "overflow": false,
+    "disclosures": 10,
+    "errors": 0
+  },
+  {
+    "width": 375,
+    "route": "/analyses",
+    "overflow": false,
+    "disclosures": 10,
+    "errors": 0
+  },
+  {
+    "width": 375,
+    "route": "/analyses/1",
+    "overflow": false,
+    "disclosures": 10,
+    "errors": 0
+  },
+  {
+    "width": 375,
+    "route": "/analyses/1/coaches",
+    "overflow": false,
+    "disclosures": 10,
+    "errors": 0
+  },
+  {
+    "width": 375,
+    "route": "/coach/reviews",
+    "overflow": false,
+    "disclosures": 10,
+    "errors": 0
+  },
+  {
+    "width": 375,
+    "route": "/coach/reviews/2",
+    "overflow": false,
+    "disclosures": 10,
+    "errors": 0
+  },
+  {
+    "width": 375,
+    "route": "/coach/analyses/new",
+    "overflow": false,
+    "disclosures": 10,
+    "errors": 0
+  },
+  {
+    "width": 375,
+    "route": "/coach/athletes/new",
+    "overflow": false,
+    "disclosures": 10,
+    "errors": 0
+  },
+  {
+    "width": 375,
+    "route": "/login",
+    "overflow": false,
+    "disclosures": 10,
+    "errors": 0
+  },
+  {
+    "width": 375,
+    "flow": "coach moment",
+    "passed": true
+  },
+  {
+    "width": 375,
+    "flow": "desktop resize restores disclosures",
+    "passed": true
+  },
+  {
+    "width": 430,
+    "route": "/analyses/new",
+    "overflow": false,
+    "disclosures": 10,
+    "errors": 0
+  },
+  {
+    "width": 430,
+    "route": "/analyses",
+    "overflow": false,
+    "disclosures": 10,
+    "errors": 0
+  },
+  {
+    "width": 430,
+    "route": "/analyses/1",
+    "overflow": false,
+    "disclosures": 10,
+    "errors": 0
+  },
+  {
+    "width": 430,
+    "route": "/analyses/1/coaches",
+    "overflow": false,
+    "disclosures": 10,
+    "errors": 0
+  },
+  {
+    "width": 430,
+    "route": "/coach/reviews",
+    "overflow": false,
+    "disclosures": 10,
+    "errors": 0
+  },
+  {
+    "width": 430,
+    "route": "/coach/reviews/2",
+    "overflow": false,
+    "disclosures": 10,
+    "errors": 0
+  },
+  {
+    "width": 430,
+    "route": "/coach/analyses/new",
+    "overflow": false,
+    "disclosures": 10,
+    "errors": 0
+  },
+  {
+    "width": 430,
+    "route": "/coach/athletes/new",
+    "overflow": false,
+    "disclosures": 10,
+    "errors": 0
+  },
+  {
+    "width": 430,
+    "route": "/login",
+    "overflow": false,
+    "disclosures": 10,
+    "errors": 0
+  },
+  {
+    "width": 430,
+    "flow": "coach moment",
+    "passed": true
+  },
+  {
+    "width": 430,
+    "flow": "desktop resize restores disclosures",
+    "passed": true
+  },
+  {
+    "width": 1280,
+    "route": "/analyses/new",
+    "overflow": false,
+    "disclosures": 0,
+    "errors": 0
+  },
+  {
+    "width": 1280,
+    "route": "/analyses",
+    "overflow": false,
+    "disclosures": 0,
+    "errors": 0
+  },
+  {
+    "width": 1280,
+    "route": "/analyses/1",
+    "overflow": false,
+    "disclosures": 0,
+    "errors": 0
+  },
+  {
+    "width": 1280,
+    "route": "/analyses/1/coaches",
+    "overflow": false,
+    "disclosures": 0,
+    "errors": 0
+  },
+  {
+    "width": 1280,
+    "route": "/coach/reviews",
+    "overflow": false,
+    "disclosures": 0,
+    "errors": 0
+  },
+  {
+    "width": 1280,
+    "route": "/coach/reviews/2",
+    "overflow": false,
+    "disclosures": 0,
+    "errors": 0
+  },
+  {
+    "width": 1280,
+    "route": "/coach/analyses/new",
+    "overflow": false,
+    "disclosures": 0,
+    "errors": 0
+  },
+  {
+    "width": 1280,
+    "route": "/coach/athletes/new",
+    "overflow": false,
+    "disclosures": 0,
+    "errors": 0
+  },
+  {
+    "width": 1280,
+    "route": "/login",
+    "overflow": false,
+    "disclosures": 0,
+    "errors": 0
+  },
+  {
+    "width": 1280,
+    "flow": "coach moment",
+    "passed": true
+  },
+  {
+    "width": 1280,
+    "flow": "desktop resize restores disclosures",
+    "passed": true
+  }
+]

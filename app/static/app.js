@@ -698,14 +698,18 @@ function renderCoachMoments(item, onDecision, onComment, locked, state) {
     button.type = "button"; button.setAttribute("aria-pressed", String(moment.id === selected.id));
     button.onclick = () => select(moment); picker.append(button);
   }
-  navigation.append(picker);
+  const momentSelector = element("details", "moment-selector");
+  momentSelector.append(element("summary", "", `Momento ${index + 1} de ${moments.length} · Cambiar`), picker);
+  navigation.append(momentSelector);
   const heading = element("h3", "", selected.title); heading.tabIndex = -1;
   list.append(element("p", "ai-observation-meta", `${selected.repetition ? `Rep ${selected.repetition} · ` : ""}${formatVideoTime(Number(selected.timestamp))}`), heading,
-    element("p", "", selected.description || "Observación automática para revisar."),
+    element("p", "", selected.description || "Observación automática para revisar."));
+  const context = element("details", "moment-context");
+  context.append(element("summary", "", "Ver detalles de la sugerencia"),
     element("p", "muted", `Motivo: ${selected.reason || selected.evidence || "Observación generada a partir del análisis del movimiento."}`));
   if (selected.confidence) {
     const confidence = { low: "baja", medium: "media", high: "alta" }[selected.confidence] || String(selected.confidence);
-    list.append(element("p", "muted", `Confianza de la sugerencia: ${confidence}. No confirma un error técnico.`));
+    context.append(element("p", "muted", `Confianza de la sugerencia: ${confidence}. No confirma un error técnico.`));
   }
   list.append(element("p", "muted", selected.decision === "CONFIRMED" ? "IA confirmada por el coach. Esto no crea una anotación para el atleta." : selected.decision === "DISMISSED" ? "Sugerencia descartada. Esto no elimina anotaciones para el atleta." : "Revisar una sugerencia no la confirma ni la comparte con el atleta."));
   const actions = element("div", "form-actions review-moment-controls");
@@ -738,7 +742,8 @@ function renderCoachMoments(item, onDecision, onComment, locked, state) {
     if (result === false) $("#coach-moments-feedback").textContent = "No se pudo confirmar. El resumen se conserva.";
   };
   advanced.append(element("p", "muted", "Confirmar registra tu decisión sobre la IA. Para entregar feedback, usa Comentar este momento."), titleLabel, descriptionLabel, confirm);
-  list.append(advanced);
+  context.append(advanced);
+  list.append(context);
   const feedback = element("p", "muted"); feedback.id = "coach-moments-feedback"; feedback.setAttribute("role", "status"); list.append(feedback);
 }
 

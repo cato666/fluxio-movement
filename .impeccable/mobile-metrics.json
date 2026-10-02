@@ -1,0 +1,44 @@
+[
+  {
+    "version": "before",
+    "path": "/analyses/new",
+    "pageHeight": 1648,
+    "viewport": 800,
+    "videoToComment": null
+  },
+  {
+    "version": "before",
+    "path": "/analyses/1",
+    "pageHeight": 3223,
+    "viewport": 800,
+    "videoToComment": null
+  },
+  {
+    "version": "before",
+    "path": "/coach/reviews/2",
+    "pageHeight": 5517,
+    "viewport": 800,
+    "videoToComment": 551
+  },
+  {
+    "version": "after",
+    "path": "/analyses/new",
+    "pageHeight": 1602,
+    "viewport": 800,
+    "videoToComment": null
+  },
+  {
+    "version": "after",
+    "path": "/analyses/1",
+    "pageHeight": 2446,
+    "viewport": 800,
+    "videoToComment": null
+  },
+  {
+    "version": "after",
+    "path": "/coach/reviews/2",
+    "pageHeight": 2898,
+    "viewport": 800,
+    "videoToComment": 374
+  }
+]
