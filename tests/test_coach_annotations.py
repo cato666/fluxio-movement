@@ -41,9 +41,9 @@ def annotation_item_url(item, annotation_id, coach_id=CARLOS_ID):
     return f'/api/coach/reviews/{item.id}/annotations/{annotation_id}?coach_id={coach_id}'
 
 
-def test_create_annotation_persists_and_starts_pending_review(client, session):
+def test_create_annotation_persists_and_starts_pending_review(coach_client, session):
     item = review(session, status='PENDING')
-    response = client.post(annotation_url(item), json={
+    response = coach_client.post(annotation_url(item), json={
         'timestamp_s': 2.74, 'type': 'PRIORITY',
         'text': 'Aquí la barra se desplaza hacia delante.', 'repetition_number': 1,
     })
@@ -57,64 +57,64 @@ def test_create_annotation_persists_and_starts_pending_review(client, session):
     assert session.get(CoachReview, item.id).status == 'IN_REVIEW'
 
 
-def test_list_annotations_orders_by_timestamp(client, session):
+def test_list_annotations_orders_by_timestamp(coach_client, session):
     item = review(session)
     for timestamp in (8, 1.5, 4):
-        assert client.post(annotation_url(item), json={
+        assert coach_client.post(annotation_url(item), json={
             'timestamp_s': timestamp, 'type': 'COMMENT', 'text': f'Comentario {timestamp}',
         }).status_code == 201
-    response = client.get(annotation_url(item))
+    response = coach_client.get(annotation_url(item))
     assert response.status_code == 200
     assert [entry['timestamp_s'] for entry in response.json()['items']] == [1.5, 4, 8]
 
 
-def test_edit_and_delete_annotation(client, session):
+def test_edit_and_delete_annotation(coach_client, session):
     item = review(session)
-    created = client.post(annotation_url(item), json={
+    created = coach_client.post(annotation_url(item), json={
         'timestamp_s': 2, 'type': 'COMMENT', 'text': 'Ajustar postura',
     }).json()
     update_url = annotation_item_url(item, created['id'])
-    updated = client.patch(update_url, json={
+    updated = coach_client.patch(update_url, json={
         'type': 'CORRECT', 'text': 'Extiende la cadera', 'repetition_number': 1,
     })
     assert updated.status_code == 200
     assert updated.json()['type'] == 'CORRECT'
     assert updated.json()['text'] == 'Extiende la cadera'
-    assert client.delete(update_url).status_code == 204
-    assert client.get(annotation_url(item)).json()['items'] == []
+    assert coach_client.delete(update_url).status_code == 204
+    assert coach_client.get(annotation_url(item)).json()['items'] == []
 
 
-def test_annotations_are_isolated_between_coaches(client, session):
+def test_annotations_are_isolated_between_coaches(coach_client, session):
     item = review(session)
-    created = client.post(annotation_url(item), json={
+    created = coach_client.post(annotation_url(item), json={
         'timestamp_s': 2, 'type': 'COMMENT', 'text': 'Comentario privado',
     }).json()
     other = f'/api/coach/reviews/{item.id}/annotations?coach_id={ANDREA_ID}'
     other_item = annotation_item_url(item, created['id'], ANDREA_ID)
-    assert client.get(other).status_code == 404
-    assert client.post(other, json={'timestamp_s': 2, 'type': 'COMMENT', 'text': 'No permitido'}).status_code == 404
-    assert client.patch(other_item, json={'text': 'No permitido'}).status_code == 404
-    assert client.delete(other_item).status_code == 404
+    assert coach_client.get(other).status_code == 403
+    assert coach_client.post(other, json={'timestamp_s': 2, 'type': 'COMMENT', 'text': 'No permitido'}).status_code == 403
+    assert coach_client.patch(other_item, json={'text': 'No permitido'}).status_code == 403
+    assert coach_client.delete(other_item).status_code == 403
 
 
 @pytest.mark.parametrize('timestamp', [-0.1, 12.51])
-def test_annotation_rejects_invalid_timestamp(client, session, timestamp):
+def test_annotation_rejects_invalid_timestamp(coach_client, session, timestamp):
     item = review(session)
-    response = client.post(annotation_url(item), json={
+    response = coach_client.post(annotation_url(item), json={
         'timestamp_s': timestamp, 'type': 'COMMENT', 'text': 'Fuera de rango',
     })
     assert response.status_code == 400
 
 
-def test_missing_review_returns_404_for_annotations(client):
+def test_missing_review_returns_404_for_annotations(coach_client):
     url = '/api/coach/reviews/00000000-0000-4000-8000-000000000099/annotations?coach_id=' + str(CARLOS_ID)
-    assert client.get(url).status_code == 404
-    assert client.post(url, json={'timestamp_s': 1, 'type': 'COMMENT', 'text': 'Nada'}).status_code == 404
+    assert coach_client.get(url).status_code == 404
+    assert coach_client.post(url, json={'timestamp_s': 1, 'type': 'COMMENT', 'text': 'Nada'}).status_code == 404
 
 
-def test_completed_review_blocks_annotation_mutations(client, session):
+def test_completed_review_blocks_annotation_mutations(coach_client, session):
     item = review(session)
-    created = client.post(annotation_url(item), json={
+    created = coach_client.post(annotation_url(item), json={
         'timestamp_s': 2, 'type': 'COMMENT', 'text': 'Antes de completar',
     }).json()
     item.status = 'COMPLETED'
@@ -124,7 +124,7 @@ def test_completed_review_blocks_annotation_mutations(client, session):
     item.completed_at = datetime.now(timezone.utc)
     session.commit()
     update_url = annotation_item_url(item, created['id'])
-    assert client.get(annotation_url(item)).status_code == 200
-    assert client.post(annotation_url(item), json={'timestamp_s': 3, 'type': 'COMMENT', 'text': 'Bloqueada'}).status_code == 409
-    assert client.patch(update_url, json={'text': 'Bloqueada'}).status_code == 409
-    assert client.delete(update_url).status_code == 409
+    assert coach_client.get(annotation_url(item)).status_code == 200
+    assert coach_client.post(annotation_url(item), json={'timestamp_s': 3, 'type': 'COMMENT', 'text': 'Bloqueada'}).status_code == 409
+    assert coach_client.patch(update_url, json={'text': 'Bloqueada'}).status_code == 409
+    assert coach_client.delete(update_url).status_code == 409

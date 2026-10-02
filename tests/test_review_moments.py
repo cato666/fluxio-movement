@@ -35,7 +35,7 @@ def test_no_repetitions_has_no_suggestions():
     assert rank_review_moments({"repetitions": []}) == []
 
 
-def test_coach_reads_and_decides_a_suggested_moment(client, session):
+def test_coach_reads_and_decides_a_suggested_moment(coach_client, session):
     analysis = Analysis(
         id="review-moment-analysis", athlete_id=DEMO_ATHLETE_ID, status="COMPLETED",
         exercise="Sentadilla", original_filename="squat.mp4", video_path="uploads/squat.mp4",
@@ -60,11 +60,11 @@ def test_coach_reads_and_decides_a_suggested_moment(client, session):
     session.add_all([review, moment])
     session.commit()
 
-    detail = client.get(f"/api/coach/reviews/{review.id}?coach_id={coach_id}")
+    detail = coach_client.get(f"/api/coach/reviews/{review.id}?coach_id={coach_id}")
     assert detail.status_code == 200
     assert detail.json()["review_moments"][0]["timestamp"] == 4.2
     assert detail.json()["ai_observations"] == []
 
     decision_url = f"/api/coach/reviews/{review.id}/ai-observations/{observation.id}?coach_id={coach_id}"
-    assert client.patch(decision_url, json={"decision": "CONFIRMED"}).json()["decision"] == "CONFIRMED"
-    assert client.patch(decision_url, json={"decision": "DISMISSED"}).json()["decision"] == "DISMISSED"
+    assert coach_client.patch(decision_url, json={"decision": "CONFIRMED"}).json()["decision"] == "CONFIRMED"
+    assert coach_client.patch(decision_url, json={"decision": "DISMISSED"}).json()["decision"] == "DISMISSED"

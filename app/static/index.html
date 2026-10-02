@@ -9,13 +9,16 @@
   <meta property="og:description" content="Video, análisis de movimiento y feedback humano para coaches y atletas.">
   <meta property="og:type" content="website">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%231469f7' d='M8 52 28 8l12 27 8-17 8 34H8Z'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="/static/styles.css">
-  <script src="/static/app.js" defer></script>
+  <link rel="stylesheet" href="/static/styles.css?v=nav-solid-1">
+  <script src="/static/review-state.js" defer></script>
+  <script src="/static/athlete-state.js?v=athlete-ux-2" defer></script>
+  <script src="/static/app.js?v=athlete-ux-2" defer></script>
 </head>
 <body>
-  <main>
+  <a class="skip-link" href="#workspace">Ir al contenido</a>
+  <main id="workspace" tabindex="-1">
     <header class="topbar">
-      <a class="brand" href="/"><span class="logo-mark" aria-hidden="true"></span><span>Movement Coach AI</span></a>
+      <a class="brand" href="/"><svg class="logo-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M5 23V9l11 14V9M22 9h5M22 16h5M22 23h5" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Movement<br class="brand-break"> Coach AI</span></a>
       <nav class="marketing-nav" aria-label="Navegación principal">
         <a href="#producto">Producto</a>
         <a href="#como-funciona">Cómo funciona</a>
@@ -37,7 +40,6 @@
 
     <section id="landing-view" class="landing lp" hidden>
       <div class="lp-hero">
-        <span class="lp-tag"><b>NUEVO</b> Análisis de levantamientos con IA</span>
         <h1 id="landing-title">Feedback de técnica en minutos, <span>no en horas.</span></h1>
         <p id="landing-copy">Sube un video. La IA detecta repeticiones y ángulos clave. Tú das el feedback exacto, en el segundo exacto.</p>
         <div class="lp-actions"><a class="lp-button" href="/coach/reviews">Soy coach <span aria-hidden="true">→</span></a><a class="lp-button lp-button-line" href="/analyses/new">Soy atleta</a></div>
@@ -65,7 +67,7 @@
     </section>
 
     <section id="login-view" hidden>
-      <div class="hero auth-hero"><span class="pill">Movement Coach AI</span><h1>Bienvenido de vuelta</h1><p>Ingresa con tus credenciales para continuar.</p></div>
+      <div class="hero auth-hero"><h1>Bienvenido de vuelta</h1><p>Ingresa con tus credenciales para continuar.</p></div>
       <form id="login-form" class="card auth-card">
         <label>Usuario
           <input name="username" type="text" required autocomplete="username" placeholder="Ej. gaston o carlos" autofocus>
@@ -78,7 +80,7 @@
 
     <section id="usage-view" hidden>
       <div class="section-head">
-        <div><span class="pill">Vista interna · Operación</span><h1>Uso de IA</h1></div>
+        <div><h1>Uso de IA</h1><p class="section-context">Vista interna · Operación</p></div>
       </div>
       <p class="muted">Control de tokens consumidos por los análisis con razonamiento IA. Los tokens de razonamiento ya están incluidos en la salida.</p>
       <div id="usage-totals" class="metrics"></div>
@@ -89,7 +91,6 @@
 
     <section id="demo-view" hidden>
       <div class="hero">
-        <span class="pill">Movement Coach · Demo</span>
         <h1>De video a feedback humano</h1>
         <p>Un recorrido breve para mostrar cómo atleta, análisis IA y coach trabajan sobre el mismo entrenamiento.</p>
       </div>
@@ -103,7 +104,6 @@
 
     <section id="new-view" hidden>
       <div class="hero">
-        <span class="pill">Gastón Demo · Atleta</span>
         <h1>Nuevo análisis</h1>
         <p>Sube un video para revisar tu técnica, métricas y repeticiones.</p>
       </div>
@@ -135,21 +135,28 @@
         </div>
         <label>Objetivo
           <textarea name="objective" required maxlength="1000" rows="3" placeholder="¿Qué quieres observar o mejorar?"></textarea>
+          <span class="field-hint">Obligatorio. Ejemplos: «Revisar mi profundidad» o «Mantener el tronco estable».</span>
         </label>
-        <label class="upload-zone">Archivo de video
-          <input name="file" type="file" accept=".mp4,.mov,.m4v,.avi,video/*" required>
-          <span class="upload-zone-copy"><b>Arrastra tu video o selecciónalo desde tu equipo</b><small>MP4, MOV, M4V o AVI · cuerpo completo y buena luz. Elige el encuadre real: de frente o de costado.</small></span>
-          <video id="upload-preview" class="upload-preview" controls muted hidden></video>
-        </label>
+        <div class="upload-zone">
+          <p><strong>Antes de subir tu video</strong></p>
+          <ul><li>Cuerpo completo visible.</li><li>Iluminación suficiente.</li><li>Encuadre de frente o de costado acorde al ejercicio.</li></ul>
+          <label for="athlete-file">Seleccionar o reemplazar video</label>
+          <input id="athlete-file" name="file" type="file" accept=".mp4,.mov,.m4v,.avi,video/*" required>
+          <small>MP4, MOV, M4V o AVI</small>
+          <p id="selected-file" role="status">Ningún video seleccionado.</p>
+          <video id="upload-preview" class="upload-preview" controls muted playsinline hidden></video>
+        </div>
+        <div class="athlete-readiness"><strong id="form-readiness" role="status"></strong><ul id="analysis-requirements"></ul></div>
         <div class="form-actions">
-          <button id="go" type="submit" disabled>Ejecutar análisis</button>
+          <button id="go" type="submit" disabled>Subir y analizar video</button>
           <span id="status" role="status" aria-live="polite"></span>
+          <progress id="upload-progress" max="100" value="0" aria-label="Progreso de subida" hidden></progress>
         </div>
       </form>
     </section>
 
     <section id="coach-new-analysis-view" hidden>
-      <div class="hero"><span class="pill">Coach</span><h1>Subir video de atleta</h1><p>Crea el análisis y la revisión directamente para tu alumno.</p></div>
+      <div class="hero"><h1>Subir video de atleta</h1><p>Crea el análisis y la revisión directamente para tu alumno.</p></div>
       <form id="coach-analysis-form" class="card" enctype="multipart/form-data">
         <div class="form-grid">
           <label>Atleta<select name="athlete_id" id="coach-athlete" required><option value="">Cargando atletas…</option></select></label>
@@ -164,7 +171,7 @@
     </section>
 
     <section id="coach-new-athlete-view" hidden>
-      <div class="hero"><span class="pill">Coach</span><h1>Registrar atleta</h1><p>Crea un acceso para tu atleta y luego podrás subir un video en su nombre.</p></div>
+      <div class="hero"><h1>Registrar atleta</h1><p>Crea un acceso para tu atleta y luego podrás subir un video en su nombre.</p></div>
       <form id="coach-athlete-form" class="card auth-card">
         <label>Nombre completo<input name="name" required maxlength="160" autocomplete="name" placeholder="Nombre del atleta"></label>
         <label>Usuario<input name="username" required maxlength="40" autocomplete="username" placeholder="Ej. maria.gonzalez"></label>
@@ -175,7 +182,7 @@
 
     <section id="list-view" hidden>
       <div class="section-head">
-        <div><span class="pill">Gastón Demo · Atleta</span><h1>Mis análisis</h1></div>
+        <div><h1>Mis análisis</h1></div>
         <a class="button-link" href="/analyses/new">Nuevo análisis</a>
       </div>
       <p id="list-status" role="status" aria-live="polite"></p>
@@ -186,30 +193,30 @@
     <section id="detail-view" hidden>
       <a class="back-link" href="/analyses">← Mis análisis</a>
       <div class="section-head detail-head">
-        <div><span class="pill">Gastón Demo · Atleta</span><h1 id="detail-title">Análisis</h1></div>
+        <div><h1 id="detail-title">Análisis</h1></div>
         <span id="detail-status" class="state"></span>
       </div>
       <p id="detail-meta" class="muted"></p>
       <p id="detail-objective"></p>
-      <div id="detail-preflight" class="card" hidden></div>
-      <div id="detail-action-feedback" class="card success-card" hidden role="status"></div>
-      <div id="detail-error" class="card error-card" hidden></div>
-      <div id="detail-completed" hidden>
-        <div class="grid">
-          <div class="card"><h2>Video original</h2><video id="original-video" controls preload="metadata"></video></div>
-          <div class="card"><h2>Video anotado</h2><video id="annotated-video" controls preload="metadata"></video></div>
-        </div>
-        <div class="card"><h2>Análisis IA</h2><div id="metrics" class="metrics"></div></div>
-        <section id="athlete-ai-observations" class="card ai-observations" hidden><h2>Observaciones automáticas</h2><p class="muted">Sugerencias generadas a partir de métricas. Tu coach mantiene la decisión final.</p><div id="athlete-ai-observations-list"></div></section>
-        <div class="card"><h2>Repeticiones detectadas</h2><div id="reps"></div></div>
-        <details class="card"><summary>JSON técnico</summary><pre id="technical-json"></pre></details>
+      <section id="athlete-first-look" class="card" hidden><h2>Qué mirar primero</h2><p id="athlete-first-look-copy"></p><button id="athlete-first-moment" class="secondary-button" type="button" hidden>Ver primer momento</button></section>
+      <div id="review-cta" class="card review-cta" hidden>
+        <h2 id="review-cta-title">Tu siguiente paso</h2>
+        <p id="review-cta-copy"></p>
+        <a id="request-review-link" class="button-link"></a>
       </div>
-      <div id="review-status" hidden></div>
+      <div id="detail-action-feedback" class="card success-card" hidden role="status"></div>
+      <div id="detail-connection" class="card" hidden role="status"></div>
+      <div id="detail-error" class="card error-card" hidden role="alert"></div>
       <div id="athlete-coach-feedback" hidden></div>
-      <div id="review-cta" class="card review-cta">
-        <h2>Solicitar revisión de coach</h2>
-        <p id="review-cta-copy">Elige un coach para recibir una revisión de este análisis.</p>
-        <a id="request-review-link" class="button-link">Solicitar revisión de coach</a>
+      <div id="review-status" hidden></div>
+      <div id="detail-completed" hidden>
+        <div class="card athlete-player"><h2>Video anotado · análisis automático</h2><p class="muted">Usa los comentarios y las repeticiones para ir directamente a un momento del video.</p><video id="annotated-video" controls playsinline preload="metadata"></video></div>
+        <section id="athlete-ai-observations" class="card ai-observations" hidden><h2>Momentos destacados · análisis automático</h2><p class="muted">Sugerencias automáticas para orientar tu observación. No son feedback del coach.</p><div id="athlete-ai-observations-list"></div></section>
+        <div class="card"><h2>Métricas del análisis automático</h2><div id="metrics" class="metrics"></div></div>
+        <div class="card"><h2>Repeticiones detectadas</h2><div id="reps"></div></div>
+        <details class="card"><summary>Video original</summary><video id="original-video" controls playsinline preload="metadata"></video></details>
+        <div id="detail-preflight" class="card" hidden></div>
+        <details class="card"><summary>JSON técnico</summary><pre id="technical-json"></pre></details>
       </div>
       <section id="reanalyze-card" class="card" hidden>
         <h2>Reanalizar este video</h2>
@@ -223,24 +230,24 @@
             <span class="field-hint">El encuadre debe coincidir con el video original.</span>
           </label>
         </div>
-        <div class="form-actions"><button id="reanalyze-submit" type="button">Reanalizar video</button><span id="reanalyze-status" role="status"></span></div>
+        <div class="form-actions"><button id="reanalyze-submit" class="secondary-button" type="button">Reanalizar video</button><span id="reanalyze-status" role="status"></span></div>
       </section>
     </section>
 
     <section id="coach-selection-view" hidden>
       <a id="selection-back" class="back-link">← Volver al análisis</a>
       <div class="hero">
-        <span class="pill">Gastón Demo · Atleta</span>
         <h1>Elige un coach</h1>
-        <p>Selecciona quién revisará tu análisis.</p>
+        <p>El coach revisará tu video y dejará comentarios y un plan para tu próxima sesión. Podrás consultarlos desde Mis análisis.</p>
       </div>
+      <section id="selection-requests" class="card" hidden><h2>Solicitudes existentes</h2><div id="selection-requests-list"></div></section>
       <p id="coach-selection-status" role="status" aria-live="polite"></p>
       <div id="coach-list" class="coach-list"></div>
     </section>
 
     <section id="coach-reviews-view" hidden>
       <div class="section-head">
-        <div><span id="coach-identity" class="pill">Coach</span><h1>Mis revisiones</h1></div>
+        <div><h1>Mis revisiones</h1><p id="coach-identity" class="section-context">Coach</p></div>
       </div>
       <label class="review-filter">Estado
         <select id="review-filter">
@@ -258,21 +265,22 @@
     <section id="coach-review-detail-view" hidden>
       <a id="coach-review-back" class="back-link">← Mis revisiones</a>
       <div class="section-head detail-head">
-        <div><span class="pill">Vista demo · Coach</span><h1 id="coach-review-title">Revisión</h1></div>
+        <div><h1 id="coach-review-title">Revisión</h1><p class="section-context">Vista demo · Coach</p></div>
         <span id="coach-review-state" class="state"></span>
       </div>
       <p id="coach-review-meta" class="muted"></p>
       <p id="coach-review-objective"></p>
       <div id="coach-preflight" class="card" hidden></div>
-      <section id="coach-review-moments" class="card ai-observations"><h2>Momentos sugeridos por IA</h2><p class="muted">Prioriza estos puntos antes de revisar el video completo.</p><div id="coach-review-moments-list"></div></section>
       <div id="coach-start-card" class="card" hidden>
         <h2>Revisión pendiente</h2>
         <p class="muted">Marca la revisión como iniciada antes de trabajar sobre ella.</p>
         <button id="coach-start-review" type="button">Iniciar revisión</button>
       </div>
-      <div id="coach-completed-card" class="card success-card" hidden><h2>Revisión completada</h2><p>El feedback ya está disponible para Gastón Demo. Esta revisión quedó bloqueada para edición.</p></div>
+      <div id="coach-completed-card" class="card success-card" hidden><h2>Revisión completada</h2><p><span id="coach-completed-recipient"></span> Esta revisión quedó bloqueada para edición.</p></div>
+      <section class="card review-readiness" aria-label="Requisitos para completar"><h2>Para completar la revisión</h2><ul id="coach-close-requirements"></ul><p id="coach-draft-status" role="status">Sin cambios pendientes</p><p class="muted">Completar la revisión bloquea la edición y deja el feedback disponible para el atleta.</p></section>
       <div class="grid">
         <div class="card studio-player-card">
+          <div class="review-player">
           <h2>Video anotado</h2>
           <video id="coach-annotated-video" controls preload="metadata"></video>
           <div class="video-controls" aria-label="Controles de velocidad">
@@ -281,24 +289,9 @@
             <button type="button" data-rate="0.5">0.5x</button>
             <button type="button" data-rate="1">1x</button>
           </div>
-        </div>
-        <div class="card"><h2>Video original</h2><video id="coach-original-video" controls preload="metadata"></video></div>
-      </div>
-      <div class="card"><h2>Análisis IA</h2><div id="coach-metrics" class="metrics"></div></div>
-      <section id="coach-ai-observations" class="card ai-observations"><h2>Observaciones IA</h2><p class="muted">Sugerencias para revisar; no reemplazan tu criterio profesional.</p><div id="coach-ai-observations-list"></div></section>
-      <div class="card"><h2>Timeline</h2><div id="coach-reps"></div><div id="coach-timeline-annotations"></div></div>
-      <div id="coach-repetition-correction" class="card">
-        <h2>Corregir repeticiones</h2>
-        <p class="muted">Descarta una detección falsa o agrega una repetición que la IA no encontró.</p>
-        <div class="form-grid">
-          <label>Inicio (s)<input id="manual-rep-start" type="number" min="0" step="0.01"></label>
-          <label>Punto bajo (s)<input id="manual-rep-bottom" type="number" min="0" step="0.01"></label>
-          <label>Fin (s)<input id="manual-rep-end" type="number" min="0" step="0.01"></label>
-        </div>
-        <label>Nota <span class="muted">· opcional</span><input id="manual-rep-note" maxlength="1000" placeholder="Ej. La IA fusionó dos repeticiones"></label>
-        <div class="form-actions"><button id="manual-rep-save" type="button">Agregar repetición manual</button><span id="manual-rep-status" class="muted" role="status"></span></div>
-      </div>
-      <div id="coach-annotation-editor" class="card" hidden>
+          </div>
+      <section id="coach-review-moments" class="review-moments"><h2>Momentos para revisar</h2><p id="coach-moments-intro"></p><p class="muted">Son sugerencias para orientar tu revisión. Tú decides qué incluir en el feedback.</p><div id="coach-moments-navigation"></div><div id="coach-review-moments-list"></div></section>
+      <div id="coach-annotation-editor" class="context-editor" hidden>
         <h2 id="coach-annotation-editor-title">Agregar comentario</h2>
         <p id="coach-annotation-time" class="muted"></p>
         <label>Tipo
@@ -319,6 +312,22 @@
           <button id="coach-annotation-save" type="button">Guardar comentario</button>
           <button id="coach-annotation-cancel" class="secondary-button" type="button">Cancelar</button>
         </div>
+      </div>
+      <section class="context-repetitions"><h2>Repeticiones y comentarios</h2><div id="coach-reps"></div><div id="coach-timeline-annotations"></div></section>
+        </div>
+        <div class="card"><h2>Video original</h2><video id="coach-original-video" controls preload="metadata"></video></div>
+      </div>
+      <div class="card"><h2>Análisis IA</h2><div id="coach-metrics" class="metrics"></div></div>
+      <div id="coach-repetition-correction" class="card">
+        <h2>Corregir repeticiones</h2>
+        <p class="muted">Descarta una detección falsa o agrega una repetición que la IA no encontró.</p>
+        <div class="form-grid">
+          <label>Inicio (s)<input id="manual-rep-start" type="number" min="0" step="0.01"></label>
+          <label>Punto bajo (s)<input id="manual-rep-bottom" type="number" min="0" step="0.01"></label>
+          <label>Fin (s)<input id="manual-rep-end" type="number" min="0" step="0.01"></label>
+        </div>
+        <label>Nota <span class="muted">· opcional</span><input id="manual-rep-note" maxlength="1000" placeholder="Ej. La IA fusionó dos repeticiones"></label>
+        <div class="form-actions"><button id="manual-rep-save" type="button">Agregar repetición manual</button><span id="manual-rep-status" class="muted" role="status"></span></div>
       </div>
       <div class="card coach-annotations-card">
         <div class="section-head compact-head"><h2>Feedback del coach</h2><button id="coach-add-annotation" type="button">+ Agregar comentario</button></div>
@@ -341,7 +350,7 @@
         </label>
         <div class="form-actions">
           <button id="coach-save-summary" type="button">Guardar resumen</button>
-          <button id="coach-complete-review" type="button">Finalizar revisión</button>
+          <button id="coach-complete-review" type="button">Guardar y completar revisión</button>
           <span id="coach-summary-status" class="muted" role="status"></span>
         </div>
       </div>

@@ -21,7 +21,7 @@ DEMOS = (
 def seed(session):
     for demo in DEMOS:
         user_id, key, name, role, specialty, *bio, is_internal = demo
-        session.execute(insert(User).values(id=user_id, demo_key=key, name=name, role=role, password_hash=hash_password(os.environ.get('DEMO_PASSWORD', 'demo1234')), is_internal=is_internal).on_conflict_do_update(index_elements=[User.id], set_={'demo_key': key, 'name': name, 'password_hash': hash_password(os.environ.get('DEMO_PASSWORD', 'demo1234')), 'is_internal': is_internal}))
+        session.execute(insert(User).values(id=user_id, demo_key=key, name=name, role=role, password_hash=hash_password(os.environ.get('DEMO_PASSWORD', 'demo1234')), is_internal=is_internal).on_conflict_do_update(index_elements=[User.id], set_={'demo_key': key, 'password_hash': hash_password(os.environ.get('DEMO_PASSWORD', 'demo1234')), 'is_internal': is_internal}))
         profile = Athlete if role == "ATHLETE" else Coach if role == "COACH" else None
         if profile is None:
             continue

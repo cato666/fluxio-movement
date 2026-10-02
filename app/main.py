@@ -8,6 +8,8 @@ import logging
 import os
 import shutil
 import subprocess
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 
 from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel
@@ -46,6 +48,13 @@ for directory in (ORIGINALS, ANNOTATED, ANALYSIS_FILES, TEMP):
     directory.mkdir(parents=True, exist_ok=True)
 logger = logging.getLogger(__name__)
 app = FastAPI(title='Movement Coach MVP')
+SCHEMA_HEADS = set(ScriptDirectory.from_config(Config(str(ROOT / 'alembic.ini'))).get_heads())
+
+
+@app.exception_handler(SQLAlchemyError)
+async def persistence_unavailable(request: Request, exc: SQLAlchemyError):
+    logger.error('Persistence unavailable on %s', request.url.path)
+    return JSONResponse(status_code=503, content={'detail': 'Persistencia no disponible'})
 app.mount('/static', StaticFiles(directory=str(ROOT / 'app' / 'static')), name='static')
 app.mount('/results', StaticFiles(directory=str(RESULTS)), name='results')
 app.mount('/uploads', StaticFiles(directory=str(UPLOADS)), name='uploads')
@@ -115,6 +124,8 @@ async def protect_application_routes(request: Request, call_next):
             if path.startswith('/api/') or path.startswith(('/uploads/', '/results/', '/analysis/')):
                 return JSONResponse(status_code=401, content={'detail': 'Inicia sesión para continuar'})
             return RedirectResponse(url=f'/login?next={path}', status_code=303)
+        except SQLAlchemyError:
+            return JSONResponse(status_code=503, content={'detail': 'Persistencia no disponible'})
         if path.startswith('/internal/') or path.startswith('/api/internal/'):
             if not user.is_internal:
                 if not path.startswith('/api/'):
@@ -215,7 +226,7 @@ def health(session: Session = Depends(get_session)):
     try:
         session.execute(text('SELECT 1'))
         revision = session.execute(text('SELECT version_num FROM alembic_version')).scalar_one_or_none()
-        if revision != '0012_system_admin':
+        if revision not in SCHEMA_HEADS:
             return JSONResponse(status_code=503, content={'ok': False, 'database': 'schema_not_ready'})
     except SQLAlchemyError:
         return JSONResponse(status_code=503, content={'ok': False, 'database': 'unavailable'})
@@ -834,7 +845,19 @@ def list_analyses(athlete: User = Depends(require_athlete), session: Session = D
         .where(Analysis.athlete_id == athlete.id)
         .order_by(Analysis.created_at.desc(), Analysis.id.desc())
     ).all()
-    return {'items': [_analysis_fields(row, count) for row, count in rows]}
+    # Fetch review metadata once for this athlete's analyses, without N+1 reads.
+    reviews_by_analysis = {}
+    if rows:
+        review_rows = session.execute(
+            select(CoachReview, Coach, User)
+            .join(Coach, Coach.user_id == CoachReview.coach_id)
+            .join(User, User.id == Coach.user_id)
+            .where(CoachReview.analysis_id.in_([row.id for row, _ in rows]))
+            .order_by(CoachReview.created_at.desc())
+        ).all()
+        for review, coach, user in review_rows:
+            reviews_by_analysis.setdefault(review.analysis_id, []).append(_review_fields(review, coach, user))
+    return {'items': [dict(_analysis_fields(row, count), coach_reviews=reviews_by_analysis.get(row.id, [])) for row, count in rows]}
 
 
 @app.get('/api/coaches')

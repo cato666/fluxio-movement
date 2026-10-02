@@ -3,6 +3,7 @@ import copy
 from app import main
 from app.services.analyzer import _is_press, _segment_press_reps
 from tests.test_api import RESULT
+from tests.analysis_helpers import write_analysis
 
 
 def test_press_segments_cycles_from_low_position_to_lockout():
@@ -39,18 +40,18 @@ def test_press_exercise_names_are_recognized_without_changing_other_exercises():
     assert not _is_press('Sentadilla')
 
 
-def test_press_analysis_passes_the_exercise_to_the_existing_analyzer(client, monkeypatch):
+def test_press_analysis_passes_the_exercise_to_the_existing_analyzer(athlete_client, monkeypatch, valid_preflight):
     captured = {}
 
-    def analyzer(_video, _output, exercise=None):
+    def analyzer(_video, _output, exercise=None, *_args, **_kwargs):
         captured['exercise'] = exercise
-        return copy.deepcopy(RESULT)
+        return write_analysis(_output, copy.deepcopy(RESULT))
 
     monkeypatch.setattr(main, 'analyze_video', analyzer)
-    response = client.post(
+    response = athlete_client.post(
         '/api/analyses',
         data={'exercise': 'Press', 'objective': 'Bloqueo sobre la cabeza'},
         files={'file': ('press.mp4', b'video', 'video/mp4')},
     )
-    assert response.status_code == 201
+    assert response.status_code == 202
     assert captured['exercise'] == 'Press'

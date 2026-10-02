@@ -12,10 +12,10 @@ def test_landing_exposes_commercial_coach_flow(client):
     response = client.get('/')
     assert response.status_code == 200
     for text in (
-        'NUEVO', 'Análisis de levantamientos con IA', 'Feedback de técnica en minutos,',
+        'Feedback de técnica en minutos,',
         'no en horas.', 'Soy coach', 'Soy atleta', 'De video a progreso en 4 pasos',
         'Todo lo que necesitas para revisar mejor', 'Una herramienta, dos formas de usarla',
         'Empieza gratis. Crece cuando lo necesites.', 'Lo que suelen preguntar',
-        'Convierte cada video en una oportunidad de coaching', 'Entrar a la demo', '/coach/reviews',
+        'Convierte cada video en una oportunidad de coaching', 'Probar gratis', '/coach/reviews',
     ):
         assert text in response.text

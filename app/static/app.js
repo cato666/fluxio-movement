@@ -16,7 +16,7 @@ const reviewStateLabels = {
 const annotationLabels = { COMMENT: "Comentario", REVIEW: "Revisar", CORRECT: "Corregir", PRIORITY: "Prioridad" };
 const NO_REPS_TIP = "No se detectaron repeticiones. Graba de lado, con el cuerpo completo en cuadro y buena luz.";
 const noReps = (item) => item.status === "COMPLETED" && item.repetitions_detected === 0;
-let detailPollId = null;
+let detailPoller = null;
 
 const fmtDate = (value) => value
   ? new Intl.DateTimeFormat("es-CL", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value))
@@ -41,18 +41,20 @@ function takeFlash() {
 
 async function apiJson(url, options) {
   const response = await fetch(url, options);
+  if (response.ok && response.status === 204) return null;
   const data = await response.json();
   if (!response.ok) {
     const message = typeof data.detail === "string" ? data.detail : data.detail?.message;
     const error = new Error(message || "No se pudo completar la solicitud");
     error.analysisId = data.detail?.analysis_id;
+    error.status = response.status;
     throw error;
   }
   return data;
 }
 
 function showView(id) {
-  if (id !== "detail-view" && detailPollId) { window.clearInterval(detailPollId); detailPollId = null; }
+  if (id !== "detail-view" && detailPoller) { detailPoller.stop(); detailPoller = null; }
   // Las rutas públicas no deben revelar accesos del área autenticada.
   const marketing = ["landing-view", "demo-view", "login-view"].includes(id);
   document.body.classList.toggle("marketing", marketing);
@@ -82,8 +84,15 @@ function setupLogout() {
 }
 
 function configureNavigation(user) {
+  const currentPath = window.location.pathname.replace(/\/$/, "");
   for (const link of document.querySelectorAll("[data-nav-role]")) {
     link.hidden = link.dataset.navRole !== user.role;
+    const target = new URL(link.href).pathname;
+    const active = currentPath === target
+      || (target === "/analyses" && /^\/analyses\/\d/.test(currentPath))
+      || (target === "/coach/reviews" && currentPath.startsWith("/coach/reviews/"));
+    if (active) link.setAttribute("aria-current", "page");
+    else link.removeAttribute("aria-current");
   }
 }
 
@@ -195,42 +204,46 @@ function renderFilterChips(container, items, active, labels, onSelect) {
 
 function setupNew() {
   showView("new-view");
-  const form = $("#analysis-form");
-  const button = $("#go");
-  const status = $("#status");
-  const fileInput = form.elements.file;
-  const preview = $("#upload-preview");
-  const refresh = () => { button.disabled = !form.checkValidity(); };
+  const form = $("#analysis-form"), button = $("#go"), status = $("#status");
+  const fileInput = form.elements.file, preview = $("#upload-preview"), progress = $("#upload-progress");
+  let uploading = false, previewUrl;
+  const refresh = () => {
+    const objective = form.elements.objective;
+    objective.setCustomValidity(objective.value.trim() ? "" : "Escribe qué quieres observar o mejorar.");
+    const requirements = AthleteState.requirements({exercise: form.elements.exercise.value, objective: objective.value, view: form.elements.view.value, file: fileInput.files[0]});
+    fileInput.setCustomValidity(fileInput.files[0] && !requirements[3].ready ? "Usa un video MP4, MOV, M4V o AVI." : "");
+    $("#analysis-requirements").replaceChildren(...requirements.filter(r => !r.ready).map(r => element("li", "", r.label)));
+    const ready = form.checkValidity();
+    $("#form-readiness").textContent = ready ? "Listo para subir y analizar." : requirements.every(r => r.ready) ? "Revisa los valores del formulario." : "Para continuar falta:";
+    button.disabled = uploading || !ready;
+  };
   fileInput.addEventListener("change", () => {
-    if (preview.src) URL.revokeObjectURL(preview.src);
-    const file = fileInput.files[0];
-    preview.hidden = !file;
-    if (file) {
-      preview.src = URL.createObjectURL(file);
-      status.textContent = `${file.name} · ${(file.size / 1048576).toFixed(1)} MB`;
-    }
-    refresh();
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    const file = fileInput.files[0]; preview.hidden = !file;
+    if (file) { previewUrl = URL.createObjectURL(file); preview.src = previewUrl; }
+    else preview.removeAttribute("src");
+    $("#selected-file").textContent = file ? `${file.name} · ${(file.size / 1048576).toFixed(1)} MB · seleccionado` : "Ningún video seleccionado.";
+    status.textContent = ""; refresh();
   });
-  form.addEventListener("input", refresh);
-  refresh();
-  form.addEventListener("submit", (event) => {
+  form.addEventListener("input", refresh); refresh();
+  form.addEventListener("submit", event => {
     event.preventDefault();
-    button.disabled = true;
-    status.textContent = "Subiendo… 0 %";
-    const data = new FormData(form);
-    if (!data.get("load_kg")) data.delete("load_kg");
-    const request = new XMLHttpRequest();
-    request.open("POST", "/api/analyses");
-    request.upload.onprogress = (progress) => {
-      if (progress.lengthComputable) status.textContent = `Subiendo… ${Math.round(progress.loaded / progress.total * 100)} %`;
+    if (uploading || !form.checkValidity()) { if (!uploading) form.reportValidity(); return; }
+    const data = new FormData(form); if (!data.get("load_kg")) data.delete("load_kg");
+    uploading = true; button.disabled = true;
+    const controls = [...form.querySelectorAll("input, select, textarea")]; controls.forEach(c => c.disabled = true);
+    progress.hidden = false; progress.value = 0; status.textContent = "Subiendo video… 0 %";
+    const fail = message => { uploading = false; controls.forEach(c => c.disabled = false); progress.hidden = true; status.textContent = message; refresh(); };
+    const request = new XMLHttpRequest(); request.open("POST", "/api/analyses");
+    request.upload.onprogress = event => {
+      if (event.lengthComputable) { progress.value = Math.round(event.loaded / event.total * 100); status.textContent = progress.value === 100 ? "Video enviado. Esperando confirmación del servidor…" : `Subiendo video… ${progress.value} %`; }
     };
     request.onload = () => {
       let body = {}; try { body = JSON.parse(request.responseText); } catch (_) {}
       if (request.status === 202 && body.id) { window.location.assign(`/analyses/${body.id}`); return; }
-      status.textContent = body.detail?.message || body.detail || "No se pudo iniciar el análisis";
-      button.disabled = false;
+      fail(typeof body.detail === "string" ? body.detail : body.detail?.message || "No se pudo iniciar el análisis. Revisa los datos e intenta nuevamente.");
     };
-    request.onerror = () => { status.textContent = "No se pudo subir el video"; button.disabled = false; };
+    request.onerror = () => fail("Se perdió la conexión durante la subida. Revisa Mis análisis antes de volver a enviar: el servidor podría haber recibido el video.");
     request.send(data);
   });
 }
@@ -277,6 +290,7 @@ async function setupList() {
       list.replaceChildren();
       const visible = activeFilter ? items.filter((item) => item.status === activeFilter) : items;
       status.textContent = visible.length ? "" : activeFilter ? "No hay análisis en este estado." : "Aún no tienes análisis. Sube un video para comenzar la demo.";
+      status.classList.toggle("empty-state", visible.length === 0);
       renderFilterChips($("#analysis-filters"), items, activeFilter, stateLabels, (next) => { activeFilter = next; render(); });
       for (const item of visible) {
       const card = element("article", "card analysis-row");
@@ -294,8 +308,10 @@ async function setupList() {
         if (item.status === "PROCESSING") side.append(element("span", "muted", `${item.progress || 0} % · ${item.stage || "analyzing"}`));
         side.append(element("span", "muted", `${item.repetitions_detected} repeticiones`));
       }
-      const link = element("a", "button-link", "Ver análisis");
-      link.href = `/analyses/${item.id}`;
+      const action = AthleteState.reviewAction(item);
+      if (action.badge) side.prepend(element("span", `state state-${action.state === "AVAILABLE" ? "completed" : "pending"}`, action.badge));
+      const link = element("a", "button-link", action.state === "AVAILABLE" ? action.label : "Ver análisis");
+      link.href = action.state === "AVAILABLE" ? action.href : `/analyses/${item.id}`;
       side.append(link);
       card.append(thumb, info, side);
       list.append(card);
@@ -316,7 +332,13 @@ function metric(label, value) {
 function aiObservationCard(observation, actions = null, onJump = seekAthleteVideo) {
   const card = element("article", `ai-observation severity-${observation.severity || "review"}`);
   const meta = ["IA", observation.repetition ? `Rep ${observation.repetition}` : null, observation.timestamp == null ? null : formatVideoTime(observation.timestamp)].filter(Boolean).join(" · ");
-  card.append(element("span", "ai-observation-meta", meta));
+  const timestamp = element(observation.timestamp == null ? "span" : "button", "ai-observation-meta", meta);
+  if (observation.timestamp != null) {
+    timestamp.type = "button";
+    timestamp.setAttribute("aria-label", `Ver momento ${formatVideoTime(observation.timestamp)}`);
+    timestamp.onclick = (event) => { event.stopPropagation(); onJump(observation.timestamp); };
+  }
+  card.append(timestamp);
   card.append(element("h3", "", observation.title));
   card.append(element("p", "", observation.description));
   if (observation.evidence) card.append(element("p", "ai-observation-evidence", `Evidencia: ${observation.evidence}`));
@@ -331,48 +353,6 @@ function renderAthleteAIObservations(observations) {
   list.replaceChildren();
   for (const observation of observations || []) list.append(aiObservationCard(observation));
   section.hidden = !(observations || []).length;
-}
-
-function renderCoachAIObservations(observations, onDecision, locked = false) {
-  const list = $("#coach-ai-observations-list");
-  list.replaceChildren();
-  if (!observations?.length) { list.textContent = "No hay observaciones automáticas para este análisis."; return; }
-  for (const observation of observations) {
-    const actions = element("div", "ai-observation-actions");
-    for (const [decision, label] of [["CONFIRMED", "Confirmar"], ["DISMISSED", "Descartar"]]) {
-      const button = element("button", observation.decision === decision ? "is-selected" : "", label);
-      button.type = "button";
-      button.disabled = locked;
-      button.onclick = (event) => { event.stopPropagation(); onDecision(observation, { decision }); };
-      actions.append(button);
-    }
-    const edit = element("button", "secondary-button", "Modificar");
-    edit.type = "button";
-    edit.disabled = locked;
-    edit.onclick = (event) => {
-      event.stopPropagation();
-      const title = window.prompt("Título de la observación", observation.title);
-      if (title === null) return;
-      const description = window.prompt("Descripción de la observación", observation.description);
-      if (description === null) return;
-      onDecision(observation, { decision: "CONFIRMED", title, description });
-    };
-    actions.append(edit);
-    list.append(aiObservationCard(observation, actions, jumpCoachVideo));
-  }
-}
-
-function renderReviewMoments(moments, onDecision, onComment, locked = false) {
-  const list = $("#coach-review-moments-list"); list.replaceChildren();
-  if (!moments?.length) { list.textContent = "No encontramos eventos destacados. Puedes revisar el video completo."; return; }
-  for (const moment of moments) {
-    const actions = element("div", "ai-observation-actions");
-    const watch = element("button", "secondary-button", "Ver momento"); watch.type = "button"; watch.onclick = (event) => { event.stopPropagation(); jumpCoachVideo(moment.timestamp); };
-    const confirm = element("button", moment.decision === "CONFIRMED" ? "is-selected" : "", "Confirmar"); confirm.type = "button"; confirm.disabled = locked; confirm.onclick = (event) => { event.stopPropagation(); onDecision(moment, {decision:"CONFIRMED"}); };
-    const dismiss = element("button", moment.decision === "DISMISSED" ? "is-selected" : "", "Descartar"); dismiss.type = "button"; dismiss.disabled = locked; dismiss.onclick = (event) => { event.stopPropagation(); onDecision(moment, {decision:"DISMISSED"}); };
-    const comment = element("button", "secondary-button", "Agregar comentario"); comment.type = "button"; comment.disabled = locked; comment.onclick = (event) => { event.stopPropagation(); onComment(moment); };
-    actions.append(watch, confirm, dismiss, comment); list.append(aiObservationCard(moment, actions, jumpCoachVideo));
-  }
 }
 
 function renderPreflight(targetId, report) {
@@ -395,8 +375,9 @@ function renderPreflight(targetId, report) {
 
 function renderCompleted(item) {
   $("#detail-completed").hidden = false;
-  $("#original-video").src = item.original_video_url;
-  $("#annotated-video").src = item.annotated_video_url;
+  for (const [id, url] of [["#original-video", item.original_video_url], ["#annotated-video", item.annotated_video_url]]) {
+    const video = $(id); if (video.getAttribute("src") !== url) video.src = url;
+  }
   const metrics = item.analysis_json?.summary_metrics || {};
   $("#metrics").replaceChildren(
     metric("Repeticiones", item.repetitions_detected),
@@ -406,6 +387,7 @@ function renderCompleted(item) {
   );
   renderPreflight("#detail-preflight", item.analysis_json?.preflight);
   const reps = $("#reps");
+  reps.replaceChildren();
   if (!item.repetitions.length) {
     reps.textContent = NO_REPS_TIP;
   }
@@ -416,6 +398,8 @@ function renderCompleted(item) {
     if (rep.metrics.min_knee_angle != null) {
       row.append(element("span", "", ` · rodilla ${rep.metrics.min_knee_angle}°`));
     }
+    const jump = element("button", "watch-moment", "Ver repetición"); jump.type = "button";
+    jump.onclick = () => seekAthleteVideo(rep.bottom_s); row.append(jump);
     reps.append(row);
   }
   $("#technical-json").textContent = JSON.stringify(item.analysis_json, null, 2);
@@ -430,7 +414,7 @@ function seekAthleteVideo(timestamp) {
     const target = Math.max(0, Math.min(Number(timestamp), duration));
     video.currentTime = target;
     video.pause();
-    video.scrollIntoView({ behavior: "smooth", block: "center" });
+    video.scrollIntoView({ behavior: "auto", block: "center" });
     video.classList.add("video-seek-highlight");
     window.setTimeout(() => video.classList.remove("video-seek-highlight"), 900);
   };
@@ -450,167 +434,162 @@ function renderCoachReviews(item) {
 }
 
 function renderAthleteCoachFeedback(item) {
-  const container = $("#athlete-coach-feedback");
-  container.replaceChildren();
+  const container = $("#athlete-coach-feedback"); container.replaceChildren();
   for (const review of item.completed_coach_reviews || []) {
     const card = element("section", "card coach-feedback-card");
-    card.append(element("h2", "", "Tu coach revisó este entrenamiento"));
-    card.append(element("p", "muted", `${review.coach.name} · ${review.coach.specialty}`));
-    const repText = (label, rep) => rep ? `${label}: Rep ${rep.number}` : `${label}: Sin selección`;
-    card.append(element("p", "", repText("⭐ Mejor repetición", review.best_repetition)));
-    card.append(element("p", "", repText("⚠ Repetición a trabajar", review.work_repetition)));
-    for (const [title, value] of [["Fortalezas", review.strengths], ["Principal punto a trabajar", review.main_focus], ["Próxima sesión", review.next_session], ["Resumen adicional", review.summary]]) {
-      if (value) {
-        card.append(element("h3", "", title), element("p", "", value));
-      }
-    }
-    if (review.annotations.length) {
-      card.append(element("h3", "", "Anotaciones del coach"));
+    card.append(element("h2", "", "Revisión del coach"), element("p", "muted", `${review.coach.name} · ${review.coach.specialty}`));
+    if (review.main_focus) card.append(element("h3", "", "Punto principal"), element("p", "", review.main_focus));
+    if (review.annotations?.length) {
+      card.append(element("h3", "", "Momentos y comentarios del coach"));
       for (const annotation of review.annotations) {
         const note = element("div", "rep");
-        note.append(element("strong", "", `${formatVideoTime(annotation.timestamp_s)} · ${annotationLabels[annotation.type] || annotation.type}`));
-        note.append(element("p", "", annotation.text));
-        const watch = element("button", "watch-moment", "Ver momento");
-        watch.type = "button";
-        watch.setAttribute("aria-label", `Ver momento ${formatVideoTime(annotation.timestamp_s)} en el video anotado`);
-        watch.onclick = () => seekAthleteVideo(annotation.timestamp_s);
-        note.append(watch);
+        note.append(element("strong", "", `${annotation.timestamp_s == null ? "Comentario" : formatVideoTime(annotation.timestamp_s)} · ${annotationLabels[annotation.type] || annotation.type}`), element("p", "", annotation.text));
+        if (annotation.timestamp_s != null) {
+          const watch = element("button", "watch-moment", "Ver momento"); watch.type = "button";
+          watch.setAttribute("aria-label", `Ver momento ${formatVideoTime(annotation.timestamp_s)} en el video anotado`);
+          watch.onclick = () => seekAthleteVideo(annotation.timestamp_s); note.append(watch);
+        }
         card.append(note);
       }
     }
-    container.append(card);
+    if (review.next_session) card.append(element("h3", "", "Próxima sesión"), element("p", "", review.next_session));
+    const details = element("details", "coach-feedback-details"); details.append(element("summary", "", "Más detalles de la revisión"));
+    const repText = (label, rep) => rep ? `${label}: Rep ${rep.number}` : `${label}: Sin selección`;
+    details.append(element("p", "", repText("Mejor repetición", review.best_repetition)), element("p", "", repText("Repetición a trabajar", review.work_repetition)));
+    for (const [title, value] of [["Fortalezas", review.strengths], ["Resumen adicional", review.summary]]) if (value) details.append(element("h3", "", title), element("p", "", value));
+    card.append(details); container.append(card);
   }
   container.hidden = !item.completed_coach_reviews?.length;
 }
 
+function renderAthleteNextStep(item) {
+  const complete = item.status === "COMPLETED";
+  $("#review-cta").hidden = !complete; $("#athlete-first-look").hidden = !complete;
+  if (!complete) return;
+  const action = AthleteState.reviewAction(item), link = $("#request-review-link");
+  link.textContent = action.label; link.href = action.href;
+  $("#review-cta-copy").textContent = action.copy;
+  const human = item.completed_coach_reviews?.[0], observation = item.ai_observations?.[0];
+  $("#athlete-first-look-copy").textContent = human?.main_focus ? `Punto principal del coach: ${human.main_focus}` : (observation ? `Análisis automático: ${observation.title}. ${observation.description}` : noReps(item) ? NO_REPS_TIP : `Se detectaron ${item.repetitions_detected} repeticiones. Mira el video anotado y compara las repeticiones antes de interpretar las métricas.`);
+  const timestamp = human?.annotations?.find(a => a.timestamp_s != null)?.timestamp_s ?? observation?.timestamp ?? item.repetitions?.[0]?.bottom_s;
+  const jump = $("#athlete-first-moment"); jump.hidden = timestamp == null;
+  jump.onclick = () => seekAthleteVideo(timestamp);
+}
+
 async function setupDetail(id) {
   showView("detail-view");
-  try {
-    const item = await apiJson(`/api/analyses/${encodeURIComponent(id)}`);
+  if (detailPoller) detailPoller.stop();
+  const feedback = $("#detail-action-feedback"), connection = $("#detail-connection");
+  const flash = takeFlash(); feedback.hidden = !flash; feedback.textContent = flash || "";
+  let completedSignature;
+  const render = item => {
+    connection.hidden = true;
     $("#detail-title").textContent = item.exercise || "Análisis anterior";
     $("#detail-status").textContent = stateLabels[item.status] || item.status;
-    $("#detail-status").classList.add(`state-${item.status.toLowerCase()}`);
-    const viewLabel = item.view === "front" ? "Vista frontal" : "Vista de costado";
-    $("#detail-meta").textContent = `${fmtDate(item.created_at)} · ${item.load_kg == null ? "Sin carga" : `${item.load_kg} kg`} · ${viewLabel} · ${item.repetitions_detected} repeticiones`;
+    $("#detail-status").className = `state state-${item.status.toLowerCase()}`;
+    $("#detail-meta").textContent = `${fmtDate(item.created_at)} · ${item.load_kg == null ? "Sin carga" : `${item.load_kg} kg`} · ${item.view === "front" ? "Vista frontal" : "Vista de costado"} · ${item.repetitions_detected} repeticiones`;
     $("#detail-objective").textContent = item.objective || "Sin objetivo registrado";
-    const feedback = $("#detail-action-feedback");
-    const flash = takeFlash();
-    feedback.hidden = !flash;
-    feedback.textContent = flash || "";
-    const requestLink = $("#request-review-link");
-    const cta = $("#review-cta");
-    const reanalyzeCard = $("#reanalyze-card");
-    const reanalyzeExercise = $("#reanalyze-exercise");
-    const reanalyzeView = $("#reanalyze-view");
-    const reanalyzeSubmit = $("#reanalyze-submit");
-    const reanalyzeStatus = $("#reanalyze-status");
+    $("#detail-completed").hidden = item.status !== "COMPLETED";
+    $("#detail-error").hidden = item.status !== "FAILED";
+    renderAthleteNextStep(item);
     if (item.status === "COMPLETED") {
-      requestLink.href = `/analyses/${item.id}/request-review`;
-      cta.hidden = false;
-    } else {
-      cta.hidden = true;
+      const signature = JSON.stringify([item.analysis_json, item.ai_observations, item.coach_reviews, item.completed_coach_reviews]);
+      if (signature !== completedSignature) { renderCompleted(item); renderCoachReviews(item); renderAthleteCoachFeedback(item); completedSignature = signature; }
+      if (feedback.classList.contains("progress-card")) feedback.hidden = true;
     }
-    reanalyzeCard.hidden = !["COMPLETED", "FAILED"].includes(item.status);
-    if (!reanalyzeCard.hidden) {
-      reanalyzeExercise.value = item.exercise || "Otro";
-      reanalyzeView.value = item.view || "side";
-      reanalyzeSubmit.onclick = async () => {
-        reanalyzeSubmit.disabled = true;
-        reanalyzeStatus.textContent = "Iniciando reanálisis…";
-        try {
-          const next = await apiJson(`/api/analyses/${encodeURIComponent(item.id)}/reanalyze`, {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ exercise: reanalyzeExercise.value, view: reanalyzeView.value }),
-          });
-          window.location.assign(`/analyses/${next.id}`);
-        } catch (reanalyzeError) {
-          reanalyzeStatus.textContent = reanalyzeError.message;
-          reanalyzeSubmit.disabled = false;
-        }
-      };
-    }
-    if (item.status === "COMPLETED") {
-      renderCompleted(item);
-      // The worker marks an analysis complete only after the optional IA layer
-      // settles. Keep this fallback for analyses created by older deployments.
-      if (["PENDING", "RUNNING"].includes(item.ai_reasoning?.status)) {
-        window.setTimeout(() => setupDetail(id), 1500);
-      }
-    }
-    renderCoachReviews(item);
-    renderAthleteCoachFeedback(item);
-    if (item.status === "PENDING" || item.status === "PROCESSING") {
-      const stageLabels = { uploading: "Subiendo", validating_exercise: "Validando ejercicio", reanalyzing: "Reanalizando video", analyzing: "Analizando movimiento", annotating: "Generando video anotado", finalizing: "Finalizando", generating_observations: "Generando observaciones automáticas" };
-      feedback.hidden = false;
-      feedback.className = "card progress-card";
-      feedback.replaceChildren(element("strong", "", stageLabels[item.stage] || "Preparando análisis"));
-      const progress = element("div", "analysis-progress");
-      progress.setAttribute("role", "progressbar"); progress.setAttribute("aria-valuemin", "0"); progress.setAttribute("aria-valuemax", "100"); progress.setAttribute("aria-valuenow", String(item.progress || 0));
-      const fill = element("i"); fill.style.width = `${item.progress || 0}%`; progress.append(fill);
-      feedback.append(element("span", "muted", `${item.progress || 0} %`), progress);
-      if (detailPollId) window.clearInterval(detailPollId);
-      detailPollId = window.setInterval(async () => {
-        const next = await apiJson(`/api/analyses/${encodeURIComponent(id)}`);
-        if (next.status === "COMPLETED" || next.status === "FAILED") { window.clearInterval(detailPollId); detailPollId = null; setupDetail(id); }
-        else { const now = $(".analysis-progress"); if (now) { now.setAttribute("aria-valuenow", String(next.progress || 0)); now.firstChild.style.width = `${next.progress || 0}%`; } }
-      }, 1500);
-      return;
+    if (["PENDING", "PROCESSING"].includes(item.status)) {
+      feedback.hidden = false; feedback.className = "card progress-card";
+      feedback.replaceChildren(element("h2", "", "Estamos analizando tu video."), element("p", "", "Puedes volver más tarde desde Mis análisis."));
+      const stages = {validating_exercise: "Validando la captura", analyzing: "Analizando movimiento", annotating: "Generando el video anotado", finalizing: "Finalizando", generating_observations: "Generando observaciones automáticas"};
+      const progress = element("progress"); progress.max = 100; progress.value = item.progress || 0;
+      progress.setAttribute("aria-label", "Progreso del análisis");
+      const back = element("a", "button-link secondary-button", "Volver a Mis análisis"); back.href = "/analyses";
+      feedback.append(element("p", "muted", `${stages[item.stage] || "Preparando el análisis"} · ${item.progress || 0} %`), progress, back);
     }
     if (item.status === "FAILED") {
-      $("#detail-error").hidden = false;
-      $("#detail-error").textContent = `No pudimos completar el análisis. El registro quedó guardado para que puedas intentarlo de nuevo. Detalle técnico: ${item.error || "Error desconocido"}`;
+      feedback.hidden = true;
+      const error = $("#detail-error");
+      error.replaceChildren(element("h2", "", "El análisis no pudo completarse"), element("p", "", "Tu video quedó guardado. Revisa la captura y usa Reanalizar este video para intentarlo de nuevo."));
+      const details = element("details"); details.append(element("summary", "", "Detalle del error"), element("p", "", item.error || "Error desconocido")); error.append(details);
     }
-  } catch (error) {
-    $("#detail-title").textContent = "Análisis no disponible";
-    $("#detail-error").hidden = false;
-    $("#detail-error").textContent = error.message;
-  }
+    const card = $("#reanalyze-card"); card.hidden = !["COMPLETED", "FAILED"].includes(item.status);
+    if (!card.hidden && !$("#reanalyze-submit").onclick) {
+      $("#reanalyze-exercise").value = item.exercise || "Otro"; $("#reanalyze-view").value = item.view || "side";
+      $("#reanalyze-submit").onclick = async () => {
+        const button = $("#reanalyze-submit"); if (button.disabled) return; button.disabled = true;
+        $("#reanalyze-status").textContent = "Iniciando reanálisis…";
+        try {
+          const next = await apiJson(`/api/analyses/${encodeURIComponent(id)}/reanalyze`, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({exercise: $("#reanalyze-exercise").value, view: $("#reanalyze-view").value})});
+          window.location.assign(`/analyses/${next.id}`);
+        } catch (error) { $("#reanalyze-status").textContent = error.message; button.disabled = false; }
+      };
+    }
+  };
+  detailPoller = AthleteState.createPoller({
+    read: () => apiJson(`/api/analyses/${encodeURIComponent(id)}`), onData: render,
+    onError: error => {
+      connection.hidden = false;
+      const denied = [401, 403, 404].includes(error.status);
+      connection.replaceChildren(element("h2", "", denied ? "No podemos acceder al análisis" : "Conexión interrumpida"), element("p", "", denied ? error.message : "No podemos actualizar el estado. El análisis puede seguir en el servidor. Conservamos los últimos datos y volveremos a consultar."));
+      const retry = element("button", "secondary-button", "Volver a consultar"); retry.type = "button"; retry.onclick = () => detailPoller.retry(); connection.append(retry);
+      if (error.status === 401) { const login = element("a", "button-link", "Iniciar sesión"); login.href = "/login"; connection.append(login); }
+    }, schedule: (fn, delay) => window.setTimeout(fn, delay), cancel: timer => window.clearTimeout(timer),
+  });
+  await detailPoller.retry();
+  if (window.location.hash === "#athlete-coach-feedback") $("#athlete-coach-feedback").scrollIntoView({block: "start"});
 }
 
 async function setupCoachSelection(id) {
   showView("coach-selection-view");
-  const back = $("#selection-back");
-  const status = $("#coach-selection-status");
-  const list = $("#coach-list");
-  back.href = `/analyses/${id}`;
-  status.textContent = "Cargando coaches…";
-  try {
-    const analysis = await apiJson(`/api/analyses/${encodeURIComponent(id)}`);
-    if (analysis.status !== "COMPLETED") {
-      window.location.assign(`/analyses/${id}`);
-      return;
+  const status = $("#coach-selection-status"), list = $("#coach-list");
+  $("#selection-back").href = `/analyses/${id}`; status.textContent = "Cargando coaches…";
+  let analysis, sending = false, uncertain = false;
+  const buttons = new Map();
+  const updateRequests = () => {
+    const requests = analysis.coach_reviews || [], target = $("#selection-requests-list"); target.replaceChildren();
+    $("#selection-requests").hidden = !requests.length;
+    for (const review of requests) {
+      const row = element("p", "", `${review.coach.name} · ${review.status === "COMPLETED" ? "Revisión disponible" : "Esperando revisión del coach"}`);
+      if (review.status === "COMPLETED") { const link = element("a", "button-link secondary-button", "Ver revisión del coach"); link.href = `/analyses/${id}#athlete-coach-feedback`; row.append(link); }
+      target.append(row);
     }
-    const data = await apiJson("/api/coaches");
-    status.textContent = "";
+    for (const [coachId, button] of buttons) {
+      const active = requests.some(r => r.coach.id === coachId && ["PENDING", "IN_REVIEW"].includes(r.status));
+      button.disabled = sending || uncertain || active;
+      button.textContent = active ? "Revisión ya solicitada" : button.dataset.label;
+    }
+  };
+  try {
+    analysis = await apiJson(`/api/analyses/${encodeURIComponent(id)}`);
+    if (analysis.status !== "COMPLETED") { window.location.assign(`/analyses/${id}`); return; }
+    updateRequests();
+    const data = await apiJson("/api/coaches"); list.replaceChildren();
+    status.textContent = data.items.length ? "" : "No hay coaches disponibles en este momento. Vuelve más tarde.";
     for (const coach of data.items) {
-      const card = element("article", "card coach-card");
-      const heading = element("h2", "", coach.name);
-      const specialty = element("p", "coach-specialty", coach.specialty);
-      const bio = element("p", "muted", coach.bio || "Coach disponible para revisar tu análisis.");
-      const button = element("button", "", `Solicitar a ${coach.name}`);
-      button.type = "button";
-      button.addEventListener("click", async () => {
-        button.disabled = true;
-        status.textContent = `Solicitando revisión a ${coach.name}…`;
+      const card = element("article", "card coach-card"), button = element("button", "", `Solicitar a ${coach.name}`);
+      button.type = "button"; button.dataset.label = button.textContent; buttons.set(coach.id, button);
+      button.onclick = async () => {
+        if (button.disabled || sending || uncertain) return;
+        sending = true; updateRequests(); status.textContent = `Solicitando revisión a ${coach.name}…`;
         try {
-          await apiJson(`/api/analyses/${encodeURIComponent(id)}/request-review`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ coach_id: coach.id }),
-          });
-          setFlash(`Revisión solicitada a ${coach.name}.`);
+          await apiJson(`/api/analyses/${encodeURIComponent(id)}/request-review`, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({coach_id: coach.id})});
+          setFlash(`Revisión solicitada a ${coach.name}. Puedes consultar su estado desde Mis análisis.`);
           window.location.assign(`/analyses/${id}`);
         } catch (error) {
           status.textContent = error.message;
-          button.disabled = false;
+          // A failed response can arrive after a write committed. Re-read before allowing another request.
+          try { analysis = await apiJson(`/api/analyses/${encodeURIComponent(id)}`); }
+          catch (_) {
+            uncertain = true;
+            status.append(element("span", "", " No pudimos comprobar si la solicitud quedó registrada. Vuelve a cargar esta página antes de intentarlo nuevamente."));
+          }
+          sending = false; updateRequests();
         }
-      });
-      card.append(heading, specialty, bio, button);
-      list.append(card);
+      };
+      card.append(element("h2", "", coach.name), element("p", "coach-specialty", coach.specialty), element("p", "muted", coach.bio || "Coach disponible para revisar tu análisis."), button); list.append(card);
     }
-  } catch (error) {
-    status.textContent = `No se pudieron cargar los coaches: ${error.message}`;
-  }
+    updateRequests();
+  } catch (error) { status.textContent = `No se pudieron cargar los coaches: ${error.message}`; }
 }
 
 function coachReviewCard(item, coachId) {
@@ -660,6 +639,7 @@ async function setupCoachReviews() {
         list.replaceChildren();
         const visible = filter.value ? items.filter((item) => item.status === filter.value) : items;
         status.textContent = visible.length ? "" : "No hay revisiones para este filtro. Cuando un atleta solicite ayuda, aparecerá aquí.";
+        status.classList.toggle("empty-state", visible.length === 0);
         renderFilterChips($("#coach-review-filters"), items, filter.value, reviewStateLabels, (next) => { filter.value = next; paint(); });
         for (const item of visible) list.append(coachReviewCard(item, coachId));
       };
@@ -681,19 +661,97 @@ function formatVideoTime(seconds) {
 
 function jumpCoachVideo(timestamp) {
   const video = $("#coach-annotated-video");
-  video.currentTime = timestamp;
-  video.pause();
+  const seek = () => { video.currentTime = Number(timestamp); video.pause(); };
+  if (video.readyState >= HTMLMediaElement.HAVE_METADATA) seek();
+  else video.addEventListener("loadedmetadata", seek, { once: true });
 }
 
-function renderCoachAnalysis(item, onClassify, onAIDecision, onMomentComment, onCorrection) {
+function renderCoachMoments(item, onDecision, onComment, locked, state) {
+  const moments = ReviewState.momentsForReview(item);
+  const navigation = $("#coach-moments-navigation");
+  const list = $("#coach-review-moments-list");
+  navigation.replaceChildren(); list.replaceChildren();
+  const hasSelection = moments.some(moment => moment.id === state.selected);
+  $("#coach-moments-intro").hidden = hasSelection;
+  $("#coach-moments-intro").nextElementSibling.hidden = hasSelection;
+  $("#coach-moments-intro").textContent = moments.length
+    ? `Encontré ${moments.length} ${moments.length === 1 ? "momento que probablemente quieras revisar" : "momentos que probablemente quieras revisar"}.`
+    : "No hay momentos sugeridos disponibles. Puedes continuar revisando el video completo.";
+  if (!moments.length) return;
+  const visited = moments.filter(moment => state.reviewed.has(moment.id)).length;
+  navigation.append(element("p", "moment-progress", `${visited} de ${moments.length} revisados`));
+  const select = (moment, focus = true) => {
+    state.selected = moment.id;
+    jumpCoachVideo(Number(moment.timestamp));
+    renderCoachMoments(item, onDecision, onComment, locked, state);
+    if (focus) $("#coach-review-moments-list h3")?.focus({ preventScroll: true });
+  };
+  if (!moments.some(moment => moment.id === state.selected)) {
+    const first = element("button", "", "Revisar primer momento"); first.type = "button";
+    first.onclick = () => select(moments[0]); navigation.append(first); return;
+  }
+  const selected = moments.find(moment => moment.id === state.selected);
+  const index = moments.indexOf(selected);
+  const picker = element("div", "moment-picker");
+  for (const [position, moment] of moments.entries()) {
+    const button = element("button", moment.id === selected.id ? "is-selected" : "secondary-button", `Momento ${position + 1} · ${formatVideoTime(Number(moment.timestamp))}`);
+    button.type = "button"; button.setAttribute("aria-pressed", String(moment.id === selected.id));
+    button.onclick = () => select(moment); picker.append(button);
+  }
+  navigation.append(picker);
+  const heading = element("h3", "", selected.title); heading.tabIndex = -1;
+  list.append(element("p", "ai-observation-meta", `${selected.repetition ? `Rep ${selected.repetition} · ` : ""}${formatVideoTime(Number(selected.timestamp))}`), heading,
+    element("p", "", selected.description || "Observación automática para revisar."),
+    element("p", "muted", `Motivo: ${selected.reason || selected.evidence || "Observación generada a partir del análisis del movimiento."}`));
+  if (selected.confidence) {
+    const confidence = { low: "baja", medium: "media", high: "alta" }[selected.confidence] || String(selected.confidence);
+    list.append(element("p", "muted", `Confianza de la sugerencia: ${confidence}. No confirma un error técnico.`));
+  }
+  list.append(element("p", "muted", selected.decision === "CONFIRMED" ? "IA confirmada por el coach. Esto no crea una anotación para el atleta." : selected.decision === "DISMISSED" ? "Sugerencia descartada. Esto no elimina anotaciones para el atleta." : "Revisar una sugerencia no la confirma ni la comparte con el atleta."));
+  const actions = element("div", "form-actions review-moment-controls");
+  const action = (label, callback, disabled = locked) => {
+    const button = element("button", "secondary-button", label); button.type = "button"; button.disabled = disabled;
+    button.onclick = callback; actions.append(button); return button;
+  };
+  action("Comentar este momento", () => { jumpCoachVideo(Number(selected.timestamp)); onComment(selected); }).className = "";
+  action(state.reviewed.has(selected.id) ? "Momento revisado" : "Marcar como revisado", () => {
+    state.reviewed.add(selected.id); renderCoachMoments(item, onDecision, onComment, locked, state);
+    $("#coach-moments-navigation .moment-progress").textContent += " · Revisado en esta sesión; no se creó una anotación.";
+  }, locked || state.reviewed.has(selected.id));
+  action("Descartar sugerencia", async () => {
+    const result = await onDecision(selected, { decision: "DISMISSED" });
+    if (result === false) $("#coach-moments-feedback").textContent = "No se pudo descartar. Puedes reintentar.";
+  });
+  action("Siguiente momento", () => select(moments[index + 1]), index === moments.length - 1);
+  list.append(actions);
+  const advanced = element("details", "moment-decision");
+  advanced.append(element("summary", "", "Validar o editar la observación IA"));
+  const titleLabel = element("label", "", "Título de la observación");
+  const title = element("input"); title.value = selected.title; title.maxLength = 240; title.disabled = locked;
+  const descriptionLabel = element("label", "", "Descripción");
+  const description = element("textarea"); description.value = selected.description || ""; description.maxLength = 800; description.disabled = locked;
+  titleLabel.append(title); descriptionLabel.append(description);
+  const confirm = element("button", "secondary-button", "Confirmar IA con este contenido"); confirm.type = "button"; confirm.disabled = locked;
+  confirm.onclick = async () => {
+    if (!title.value.trim() || !description.value.trim()) { $("#coach-moments-feedback").textContent = "Completa título y descripción."; return; }
+    const result = await onDecision(selected, { decision: "CONFIRMED", title: title.value, description: description.value });
+    if (result === false) $("#coach-moments-feedback").textContent = "No se pudo confirmar. El resumen se conserva.";
+  };
+  advanced.append(element("p", "muted", "Confirmar registra tu decisión sobre la IA. Para entregar feedback, usa Comentar este momento."), titleLabel, descriptionLabel, confirm);
+  list.append(advanced);
+  const feedback = element("p", "muted"); feedback.id = "coach-moments-feedback"; feedback.setAttribute("role", "status"); list.append(feedback);
+}
+
+function renderCoachAnalysis(item, onClassify, onAIDecision, onMomentComment, onCorrection, onMoments) {
   const analysis = item.analysis;
   $("#coach-review-title").textContent = analysis.exercise || "Revisión";
   $("#coach-review-state").textContent = reviewStateLabels[item.status] || item.status;
   $("#coach-review-state").className = `state state-${item.status.toLowerCase()}`;
   $("#coach-review-meta").textContent = `${item.athlete.name} · ${fmtDate(item.created_at)} · ${analysis.load_kg == null ? "Sin carga" : `${analysis.load_kg} kg`} · ${analysis.repetitions_detected} repeticiones`;
   $("#coach-review-objective").textContent = analysis.objective || "Sin objetivo registrado";
-  $("#coach-original-video").src = analysis.original_video_url;
-  $("#coach-annotated-video").src = analysis.annotated_video_url;
+  for (const [selector, source] of [["#coach-original-video", analysis.original_video_url], ["#coach-annotated-video", analysis.annotated_video_url]]) {
+    if (source && $(selector).getAttribute("src") !== source) $(selector).src = source;
+  }
   const video = $("#coach-annotated-video");
   const videoTime = $("#coach-video-time");
   videoTime.textContent = formatVideoTime(video.currentTime);
@@ -720,7 +778,11 @@ function renderCoachAnalysis(item, onClassify, onAIDecision, onMomentComment, on
   if (!analysis.repetitions.length) reps.textContent = NO_REPS_TIP;
   for (const rep of analysis.repetitions) {
     const row = element("div", "timeline-jump");
-    row.append(element("strong", "timeline-marker", `Rep ${rep.number}`));
+    const jump = element("button", "timeline-marker", `Rep ${rep.number}`);
+    jump.type = "button";
+    jump.setAttribute("aria-label", `Ver repetición ${rep.number}`);
+    jump.onclick = (event) => { event.stopPropagation(); jumpCoachVideo(rep.start_s); };
+    row.append(jump);
     row.append(element("span", "", `${formatVideoTime(rep.start_s)} → ${formatVideoTime(rep.end_s)} · punto más bajo ${formatVideoTime(rep.bottom_s)}`));
     row.onclick = () => jumpCoachVideo(rep.start_s);
     const classifications = element("span", "rep-classifications");
@@ -741,8 +803,7 @@ function renderCoachAnalysis(item, onClassify, onAIDecision, onMomentComment, on
     reps.append(row);
   }
   $("#coach-technical-json").textContent = JSON.stringify(analysis.analysis_json, null, 2);
-  renderCoachAIObservations(item.ai_observations, onAIDecision, item.status === "COMPLETED");
-  renderReviewMoments(item.review_moments, onAIDecision, onMomentComment, item.status === "COMPLETED");
+  onMoments(item, onAIDecision, onMomentComment, item.status === "COMPLETED");
 }
 
 function fillAnnotationRepetitions(repetitions) {
@@ -767,7 +828,10 @@ function renderCoachAnnotations(annotations, editable, onEdit, onDelete) {
   }
   for (const annotation of annotations) {
     const item = element("article", "annotation-item");
-    const time = element("strong", "timeline-marker", formatVideoTime(annotation.timestamp_s));
+    const time = element("button", "timeline-marker", formatVideoTime(annotation.timestamp_s));
+    time.type = "button";
+    time.setAttribute("aria-label", `Ver comentario en ${formatVideoTime(annotation.timestamp_s)}`);
+    time.onclick = (event) => { event.stopPropagation(); jumpCoachVideo(annotation.timestamp_s); };
     const content = element("div");
     content.append(element("strong", "", annotationLabels[annotation.type] || annotation.type));
     content.append(element("p", "", annotation.text));
@@ -799,8 +863,14 @@ async function setupCoachReviewDetail(id) {
   let coachId;
   $("#coach-review-back").href = "/coach/reviews";
   try { coachId = (await sessionUser()).id; }
-  catch (authError) { error.hidden = false; error.textContent = authError.message; return; }
+  catch (authError) { $("#coach-review-detail-view").classList.add("load-error"); error.hidden = false; error.textContent = authError.message; return; }
   let item;
+  let loadVersion = 0;
+  let pendingRequests = 0;
+  let closing = false;
+  const draft = ReviewState.createDraft();
+  const momentState = { selected: null, reviewed: new Set() };
+  const busyControls = new WeakMap();
   let annotations = [];
   let editingAnnotation = null;
   let annotationTimestamp = null;
@@ -816,12 +886,50 @@ async function setupCoachReviewDetail(id) {
     next_session: $("#coach-next-session"),
     summary: $("#coach-summary"),
   };
+  const updateReviewUX = () => {
+    if (!item) return;
+    const locked = item.status === "COMPLETED";
+    $("#coach-draft-status").textContent = draft.dirty ? "Cambios sin guardar" : "Sin cambios pendientes";
+    $("#coach-draft-status").classList.toggle("draft-dirty", draft.dirty);
+    const list = $("#coach-close-requirements"); list.replaceChildren();
+    for (const requirement of ReviewState.requirements(item.status, annotations, draft.snapshot())) {
+      const row = element("li", requirement.met ? "requirement-met" : "", `${requirement.met ? "Listo" : "Pendiente"} · ${requirement.label}`);
+      list.append(row);
+    }
+    for (const field of Object.values(summaryFields)) field.disabled = locked || closing;
+    for (const field of document.querySelectorAll("#coach-annotation-editor input,#coach-annotation-editor textarea,#coach-annotation-editor select,#coach-review-moments-list input,#coach-review-moments-list textarea")) field.disabled = locked || closing || pendingRequests > 0;
+    for (const button of document.querySelectorAll("#coach-review-detail-view button:not([data-rate])")) {
+      if (closing || pendingRequests > 0) {
+        if (!busyControls.has(button)) busyControls.set(button, button.disabled);
+        button.disabled = true;
+      } else if (busyControls.has(button)) {
+        button.disabled = busyControls.get(button); busyControls.delete(button);
+      }
+    }
+    $("#coach-save-summary").disabled = locked || closing || pendingRequests > 0;
+    $("#coach-complete-review").disabled = locked || closing || pendingRequests > 0;
+    $("#coach-complete-review").textContent = closing ? "Guardando y completando…" : "Guardar y completar revisión";
+  };
+  const reviewRequest = async (url, options) => {
+    pendingRequests++; updateReviewUX();
+    try { return await apiJson(url, options); }
+    finally { pendingRequests--; updateReviewUX(); }
+  };
+  for (const [key, field] of Object.entries(summaryFields)) field.addEventListener("input", () => { draft.edit(key, field.value); updateReviewUX(); });
+  window.addEventListener("beforeunload", event => {
+    if (draft.dirty || (!annotationEditor.hidden && annotationText.value.trim())) { event.preventDefault(); event.returnValue = ""; }
+  });
+  const saveSummary = async snapshot => reviewRequest(`/api/coach/reviews/${encodeURIComponent(id)}/summary?coach_id=${encodeURIComponent(coachId)}`, {
+    method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.fromEntries(Object.entries(snapshot).map(([key,value]) => [key,value || null]))),
+  });
   for (const option of annotationType.options) option.textContent = annotationLabels[option.value] || option.textContent;
   annotationText.placeholder = "Ej: cierra más rápido la extensión de cadera";
   summaryFields.strengths.placeholder = "Ej: buena posición de salida, barra cerca del cuerpo";
   summaryFields.main_focus.placeholder = "Ej: extensión de cadera más rápida";
   summaryFields.next_session.placeholder = "Ej: 3×3 al 70% con foco en el jalón";
+  const focusEditor = () => { annotationText.focus({ preventScroll: true }); annotationEditor.scrollIntoView({ behavior: "auto", block: "end" }); };
   const openEditor = (annotation = null, seed = null) => {
+    if (!annotationEditor.hidden && annotationText.value.trim()) { annotationStatus.textContent = "Guarda o cancela el comentario abierto antes de cambiar de momento."; focusEditor(); return; }
     editingAnnotation = annotation;
     annotationTimestamp = annotation ? annotation.timestamp_s : (seed?.timestamp_s ?? $("#coach-annotated-video").currentTime);
     annotationEditor.hidden = false;
@@ -831,16 +939,17 @@ async function setupCoachReviewDetail(id) {
     annotationType.value = annotation?.type || seed?.type || "COMMENT";
     annotationText.value = annotation?.text || seed?.text || "";
     annotationRepetition.value = annotation?.repetition_number || seed?.repetition_number || "";
-    annotationText.focus();
+    focusEditor();
   };
   const loadAnnotations = async () => {
-    const data = await apiJson(`/api/coach/reviews/${encodeURIComponent(id)}/annotations?coach_id=${encodeURIComponent(coachId)}`);
+    const data = await reviewRequest(`/api/coach/reviews/${encodeURIComponent(id)}/annotations?coach_id=${encodeURIComponent(coachId)}`);
     annotations = data.items;
+    updateReviewUX();
     const editable = item.status !== "COMPLETED";
     renderCoachAnnotations(annotations, editable, openEditor, async (annotation) => {
       if (!window.confirm("¿Eliminar este comentario?")) return;
       try {
-        await apiJson(`/api/coach/reviews/${encodeURIComponent(id)}/annotations/${encodeURIComponent(annotation.id)}?coach_id=${encodeURIComponent(coachId)}`, { method: "DELETE" });
+        await reviewRequest(`/api/coach/reviews/${encodeURIComponent(id)}/annotations/${encodeURIComponent(annotation.id)}?coach_id=${encodeURIComponent(coachId)}`, { method: "DELETE" });
         await loadAnnotations();
       } catch (deleteError) {
         annotationStatus.textContent = deleteError.message;
@@ -848,10 +957,14 @@ async function setupCoachReviewDetail(id) {
     });
   };
   const load = async () => {
-    item = await apiJson(`/api/coach/reviews/${encodeURIComponent(id)}?coach_id=${encodeURIComponent(coachId)}`);
+    const version = ++loadVersion;
+    const nextItem = await reviewRequest(`/api/coach/reviews/${encodeURIComponent(id)}?coach_id=${encodeURIComponent(coachId)}`);
+    if (version !== loadVersion) return;
+    item = nextItem;
     renderCoachAnalysis(item, async (rep, classification) => {
+      if (closing || pendingRequests || item.status === "COMPLETED") return;
       try {
-        await apiJson(`/api/coach/reviews/${encodeURIComponent(id)}/repetitions/${encodeURIComponent(rep.id)}?coach_id=${encodeURIComponent(coachId)}`, {
+        await reviewRequest(`/api/coach/reviews/${encodeURIComponent(id)}/repetitions/${encodeURIComponent(rep.id)}?coach_id=${encodeURIComponent(coachId)}`, {
           method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ classification }),
         });
         await load();
@@ -859,17 +972,19 @@ async function setupCoachReviewDetail(id) {
         summaryStatus.textContent = classificationError.message;
       }
     }, async (observation, payload) => {
+      if (closing || pendingRequests || item.status === "COMPLETED") return false;
       try {
-        await apiJson(`/api/coach/reviews/${encodeURIComponent(id)}/ai-observations/${encodeURIComponent(observation.id)}?coach_id=${encodeURIComponent(coachId)}`, {
+        await reviewRequest(`/api/coach/reviews/${encodeURIComponent(id)}/ai-observations/${encodeURIComponent(observation.id)}?coach_id=${encodeURIComponent(coachId)}`, {
           method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
         });
         await load();
       } catch (aiError) {
         summaryStatus.textContent = aiError.message;
+        return false;
       }
     }, (moment) => { jumpCoachVideo(moment.timestamp); openEditor(null, { timestamp_s: moment.timestamp, type: "COMMENT", text: moment.title, repetition_number: moment.repetition }); }, async (rep, correction_status) => {
       try {
-        await apiJson("/api/coach/reviews/" + encodeURIComponent(id) + "/repetitions/" + encodeURIComponent(rep.id) + "?coach_id=" + encodeURIComponent(coachId), {
+        await reviewRequest("/api/coach/reviews/" + encodeURIComponent(id) + "/repetitions/" + encodeURIComponent(rep.id) + "?coach_id=" + encodeURIComponent(coachId), {
           method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ correction_status }),
         });
         $("#manual-rep-status").textContent = correction_status === "DISCARDED" ? "Repetición descartada." : "Repetición restaurada.";
@@ -877,14 +992,18 @@ async function setupCoachReviewDetail(id) {
       } catch (correctionError) {
         $("#manual-rep-status").textContent = correctionError.message;
       }
-    });
+    }, (current, onDecision, onComment, locked) => renderCoachMoments(current, onDecision, onComment, locked, momentState));
+    const selectedRepetition = annotationRepetition.value;
     fillAnnotationRepetitions(item.analysis.repetitions);
+    if (!annotationEditor.hidden) annotationRepetition.value = selectedRepetition;
+    $("#coach-completed-recipient").textContent = `El feedback ya está disponible para ${item.athlete.name}.`;
     const startCard = $("#coach-start-card");
     startCard.hidden = item.status !== "PENDING";
     $("#coach-completed-card").hidden = item.status !== "COMPLETED";
     $("#coach-start-review").onclick = async () => {
+      if (closing || pendingRequests || item.status === "COMPLETED") return;
       try {
-        await apiJson(`/api/coach/reviews/${encodeURIComponent(id)}/start?coach_id=${encodeURIComponent(coachId)}`, { method: "PATCH" });
+        await reviewRequest(`/api/coach/reviews/${encodeURIComponent(id)}/start?coach_id=${encodeURIComponent(coachId)}`, { method: "PATCH" });
         await load();
       } catch (startError) {
         error.hidden = false;
@@ -893,17 +1012,19 @@ async function setupCoachReviewDetail(id) {
     };
     $("#coach-add-annotation").hidden = item.status === "COMPLETED";
     $("#coach-repetition-correction").hidden = item.status === "COMPLETED";
+    const values = draft.hydrate(item.summary);
     for (const [key, field] of Object.entries(summaryFields)) {
-      field.value = item.summary?.[key] || "";
+      field.value = values[key];
       field.disabled = item.status === "COMPLETED";
     }
     $("#coach-save-summary").disabled = item.status === "COMPLETED";
     $("#coach-complete-review").disabled = item.status === "COMPLETED";
-    annotationEditor.hidden = true;
     await loadAnnotations();
+    updateReviewUX();
   };
   $("#coach-add-annotation").onclick = () => openEditor();
   $("#manual-rep-save").onclick = async () => {
+    if (closing || pendingRequests || item.status === "COMPLETED") return;
     const status = $("#manual-rep-status");
     const button = $("#manual-rep-save");
     const rawTimes = ["#manual-rep-start", "#manual-rep-bottom", "#manual-rep-end"].map(selector => $(selector).value.trim());
@@ -911,7 +1032,7 @@ async function setupCoachReviewDetail(id) {
     if (rawTimes.some(value => value === "") || ![start_s, bottom_s, end_s].every(Number.isFinite)) { status.textContent = "Indica inicio, punto bajo y fin."; return; }
     button.disabled = true;
     try {
-      await apiJson("/api/coach/reviews/" + encodeURIComponent(id) + "/repetitions?coach_id=" + encodeURIComponent(coachId), {
+      await reviewRequest("/api/coach/reviews/" + encodeURIComponent(id) + "/repetitions?coach_id=" + encodeURIComponent(coachId), {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ start_s, bottom_s, end_s, correction_note: $("#manual-rep-note").value || null }),
       });
@@ -926,6 +1047,7 @@ async function setupCoachReviewDetail(id) {
   };
   $("#coach-annotation-cancel").onclick = () => { annotationEditor.hidden = true; };
   $("#coach-annotation-save").onclick = async () => {
+    if (closing || pendingRequests || item.status === "COMPLETED") return;
     const saveButton = $("#coach-annotation-save");
     saveButton.disabled = true;
     annotationStatus.textContent = "Guardando comentario…";
@@ -937,11 +1059,11 @@ async function setupCoachReviewDetail(id) {
     };
     try {
       if (editingAnnotation) {
-        await apiJson(`/api/coach/reviews/${encodeURIComponent(id)}/annotations/${encodeURIComponent(editingAnnotation.id)}?coach_id=${encodeURIComponent(coachId)}`, {
+        await reviewRequest(`/api/coach/reviews/${encodeURIComponent(id)}/annotations/${encodeURIComponent(editingAnnotation.id)}?coach_id=${encodeURIComponent(coachId)}`, {
           method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
         });
       } else {
-        await apiJson(`/api/coach/reviews/${encodeURIComponent(id)}/annotations?coach_id=${encodeURIComponent(coachId)}`, {
+        await reviewRequest(`/api/coach/reviews/${encodeURIComponent(id)}/annotations?coach_id=${encodeURIComponent(coachId)}`, {
           method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, timestamp_s: timestamp }),
         });
       }
@@ -950,41 +1072,48 @@ async function setupCoachReviewDetail(id) {
       await load();
     } catch (saveError) {
       annotationStatus.textContent = saveError.message;
-      saveButton.disabled = false;
+    } finally {
+      saveButton.disabled = item.status === "COMPLETED";
     }
   };
   $("#coach-save-summary").onclick = async () => {
-    const saveButton = $("#coach-save-summary");
-    saveButton.disabled = true;
+    if (closing || pendingRequests || item.status === "COMPLETED") return;
+    const snapshot = draft.snapshot();
     summaryStatus.textContent = "Guardando resumen…";
-    const payload = Object.fromEntries(Object.entries(summaryFields).map(([key, field]) => [key, field.value || null]));
     try {
-      await apiJson(`/api/coach/reviews/${encodeURIComponent(id)}/summary?coach_id=${encodeURIComponent(coachId)}`, {
-        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
-      });
-      summaryStatus.textContent = "Resumen guardado.";
-      await load();
-    } catch (summaryError) {
-      summaryStatus.textContent = summaryError.message;
-      saveButton.disabled = false;
-    }
+      draft.acknowledge(snapshot, await saveSummary(snapshot));
+      const values = draft.snapshot();
+      for (const [key,field] of Object.entries(summaryFields)) field.value = values[key];
+      summaryStatus.textContent = draft.dirty ? "Resumen guardado; hay cambios posteriores sin guardar." : "Resumen guardado.";
+    } catch (saveError) { summaryStatus.textContent = `No se guardó el resumen: ${saveError.message}. Tu borrador se conserva.`; }
+    finally { updateReviewUX(); }
   };
   $("#coach-complete-review").onclick = async () => {
-    const completeButton = $("#coach-complete-review");
-    completeButton.disabled = true;
-    summaryStatus.textContent = "Finalizando revisión…";
+    if (closing || pendingRequests) return;
+    if (!annotationEditor.hidden && annotationText.value.trim()) { summaryStatus.textContent = "Guarda o cancela el comentario abierto antes de completar."; focusEditor(); return; }
+    closing = true; updateReviewUX();
+    let completed = false;
+    summaryStatus.textContent = "Guardando campos pendientes y verificando requisitos…";
     try {
-      await apiJson(`/api/coach/reviews/${encodeURIComponent(id)}/complete?coach_id=${encodeURIComponent(coachId)}`, { method: "POST" });
-      summaryStatus.textContent = "Revisión finalizada.";
+      await ReviewState.saveAndComplete({ draft, status: () => item.status, annotations: () => annotations, save: saveSummary,
+        complete: () => reviewRequest(`/api/coach/reviews/${encodeURIComponent(id)}/complete?coach_id=${encodeURIComponent(coachId)}`, { method: "POST" }),
+      });
+      item.status = "COMPLETED";
+      completed = true;
+      summaryStatus.textContent = "Revisión completada. El feedback está disponible y la edición quedó bloqueada.";
       await load();
     } catch (completeError) {
-      summaryStatus.textContent = completeError.message;
-      completeButton.disabled = false;
+      summaryStatus.textContent = completed
+        ? "Revisión completada. No se pudo actualizar la vista; recarga para ver el estado final."
+        : `${completeError.message} El contenido se conserva; puedes corregirlo y reintentar.`;
+      if (completed) for (const button of document.querySelectorAll("#coach-review-detail-view button:not([data-rate])")) busyControls.set(button, true);
     }
+    finally { closing = false; updateReviewUX(); }
   };
   try {
     await load();
   } catch (loadError) {
+    $("#coach-review-detail-view").classList.add("load-error");
     error.hidden = false;
     error.textContent = loadError.message;
   }

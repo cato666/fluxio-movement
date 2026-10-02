@@ -26,8 +26,8 @@ def completed_analysis(session, analysis_id='completed'):
     return row
 
 
-def test_coaches_are_seeded_with_specialty_and_bio(client):
-    response = client.get('/api/coaches')
+def test_coaches_are_seeded_with_specialty_and_bio(athlete_client):
+    response = athlete_client.get('/api/coaches')
     assert response.status_code == 200
     assert response.json()['items'] == [
         {'id': str(ANDREA_ID), 'name': 'Annais', 'specialty': 'Fuerza',
@@ -39,9 +39,9 @@ def test_coaches_are_seeded_with_specialty_and_bio(client):
     ]
 
 
-def test_request_review_persists_and_detail_names_coach(client, session):
+def test_request_review_persists_and_detail_names_coach(athlete_client, session):
     completed_analysis(session)
-    response = client.post('/api/analyses/completed/request-review', json={'coach_id': str(CARLOS_ID)})
+    response = athlete_client.post('/api/analyses/completed/request-review', json={'coach_id': str(CARLOS_ID)})
     assert response.status_code == 201, response.text
     review = response.json()
     assert review['status'] == 'PENDING'
@@ -52,19 +52,20 @@ def test_request_review_persists_and_detail_names_coach(client, session):
     assert persisted.analysis_id == 'completed'
     assert persisted.athlete_id == DEMO_ATHLETE_ID
     assert persisted.coach_id == CARLOS_ID
-    detail = client.get('/api/analyses/completed').json()
+    detail = athlete_client.get('/api/analyses/completed').json()
     assert detail['coach_reviews'][0]['status'] == 'PENDING'
     assert detail['coach_reviews'][0]['coach']['name'] == 'Carlos'
-    page = client.get('/analyses/completed').text
-    assert 'Solicitar revisión de coach' in page
-    assert client.get('/analyses/completed/request-review').status_code == 200
+    page = athlete_client.get('/analyses/completed').text
+    assert 'Tu siguiente paso' in page
+    assert 'id="request-review-link"' in page
+    assert athlete_client.get('/analyses/completed/request-review').status_code == 200
 
 
-def test_active_request_cannot_be_duplicated_but_another_coach_is_allowed(client, session):
+def test_active_request_cannot_be_duplicated_but_another_coach_is_allowed(athlete_client, session):
     completed_analysis(session)
-    first = client.post('/api/analyses/completed/request-review', json={'coach_id': str(CARLOS_ID)})
-    duplicate = client.post('/api/analyses/completed/request-review', json={'coach_id': str(CARLOS_ID)})
-    other = client.post('/api/analyses/completed/request-review', json={'coach_id': str(ANDREA_ID)})
+    first = athlete_client.post('/api/analyses/completed/request-review', json={'coach_id': str(CARLOS_ID)})
+    duplicate = athlete_client.post('/api/analyses/completed/request-review', json={'coach_id': str(CARLOS_ID)})
+    other = athlete_client.post('/api/analyses/completed/request-review', json={'coach_id': str(ANDREA_ID)})
     assert first.status_code == 201
     assert duplicate.status_code == 409
     assert 'solicitud activa' in duplicate.json()['detail']
@@ -73,7 +74,7 @@ def test_active_request_cannot_be_duplicated_but_another_coach_is_allowed(client
 
 
 @pytest.mark.parametrize('status, expected', [('PENDING', 409), ('PROCESSING', 409), ('FAILED', 409)])
-def test_request_requires_completed_analysis(client, session, status, expected):
+def test_request_requires_completed_analysis(athlete_client, session, status, expected):
     row = Analysis(
         id=status.lower(), athlete_id=DEMO_ATHLETE_ID, status=status,
         original_filename='squat.mp4', video_path='uploads/squat.mp4',
@@ -81,14 +82,14 @@ def test_request_requires_completed_analysis(client, session, status, expected):
     )
     session.add(row)
     session.commit()
-    response = client.post(f'/api/analyses/{status.lower()}/request-review', json={'coach_id': str(CARLOS_ID)})
+    response = athlete_client.post(f'/api/analyses/{status.lower()}/request-review', json={'coach_id': str(CARLOS_ID)})
     assert response.status_code == expected
     assert session.scalars(select(CoachReview)).all() == []
 
 
-def test_request_rejects_unknown_coach_and_other_athlete_analysis(client, session):
+def test_request_rejects_unknown_coach_and_other_athlete_analysis(athlete_client, session):
     completed_analysis(session)
-    assert client.post('/api/analyses/completed/request-review', json={'coach_id': str(uuid4())}).status_code == 404
+    assert athlete_client.post('/api/analyses/completed/request-review', json={'coach_id': str(uuid4())}).status_code == 404
     other_id = uuid4()
     session.add(User(id=other_id, name='Other athlete', role='ATHLETE'))
     session.flush()
@@ -101,4 +102,4 @@ def test_request_rejects_unknown_coach_and_other_athlete_analysis(client, sessio
         completed_at=datetime.now(timezone.utc),
     ))
     session.commit()
-    assert client.post('/api/analyses/other/request-review', json={'coach_id': str(CARLOS_ID)}).status_code == 404
+    assert athlete_client.post('/api/analyses/other/request-review', json={'coach_id': str(CARLOS_ID)}).status_code == 404

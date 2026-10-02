@@ -44,9 +44,9 @@ def test_background_worker_completes_persisted_analysis(session, monkeypatch):
     assert completed.annotated_video_path == f'results/{job}/annotated.mp4'
 
 
-def test_analysis_returns_202_and_persists_processing_progress(client, monkeypatch):
+def test_analysis_returns_202_and_persists_processing_progress(athlete_client, monkeypatch):
     monkeypatch.setattr(main, '_process_analysis', lambda *_: None)
-    response = client.post('/api/analyses', data={'exercise': 'Clean', 'objective': 'Trayectoria'}, files={'file': ('clean.mp4', b'video', 'video/mp4')})
+    response = athlete_client.post('/api/analyses', data={'exercise': 'Clean', 'objective': 'Trayectoria'}, files={'file': ('clean.mp4', b'video', 'video/mp4')})
     assert response.status_code == 202
     payload = response.json()
     assert payload['status'] == 'PROCESSING'
@@ -54,7 +54,7 @@ def test_analysis_returns_202_and_persists_processing_progress(client, monkeypat
     assert payload['stage'] == 'analyzing'
 
 
-def test_thumbnail_url_is_exposed_and_null_when_missing(client, session):
+def test_thumbnail_url_is_exposed_and_null_when_missing(athlete_client, session):
     thumbnail = main.RESULTS / 'with-thumb' / 'thumbnail.jpg'
     thumbnail.parent.mkdir()
     thumbnail.write_bytes(b'jpg')
@@ -63,10 +63,10 @@ def test_thumbnail_url_is_exposed_and_null_when_missing(client, session):
         Analysis(id='without-thumb', athlete_id=DEMO_ATHLETE_ID, status='COMPLETED', original_filename='y.mp4', video_path='uploads/y.mp4', annotated_video_path='results/without-thumb/annotated.mp4', result={}, completed_at=main.datetime.now(main.timezone.utc), progress=100),
     ])
     session.commit()
-    items = {item['id']: item for item in client.get('/api/analyses').json()['items']}
+    items = {item['id']: item for item in athlete_client.get('/api/analyses').json()['items']}
     assert items['with-thumb']['thumbnail_url'] == '/results/with-thumb/thumbnail.jpg'
     assert items['without-thumb']['thumbnail_url'] is None
-    assert client.get(items['with-thumb']['thumbnail_url']).status_code == 200
+    assert athlete_client.get(items['with-thumb']['thumbnail_url']).status_code == 200
 
 
 def test_recovery_marks_interrupted_processing_as_failed(session):

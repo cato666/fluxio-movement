@@ -58,3 +58,23 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setattr(analysis_static, 'all_directories', [str(analysis)])
     with TestClient(main.app) as client:
         yield client
+
+
+@pytest.fixture
+def athlete_client(client):
+    response = client.post('/api/auth/login', json={'username': 'gaston', 'password': 'demo1234'})
+    assert response.status_code == 200, response.text
+    return client
+
+
+@pytest.fixture
+def coach_client(client):
+    response = client.post('/api/auth/login', json={'username': 'carlos', 'password': 'demo1234'})
+    assert response.status_code == 200, response.text
+    return client
+
+
+@pytest.fixture
+def valid_preflight(monkeypatch):
+    """Unit tests with fake video bytes isolate persistence from decoding."""
+    monkeypatch.setattr(main, 'validate_video_exercise', lambda *_: None)

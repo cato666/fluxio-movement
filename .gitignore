@@ -18,3 +18,4 @@ tmp/
 *.dump
 models/*.task
 !.gitkeep
+.impeccable/review/

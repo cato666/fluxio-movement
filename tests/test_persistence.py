@@ -4,7 +4,7 @@ from uuid import uuid4
 import pytest
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import func, inspect, select
+from sqlalchemy import func, inspect, select, text
 from sqlalchemy.exc import IntegrityError
 
 from app.database import Base, SessionLocal, engine
@@ -28,6 +28,9 @@ def repetition(session, analysis_id='a', number=1):
 
 def test_migration_roundtrip_and_no_model_drift():
     config = Config('alembic.ini')
+    # Legacy revisions cannot represent the newer administrator role.
+    with engine.begin() as connection:
+        connection.execute(text("DELETE FROM users WHERE role = 'SYSTEM_ADMIN'"))
     command.downgrade(config, 'base')
     assert set(inspect(engine).get_table_names()) == {'alembic_version'}
     command.upgrade(config, 'head')
@@ -40,7 +43,7 @@ def test_seed_is_idempotent_and_preserves_existing_data(session):
     seed(session)
     seed(session)
     session.commit()
-    assert session.scalar(select(func.count()).select_from(User)) == 4
+    assert session.scalar(select(func.count()).select_from(User)) == len(DEMOS)
     assert session.scalar(select(func.count()).select_from(Athlete)) == 1
     assert session.scalar(select(func.count()).select_from(Coach)) == 3
     assert {(u.name, u.role) for u in session.scalars(select(User))} == {(d[2], d[3]) for d in DEMOS}

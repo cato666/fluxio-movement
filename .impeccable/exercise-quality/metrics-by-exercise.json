@@ -1,0 +1,72 @@
+{
+  "squat": {
+    "eligible_videos": 0,
+    "status": "NOT_MEASURABLE: no independent real video of this exercise",
+    "exact_count_accuracy": null,
+    "event_precision": null,
+    "false_positives": null,
+    "false_negatives": null,
+    "zero_detection_percent": null,
+    "mean_suggested_moments": null,
+    "coach_useful_percent": null
+  },
+  "deadlift": {
+    "eligible_videos": 6,
+    "subjects": 2,
+    "exact_count_accuracy": 0.8333333333333334,
+    "true_positives": 5,
+    "false_positives": 0,
+    "false_negatives": 1,
+    "event_precision": 1,
+    "event_recall": 0.8333333333333334,
+    "zero_detection_percent": 16.666666666666668,
+    "mean_suggested_moments": 0,
+    "coach_useful_percent": null,
+    "mean_processing_seconds": 3.0981666666666663,
+    "per_source_class": {
+      "GB": {
+        "exact": 1,
+        "n": 2
+      },
+      "PB": {
+        "exact": 2,
+        "n": 2
+      },
+      "LLK": {
+        "exact": 2,
+        "n": 2
+      }
+    },
+    "status": "small sample, source count corroborated visually; not general accuracy"
+  },
+  "clean": {
+    "eligible_videos": 1,
+    "status": "PROVISIONAL: one mixed clean/overhead complex; labels need coach adjudication",
+    "expected_complete_reps": 2,
+    "detected_reps": 3,
+    "partial_attempts": 1,
+    "exact_count_accuracy": 0.0,
+    "mean_absolute_count_error": 1,
+    "relative_absolute_count_error": 0.5,
+    "true_positives": 2,
+    "false_positives": 1,
+    "false_negatives": 0,
+    "event_precision": 0.6666666666666666,
+    "event_recall": 1.0,
+    "zero_detection_percent": 0.0,
+    "mean_suggested_moments": 2,
+    "coach_useful_percent": null,
+    "assistant_provisional_moment_review": {
+      "useful": 0,
+      "doubtful": 2,
+      "irrelevant": 0
+    },
+    "alternative_if_third_adjudicated_complete": {
+      "expected": 3,
+      "fp": 0,
+      "fn": 0,
+      "event_precision": 1.0,
+      "exact_count_accuracy": 1.0
+    }
+  }
+}

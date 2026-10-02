@@ -1,0 +1,29 @@
+{
+  "python": "3.11.14 (main, Feb 24 2026, 19:47:17) [GCC 12.2.0]",
+  "platform": "Linux-5.15.153.1-microsoft-standard-WSL2-x86_64-with-glibc2.36",
+  "opencv": "5.0.0",
+  "model_sha256": "59929e1d1ee95287735ddd833b19cf4ac46d29bc7afddbbf6753c459690d574a",
+  "sources_sha256": {
+    "analyzer.py": "54c832aa6b0f443c7850be080e1c82ef7d870c93fb8c1c232a021a0811c95527",
+    "exercise_validation.py": "04064e1a1ab9732c15db0e176c3fa8af9002b9ef1b570352da2d4d12f11ae71e",
+    "exercise_profiles.py": "eccdfe8b99a538867616af8e1f79e795b2c2a6dbff4da592c402b0d3310b0a44",
+    "review_moments.py": "1cb7944472c079da4ca4b9d765297c6a32ce2c4401da320d6ba61236df10d54b",
+    "biomechanics.py": "6241e9c587ee62141dfdc8ae7481ede2ac37c38ed87a704497aa963c26033989",
+    "clean_and_jerk_front.json": "b6406438084fcfcc0e952aaf9c68531249c5d143899a6cd5b74e9aaeb8e9c7fe",
+    "clean_and_jerk_side.json": "48fb22b4062235dc4f5c7d1031d863d1a889dfebd9c5c1e00b562810cbd804e3",
+    "clean_front.json": "7a56e89cbff12161e82cd863c408e930c6bb90c27106f9432083f0864bab5940",
+    "clean_side.json": "4df279d10d30e99a38f3cc50b663a6a1d86220323072efba0cd437a42d7c604f",
+    "deadlift.json": "0928dc4cabc12decef0be15907f97c649306575f1b57926570d65bbff5c65b81",
+    "deadlift_front.json": "78e9ca80139bc515a33a1cd61403dbb79c3ec38c56d27e179cc59f08d488aa49",
+    "other_front.json": "6a8dd7249da60befaf7baab6a8442c1734cba883f844a64f4cfea6139aa2b3b6",
+    "other_side.json": "23f57b4539b8d427e2dc73f638aa3ec5af5df1ef4bdd57ddcff1baa748e60d2e",
+    "press_front.json": "1aa7c740a99e42df4d0be70c7ebd7b8c7a331d0be591fd246c06d222a9796cf0",
+    "press_side.json": "20dfe4a13422667ad3d73e2ed9024e1c92e94355141f327a768cacd51ec0cb6d",
+    "snatch_front.json": "3b0c275aab97748cfd899f4200045a6531636db2cecb51f10539ba331a0e8187",
+    "snatch_side.json": "0d8ff697d6750d5da1d8287bc313ec6a1241ecedd316be287123173652d3fc4e",
+    "squat_front.json": "709b5c2f056d5139cb7643bb55ddc717eb65b6c07cd2c066cce37bfeaf3303ea",
+    "squat_side.json": "c56c041fdb1cc68449d4a934e594eda65ce085199ec1fd5c65aba5810e7ae976",
+    "thruster_front.json": "3bffdf0261dacc57b5097a95c3096fbd308f8b09dfbae4ffbeda60bed96a2b07",
+    "thruster_side.json": "78a6b7a4962b5dfd87569294c103d88e9643b0723f279c5faa0b4dc1bf7d9516"
+  }
+}
