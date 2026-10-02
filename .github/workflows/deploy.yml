@@ -1,0 +1,16 @@
+name: Deploy to Easypanel
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger Easypanel Deploy
+        run: |
+          curl --fail --show-error --silent \
+            -X POST "${{ secrets.EASYPANEL_DEPLOY_URL }}"
