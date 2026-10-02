@@ -96,7 +96,7 @@
       <div class="demo-flow">
         <article class="card"><span class="step">1</span><h2>Atleta</h2><p><b>Gastón Demo</b> sube el video y define su objetivo.</p><a class="button-link" href="/login">Entrar como atleta</a></article>
         <article class="card"><span class="step">2</span><h2>Análisis IA</h2><p>Se generan video anotado, métricas y repeticiones detectadas.</p><a class="button-link" href="/login">Ver mi espacio</a></article>
-        <article class="card"><span class="step">3</span><h2>Coach</h2><p><b>Carlos</b> · Weightlifting<br><b>Anais</b> · Fuerza<br><b>Pablo</b> · CrossFit</p><a class="button-link" href="/login">Entrar como coach</a></article>
+        <article class="card"><span class="step">3</span><h2>Coach</h2><p><b>Carlos</b> · Weightlifting<br><b>Annais</b> · Fuerza<br><b>Pablo</b> · CrossFit</p><a class="button-link" href="/login">Entrar como coach</a></article>
         <article class="card"><span class="step">4</span><h2>Feedback</h2><p>El coach comenta momentos del video, clasifica repeticiones y entrega el plan de la próxima sesión.</p></article>
       </div>
     </section>
@@ -116,6 +116,7 @@
               <option>Peso muerto</option>
               <option>Thruster</option>
               <option>Clean</option>
+              <option>Clean &amp; Jerk</option>
               <option>Snatch</option>
               <option>Press</option>
               <option>Otro</option>
@@ -152,7 +153,7 @@
       <form id="coach-analysis-form" class="card" enctype="multipart/form-data">
         <div class="form-grid">
           <label>Atleta<select name="athlete_id" id="coach-athlete" required><option value="">Cargando atletas…</option></select></label>
-          <label>Ejercicio<select name="exercise" required><option value="">Selecciona un ejercicio</option><option>Sentadilla</option><option>Peso muerto</option><option>Thruster</option><option>Clean</option><option>Snatch</option><option>Press</option><option>Otro</option></select></label>
+          <label>Ejercicio<select name="exercise" required><option value="">Selecciona un ejercicio</option><option>Sentadilla</option><option>Peso muerto</option><option>Thruster</option><option>Clean</option><option>Clean &amp; Jerk</option><option>Snatch</option><option>Press</option><option>Otro</option></select></label>
           <label>Carga (kg) <span class="muted">· opcional</span><input name="load_kg" type="number" min="0" step="0.1" inputmode="decimal"></label>
           <label>Vista<select name="view" required><option value="side">De costado</option><option value="front">De frente</option></select></label>
         </div>
@@ -190,6 +191,7 @@
       </div>
       <p id="detail-meta" class="muted"></p>
       <p id="detail-objective"></p>
+      <div id="detail-preflight" class="card" hidden></div>
       <div id="detail-action-feedback" class="card success-card" hidden role="status"></div>
       <div id="detail-error" class="card error-card" hidden></div>
       <div id="detail-completed" hidden>
@@ -214,7 +216,7 @@
         <p class="muted">Crea un nuevo análisis con el mismo video y conserva el historial anterior.</p>
         <div class="form-grid">
           <label>Ejercicio
-            <select id="reanalyze-exercise"><option>Sentadilla</option><option>Peso muerto</option><option>Thruster</option><option>Clean</option><option>Snatch</option><option>Press</option><option>Otro</option></select>
+            <select id="reanalyze-exercise"><option>Sentadilla</option><option>Peso muerto</option><option>Thruster</option><option>Clean</option><option>Clean &amp; Jerk</option><option>Snatch</option><option>Press</option><option>Otro</option></select>
           </label>
           <label>Vista
             <select id="reanalyze-view"><option value="side">De costado</option><option value="front">De frente</option></select>
@@ -261,6 +263,7 @@
       </div>
       <p id="coach-review-meta" class="muted"></p>
       <p id="coach-review-objective"></p>
+      <div id="coach-preflight" class="card" hidden></div>
       <section id="coach-review-moments" class="card ai-observations"><h2>Momentos sugeridos por IA</h2><p class="muted">Prioriza estos puntos antes de revisar el video completo.</p><div id="coach-review-moments-list"></div></section>
       <div id="coach-start-card" class="card" hidden>
         <h2>Revisión pendiente</h2>
@@ -284,6 +287,17 @@
       <div class="card"><h2>Análisis IA</h2><div id="coach-metrics" class="metrics"></div></div>
       <section id="coach-ai-observations" class="card ai-observations"><h2>Observaciones IA</h2><p class="muted">Sugerencias para revisar; no reemplazan tu criterio profesional.</p><div id="coach-ai-observations-list"></div></section>
       <div class="card"><h2>Timeline</h2><div id="coach-reps"></div><div id="coach-timeline-annotations"></div></div>
+      <div id="coach-repetition-correction" class="card">
+        <h2>Corregir repeticiones</h2>
+        <p class="muted">Descarta una detección falsa o agrega una repetición que la IA no encontró.</p>
+        <div class="form-grid">
+          <label>Inicio (s)<input id="manual-rep-start" type="number" min="0" step="0.01"></label>
+          <label>Punto bajo (s)<input id="manual-rep-bottom" type="number" min="0" step="0.01"></label>
+          <label>Fin (s)<input id="manual-rep-end" type="number" min="0" step="0.01"></label>
+        </div>
+        <label>Nota <span class="muted">· opcional</span><input id="manual-rep-note" maxlength="1000" placeholder="Ej. La IA fusionó dos repeticiones"></label>
+        <div class="form-actions"><button id="manual-rep-save" type="button">Agregar repetición manual</button><span id="manual-rep-status" class="muted" role="status"></span></div>
+      </div>
       <div id="coach-annotation-editor" class="card" hidden>
         <h2 id="coach-annotation-editor-title">Agregar comentario</h2>
         <p id="coach-annotation-time" class="muted"></p>

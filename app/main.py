@@ -370,7 +370,7 @@ def _run_analysis(
         analysis.status = 'PROCESSING'
         session.commit()
 
-        validate_video_exercise(str(video), exercise)
+        preflight = validate_video_exercise(str(video), exercise)
 
         # La vista lateral es la convención del flujo existente. Mantener esa
         # llamada posicional conserva integraciones previas; una vista elegida
@@ -379,6 +379,9 @@ def _run_analysis(
             result = analyze_video(str(video), str(out), exercise)
         else:
             result = analyze_video(str(video), str(out), exercise, view)
+        if preflight is not None:
+            result['preflight'] = preflight
+            (out / 'analysis.json').write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding='utf-8')
         annotated.parent.mkdir(parents=True, exist_ok=True)
         analysis_file.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(str(out / 'annotated.mp4'), annotated)
@@ -455,8 +458,11 @@ def _process_analysis(job: str, exercise: str, view: str):
         analysis_file = ANALYSIS_FILES / job / 'analysis.json'
         try:
             _set_progress(job, 7, 'validating_exercise')
-            validate_video_exercise(str(video), exercise)
+            preflight = validate_video_exercise(str(video), exercise)
             result = analyze_video(str(video), str(out), exercise, view, progress_callback=lambda p, s: _set_progress(job, p, s))
+            if preflight is not None:
+                result['preflight'] = preflight
+                (out / 'analysis.json').write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding='utf-8')
             _set_progress(job, 96, 'finalizing')
             annotated.parent.mkdir(parents=True, exist_ok=True)
             analysis_file.parent.mkdir(parents=True, exist_ok=True)
@@ -518,11 +524,13 @@ def _run_ai_reasoning(analysis_id: str, exercise: str, view: str, result: dict):
                     analysis_id=analysis_id, body=f'{title}: {description}',
                     repetition_number=observation.get('repetition'), timestamp_s=observation.get('timestamp'),
                     category=str(observation['category']).strip()[:80], severity=observation['severity'],
-                    title=title, description=description, confidence=observation['confidence'], model=reasoning.model,
+                    title=title, description=description, evidence=str(observation['evidence']).strip()[:500],
+                    confidence=observation['confidence'], model=reasoning.model,
                 ))
             usage = reasoning.usage
             output_details = usage.get('output_tokens_details') or {}
             run.status, run.model = 'COMPLETED', reasoning.model
+            run.error = None
             run.input_tokens = usage.get('input_tokens')
             run.output_tokens = usage.get('output_tokens')
             run.reasoning_tokens = output_details.get('reasoning_tokens') or usage.get('reasoning_tokens')
@@ -669,7 +677,16 @@ class CoachAnnotationUpdate(BaseModel):
 
 
 class RepetitionClassificationUpdate(BaseModel):
-    classification: str
+    classification: str | None = None
+    correction_status: str | None = None
+    correction_note: str | None = None
+
+
+class ManualRepetitionCreate(BaseModel):
+    start_s: float
+    bottom_s: float
+    end_s: float
+    correction_note: str | None = None
 
 
 class CoachReviewSummaryUpdate(BaseModel):
@@ -873,7 +890,7 @@ def list_coach_reviews(
     valid_statuses = {'PENDING', 'IN_REVIEW', 'COMPLETED'}
     if status is not None and status not in valid_statuses:
         raise HTTPException(400, 'Estado de revisión no válido')
-    counts = select(Repetition.analysis_id, func.count().label('count')).group_by(Repetition.analysis_id).subquery()
+    counts = select(Repetition.analysis_id, func.count().label('count')).where(Repetition.correction_status == 'ACTIVE').group_by(Repetition.analysis_id).subquery()
     statement = (
         select(CoachReview, Analysis, User, func.coalesce(counts.c.count, 0))
         .join(Analysis, Analysis.id == CoachReview.analysis_id)
@@ -892,7 +909,7 @@ def list_coach_reviews(
 
 def _get_coach_review(review_id: UUID, coach_id: UUID, session: Session):
     _coach_context(coach_id, session)
-    count = select(func.count()).select_from(Repetition).where(Repetition.analysis_id == CoachReview.analysis_id).scalar_subquery()
+    count = select(func.count()).select_from(Repetition).where(Repetition.analysis_id == CoachReview.analysis_id, Repetition.correction_status == 'ACTIVE').scalar_subquery()
     row = session.execute(
         select(CoachReview, Analysis, User, count)
         .join(Analysis, Analysis.id == CoachReview.analysis_id)
@@ -916,6 +933,8 @@ def get_coach_review(
     payload['analysis']['repetitions'] = [
         {'id': rep.id, 'number': rep.number, 'start_s': rep.start_s,
          'bottom_s': rep.bottom_s, 'end_s': rep.end_s, 'metrics': rep.metrics,
+         'source': rep.source, 'correction_status': rep.correction_status,
+         'correction_note': rep.correction_note,
          'classification': (
              'BEST' if rep.id == review.best_repetition_id else
              'NEEDS_WORK' if rep.id == review.work_repetition_id else 'NORMAL'
@@ -982,6 +1001,7 @@ def _ai_observation_fields(observation: AIObservation, decision: str | None = No
         'repetition': observation.repetition_number, 'timestamp': observation.timestamp_s,
         'category': observation.category or 'observación', 'severity': observation.severity or 'review',
         'title': observation.title or observation.body, 'description': observation.description or observation.body,
+        'evidence': observation.evidence,
         'confidence': observation.confidence or 'low', 'model': observation.model,
         'created_at': observation.created_at, 'decision': decision,
     }
@@ -1190,17 +1210,36 @@ def classify_review_repetition(
     ))
     if repetition is None:
         raise HTTPException(404, 'Repetición no encontrada')
-    if payload.classification not in {'BEST', 'NEEDS_WORK', 'NORMAL'}:
+    if payload.classification is None and payload.correction_status is None and payload.correction_note is None:
+        raise HTTPException(400, 'Indica una clasificación o corrección')
+    if payload.correction_status is not None:
+        if payload.correction_status not in {'ACTIVE', 'DISCARDED'}:
+            raise HTTPException(400, 'Estado de corrección no válido')
+        repetition.correction_status = payload.correction_status
+        if payload.correction_status == 'DISCARDED':
+            if review.best_repetition_id == repetition.id:
+                review.best_repetition_id = None
+            if review.work_repetition_id == repetition.id:
+                review.work_repetition_id = None
+    if payload.correction_note is not None:
+        if len(payload.correction_note) > 1000:
+            raise HTTPException(400, 'La nota debe tener hasta 1000 caracteres')
+        repetition.correction_note = payload.correction_note.strip() or None
+    if payload.classification is not None and payload.classification not in {'BEST', 'NEEDS_WORK', 'NORMAL'}:
         raise HTTPException(400, 'Clasificación no válida')
     if payload.classification == 'BEST':
+        if repetition.correction_status != 'ACTIVE':
+            raise HTTPException(409, 'Restaura la repetición antes de clasificarla')
         review.best_repetition_id = repetition.id
         if review.work_repetition_id == repetition.id:
             review.work_repetition_id = None
     elif payload.classification == 'NEEDS_WORK':
+        if repetition.correction_status != 'ACTIVE':
+            raise HTTPException(409, 'Restaura la repetición antes de clasificarla')
         review.work_repetition_id = repetition.id
         if review.best_repetition_id == repetition.id:
             review.best_repetition_id = None
-    else:
+    elif payload.classification == 'NORMAL':
         if review.best_repetition_id == repetition.id:
             review.best_repetition_id = None
         if review.work_repetition_id == repetition.id:
@@ -1214,9 +1253,44 @@ def classify_review_repetition(
     return {
         'repetition_id': repetition.id,
         'classification': payload.classification,
+        'correction_status': repetition.correction_status,
+        'correction_note': repetition.correction_note,
         'best_repetition_id': review.best_repetition_id,
         'work_repetition_id': review.work_repetition_id,
     }
+
+
+@app.post('/api/coach/reviews/{review_id}/repetitions', status_code=201)
+def create_manual_repetition(
+    review_id: UUID, payload: ManualRepetitionCreate, coach_id: UUID,
+    session: Session = Depends(get_session),
+):
+    review = _editable_review(review_id, coach_id, session)
+    analysis = session.get(Analysis, review.analysis_id)
+    duration = float((analysis.result or {}).get('video', {}).get('duration_s') or 0)
+    if not (0 <= payload.start_s <= payload.bottom_s <= payload.end_s):
+        raise HTTPException(400, 'Los timestamps de la repetición no son válidos')
+    if duration and payload.end_s > duration:
+        raise HTTPException(400, 'La repetición no puede exceder la duración del video')
+    if payload.end_s - payload.start_s < .15:
+        raise HTTPException(400, 'La repetición manual debe durar al menos 0.15 segundos')
+    number = (session.scalar(select(func.max(Repetition.number)).where(Repetition.analysis_id == review.analysis_id)) or 0) + 1
+    repetition = Repetition(
+        analysis_id=review.analysis_id, number=number, start_s=payload.start_s,
+        bottom_s=payload.bottom_s, end_s=payload.end_s, source='MANUAL',
+        correction_status='ACTIVE', correction_note=(payload.correction_note or '').strip() or None,
+        metrics={'manual': True, 'count_confidence': 'coach'},
+    )
+    try:
+        session.add(repetition)
+        session.commit()
+    except SQLAlchemyError:
+        session.rollback()
+        logger.exception('Cannot add manual repetition to %s', review_id)
+        raise HTTPException(503, 'Persistencia no disponible')
+    return {'id': repetition.id, 'number': repetition.number, 'source': repetition.source,
+            'correction_status': repetition.correction_status, 'start_s': repetition.start_s,
+            'bottom_s': repetition.bottom_s, 'end_s': repetition.end_s}
 
 
 @app.patch('/api/coach/reviews/{review_id}/summary')
@@ -1277,7 +1351,7 @@ def _get_analysis(analysis_id: str, athlete_id: UUID, session: Session):
     if row is None or row.athlete_id != athlete_id:
         raise HTTPException(404, 'Análisis no encontrado')
     reps = session.scalars(
-        select(Repetition).where(Repetition.analysis_id == analysis_id).order_by(Repetition.number)
+        select(Repetition).where(Repetition.analysis_id == analysis_id, Repetition.correction_status == 'ACTIVE').order_by(Repetition.number)
     ).all()
     review_rows = session.execute(
         select(CoachReview, Coach, User)
@@ -1330,7 +1404,8 @@ def _get_analysis(analysis_id: str, athlete_id: UUID, session: Session):
         'analysis_json': row.result,
         'repetitions': [
             {'id': rep.id, 'number': rep.number, 'start_s': rep.start_s,
-             'bottom_s': rep.bottom_s, 'end_s': rep.end_s, 'metrics': rep.metrics}
+             'bottom_s': rep.bottom_s, 'end_s': rep.end_s, 'metrics': rep.metrics,
+             'source': rep.source, 'correction_status': rep.correction_status}
             for rep in reps
         ],
         'coach_reviews': [

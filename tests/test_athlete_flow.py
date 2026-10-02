@@ -1,6 +1,7 @@
 import copy
 import json
 import subprocess
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -57,6 +58,26 @@ def test_new_analysis_list_detail_and_repetitions(client, monkeypatch):
     assert listed[0]['repetitions_detected'] == 1
     assert 'analysis_json' not in listed[0]
     assert client.get('/api/analyses/' + item['id']).json() == item
+
+
+def test_preflight_report_is_persisted_with_completed_analysis(client, monkeypatch):
+    preflight = {
+        'quality': {'status': 'WARNING', 'pose_coverage': .58, 'warnings': ['Pose intermitente'], 'blockers': []},
+        'exercise': {'status': 'INCONCLUSIVE', 'confidence': 'low'},
+    }
+    monkeypatch.setattr(main, 'validate_video_exercise', lambda *_: preflight)
+    def analyzed(_, output_dir, *__, **___):
+        output = Path(output_dir)
+        output.mkdir(parents=True, exist_ok=True)
+        (output / 'annotated.mp4').write_bytes(b'annotated')
+        (output / 'analysis.json').write_text('{}')
+        return copy.deepcopy(RESULT)
+    monkeypatch.setattr(main, 'analyze_video', analyzed)
+    client.post('/api/auth/login', json={'username': 'gaston', 'password': 'demo1234'})
+    response = post_analysis(client)
+    assert response.status_code == 202
+    detail = client.get('/api/analyses/' + response.json()['id']).json()
+    assert detail['analysis_json']['preflight'] == preflight
 
 
 def test_failed_analysis_remains_in_list_and_detail(client, monkeypatch):

@@ -22,6 +22,7 @@ def _normalise(value: str) -> str:
 @dataclass(frozen=True)
 class ExerciseProfile:
     id: str
+    version: str
     aliases: tuple[str, ...]
     views: tuple[str, ...]
     required_landmarks: tuple[str, ...]
@@ -37,7 +38,7 @@ class ExerciseProfile:
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> "ExerciseProfile":
         required = {
-            "id", "aliases", "views", "required_landmarks", "primary_signal",
+            "id", "version", "aliases", "views", "required_landmarks", "primary_signal",
             "states", "initial_state", "bottom_state", "transitions", "thresholds",
             "metrics", "noise",
         }
@@ -46,8 +47,18 @@ class ExerciseProfile:
             raise ValueError(f"Perfil de ejercicio incompleto: {', '.join(sorted(missing))}")
         if value["initial_state"] not in value["states"] or value["bottom_state"] not in value["states"]:
             raise ValueError(f"Estados inválidos en el perfil {value['id']}")
+        required_noise = {"min_confirm_frames", "max_gap_s", "min_rep_duration_s", "max_rep_duration_s", "cooldown_s", "min_pose_confidence"}
+        if required_noise.difference(value["noise"]):
+            raise ValueError(f"Ruido incompleto en el perfil {value['id']}")
+        for transition in value["transitions"]:
+            if transition["from"] not in value["states"] or transition["to"] not in value["states"]:
+                raise ValueError(f"Transición inválida en el perfil {value['id']}")
+            for condition in transition.get("conditions") or [transition]:
+                if condition.get("threshold") not in value["thresholds"]:
+                    raise ValueError(f"Threshold inválido en el perfil {value['id']}")
         return cls(
             id=_normalise(value["id"]),
+            version=str(value["version"]),
             aliases=tuple(_normalise(alias) for alias in value["aliases"]),
             views=tuple(_normalise(view) for view in value["views"]),
             required_landmarks=tuple(value["required_landmarks"]),
@@ -85,9 +96,11 @@ class ExerciseProfileLoader:
             profile for profile in self.profiles().values()
             if normalized_exercise == profile.id or normalized_exercise in profile.aliases
         ]
-        for profile in matches:
-            if normalized_view in profile.views:
-                return profile
+        candidates = [profile for profile in matches if normalized_view in profile.views]
+        if len(candidates) == 1:
+            return candidates[0]
+        if len(candidates) > 1:
+            raise ValueError(f"Más de un perfil coincide con {exercise} / {view}.")
         if matches:
             supported = ", ".join(sorted({item for profile in matches for item in profile.views}))
             raise UnsupportedViewError(
@@ -153,8 +166,11 @@ class RepDetector:
             "bottom_s": round(self._bottom, 2),
             "end_s": round(time_s, 2),
             "profile": self.profile.id,
+            "profile_version": self.profile.version,
+            "pose_confidence": round(sum(float(sample.get("pose_confidence", 0.0)) for sample in self._rep_samples) / len(self._rep_samples), 2),
             **metrics,
         }
+        result["count_confidence"] = "high" if result["pose_confidence"] >= .8 else "medium" if result["pose_confidence"] >= .65 else "low"
         self._repetitions.append(result)
         self._last_completed_time = time_s
 
@@ -166,10 +182,14 @@ class RepDetector:
         primary = raw_sample.get(self.profile.primary_signal)
         if primary is None or not math.isfinite(float(primary)):
             return
+        pose_confidence = raw_sample.get("pose_confidence", 1.0)
+        if not math.isfinite(float(pose_confidence)) or float(pose_confidence) < self.profile.noise["min_pose_confidence"]:
+            return
         if self._last_valid_time is not None and time_s - self._last_valid_time > self.profile.noise["max_gap_s"]:
             self._reset_candidate()
         self._last_valid_time = time_s
         sample = {key: raw_sample.get(key) for key in (*self.profile.metrics, self.profile.primary_signal)}
+        sample["pose_confidence"] = float(pose_confidence)
         self._rep_samples.append(sample)
         transition = self._expected_transition()
         if transition is None or not self._matches(transition, sample):

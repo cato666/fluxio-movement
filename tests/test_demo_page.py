@@ -2,7 +2,7 @@ def test_demo_page_exposes_the_short_demo_flow(client):
     response = client.get('/demo')
     assert response.status_code == 200
     for text in (
-        'De video a feedback humano', 'Gastón Demo', 'Carlos', 'Anais', 'Pablo',
+        'De video a feedback humano', 'Gastón Demo', 'Carlos', 'Annais', 'Pablo',
         'Nuevo análisis', 'Mis análisis', 'Bandeja coach', 'Feedback',
     ):
         assert text in response.text

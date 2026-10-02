@@ -1,0 +1,90 @@
+{
+  "id": "thruster-front",
+  "aliases": [
+    "thruster",
+    "thrusters"
+  ],
+  "views": [
+    "front"
+  ],
+  "required_landmarks": [
+    "shoulder",
+    "elbow",
+    "wrist",
+    "hip",
+    "knee",
+    "ankle"
+  ],
+  "primary_signal": "knee_angle",
+  "states": [
+    "ready",
+    "dip",
+    "drive",
+    "lockout"
+  ],
+  "initial_state": "ready",
+  "bottom_state": "dip",
+  "transitions": [
+    {
+      "from": "ready",
+      "to": "dip",
+      "signal": "knee_angle",
+      "operator": "<=",
+      "threshold": "dip_knee_max"
+    },
+    {
+      "from": "dip",
+      "to": "drive",
+      "signal": "knee_angle",
+      "operator": ">=",
+      "threshold": "drive_knee_min"
+    },
+    {
+      "from": "drive",
+      "to": "lockout",
+      "conditions": [
+        {
+          "signal": "knee_angle",
+          "operator": ">=",
+          "threshold": "lockout_knee_min"
+        },
+        {
+          "signal": "wrist_lift",
+          "operator": ">=",
+          "threshold": "lockout_wrist_min"
+        }
+      ],
+      "completes_rep": true
+    },
+    {
+      "from": "lockout",
+      "to": "ready",
+      "signal": "wrist_lift",
+      "operator": "<=",
+      "threshold": "reset_wrist_max"
+    }
+  ],
+  "thresholds": {
+    "dip_knee_max": 130.0,
+    "drive_knee_min": 145.0,
+    "lockout_knee_min": 155.0,
+    "lockout_wrist_min": 0.07,
+    "reset_wrist_max": 0.04
+  },
+  "metrics": [
+    "knee_angle",
+    "hip_angle",
+    "trunk_from_vertical",
+    "wrist_lift",
+    "elbow_angle"
+  ],
+  "noise": {
+    "min_confirm_frames": 2,
+    "max_gap_s": 0.5,
+    "min_rep_duration_s": 0.3,
+    "max_rep_duration_s": 12.0,
+    "cooldown_s": 0.3,
+    "min_pose_confidence": 0.6
+  },
+  "version": "1.0"
+}

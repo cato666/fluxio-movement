@@ -37,6 +37,15 @@ def repetition_url(item, repetition, coach_id=CARLOS_ID):
     return f'/api/coach/reviews/{item.id}/repetitions/{repetition.id}?coach_id={coach_id}'
 
 
+def manual_repetition_url(item, coach_id=CARLOS_ID):
+    return f'/api/coach/reviews/{item.id}/repetitions?coach_id={coach_id}'
+
+
+def login(client, username='carlos'):
+    response = client.post('/api/auth/login', json={'username': username, 'password': 'demo1234'})
+    assert response.status_code == 200
+
+
 def add_annotation(client, item):
     return client.post(f'/api/coach/reviews/{item.id}/annotations?coach_id={CARLOS_ID}', json={
         'timestamp_s': 2, 'type': 'PRIORITY', 'text': 'Mantén la barra cerca.', 'repetition_number': 1,
@@ -51,6 +60,7 @@ def save_required_summary(client, item):
 
 
 def test_best_and_needs_work_are_single_review_classifications(client, session):
+    login(client)
     item, reps = review(session)
     assert client.patch(repetition_url(item, reps[0]), json={'classification': 'BEST'}).status_code == 200
     assert client.patch(repetition_url(item, reps[1]), json={'classification': 'BEST'}).status_code == 200
@@ -64,18 +74,20 @@ def test_best_and_needs_work_are_single_review_classifications(client, session):
 
 
 def test_summary_is_persisted_and_other_coach_cannot_change_or_complete(client, session):
+    login(client)
     item, reps = review(session)
     saved = save_required_summary(client, item)
     assert saved.status_code == 200
     assert saved.json()['main_focus'] == 'Bloquear los codos arriba'
     other_summary = f'/api/coach/reviews/{item.id}/summary?coach_id={ANDREA_ID}'
     other_complete = f'/api/coach/reviews/{item.id}/complete?coach_id={ANDREA_ID}'
-    assert client.patch(other_summary, json={'main_focus': 'No permitido'}).status_code == 404
-    assert client.patch(repetition_url(item, reps[0], ANDREA_ID), json={'classification': 'BEST'}).status_code == 404
-    assert client.post(other_complete).status_code == 404
+    assert client.patch(other_summary, json={'main_focus': 'No permitido'}).status_code == 403
+    assert client.patch(repetition_url(item, reps[0], ANDREA_ID), json={'classification': 'BEST'}).status_code == 403
+    assert client.post(other_complete).status_code == 403
 
 
 def test_complete_validates_requirements_and_locks_review(client, session):
+    login(client)
     item, reps = review(session)
     complete_url = f'/api/coach/reviews/{item.id}/complete?coach_id={CARLOS_ID}'
     assert client.post(complete_url).status_code == 409
@@ -96,12 +108,14 @@ def test_complete_validates_requirements_and_locks_review(client, session):
 
 
 def test_athlete_receives_completed_feedback_and_annotations(client, session):
+    login(client)
     item, reps = review(session, 'athlete-feedback')
     assert add_annotation(client, item).status_code == 201
     assert client.patch(repetition_url(item, reps[0]), json={'classification': 'BEST'}).status_code == 200
     assert client.patch(repetition_url(item, reps[1]), json={'classification': 'NEEDS_WORK'}).status_code == 200
     assert save_required_summary(client, item).status_code == 200
     assert client.post(f'/api/coach/reviews/{item.id}/complete?coach_id={CARLOS_ID}').status_code == 200
+    login(client, 'gaston')
     detail = client.get('/api/analyses/athlete-feedback')
     assert detail.status_code == 200
     feedback = detail.json()['completed_coach_reviews'][0]
@@ -111,3 +125,36 @@ def test_athlete_receives_completed_feedback_and_annotations(client, session):
     assert feedback['main_focus'] == 'Bloquear los codos arriba'
     assert feedback['annotations'][0]['timestamp_s'] == 2
     assert feedback['annotations'][0]['text'] == 'Mantén la barra cerca.'
+
+
+def test_coach_can_discard_a_bad_detection_and_add_a_manual_repetition(client, session):
+    login(client)
+    item, reps = review(session, 'manual-correction')
+    discarded = client.patch(repetition_url(item, reps[1]), json={
+        'correction_status': 'DISCARDED', 'correction_note': 'Movimiento parcial',
+    })
+    assert discarded.status_code == 200
+    assert discarded.json()['correction_status'] == 'DISCARDED'
+
+    created = client.post(manual_repetition_url(item), json={
+        'start_s': 9.0, 'bottom_s': 9.5, 'end_s': 10.0,
+        'correction_note': 'Repetición omitida por la detección automática',
+    })
+    assert created.status_code == 201
+    assert created.json()['source'] == 'MANUAL'
+
+    detail = client.get(base_url(item)).json()['analysis']['repetitions']
+    assert [rep['correction_status'] for rep in detail] == ['ACTIVE', 'DISCARDED', 'ACTIVE', 'ACTIVE']
+    assert detail[-1]['source'] == 'MANUAL'
+    assert detail[-1]['correction_note'] == 'Repetición omitida por la detección automática'
+
+
+def test_other_coach_and_completed_review_cannot_correct_repetitions(client, session):
+    login(client)
+    item, reps = review(session, 'locked-correction')
+    assert client.patch(repetition_url(item, reps[0], ANDREA_ID), json={'correction_status': 'DISCARDED'}).status_code == 403
+    assert add_annotation(client, item).status_code == 201
+    assert save_required_summary(client, item).status_code == 200
+    assert client.post(f'/api/coach/reviews/{item.id}/complete?coach_id={CARLOS_ID}').status_code == 200
+    assert client.patch(repetition_url(item, reps[0]), json={'correction_status': 'DISCARDED'}).status_code == 409
+    assert client.post(manual_repetition_url(item), json={'start_s': 1, 'bottom_s': 1.5, 'end_s': 2}).status_code == 409

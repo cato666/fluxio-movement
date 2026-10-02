@@ -1,7 +1,12 @@
 import pytest
 
 from app import main
-from app.services.exercise_validation import ExerciseMismatchError, validate_samples
+from app.services.exercise_validation import (
+    ExerciseMismatchError,
+    VideoMetadata,
+    quality_report,
+    validate_samples,
+)
 
 
 def test_deadlift_rejects_a_clear_thruster_pattern():
@@ -39,12 +44,59 @@ def test_other_selected_exercises_are_not_reclassified_by_this_guard():
     ])
 
 
+def test_squat_rejects_a_clear_press_pattern():
+    with pytest.raises(ExerciseMismatchError, match="Press"):
+        validate_samples("Sentadilla", [
+            {"wrist_lift": 0.12, "knee_angle": 170.0, "hip_angle": 165.0},
+            {"wrist_lift": 0.14, "knee_angle": 172.0, "hip_angle": 166.0},
+            {"wrist_lift": 0.11, "knee_angle": 168.0, "hip_angle": 163.0},
+        ])
+
+
+def test_press_rejects_a_clear_thruster_pattern():
+    with pytest.raises(ExerciseMismatchError, match="Thruster"):
+        validate_samples("Press", [
+            {"wrist_lift": 0.12, "knee_angle": 115.0, "hip_angle": 145.0},
+            {"wrist_lift": 0.15, "knee_angle": 118.0, "hip_angle": 148.0},
+            {"wrist_lift": 0.10, "knee_angle": 120.0, "hip_angle": 150.0},
+        ])
+
+
+def test_olympic_lift_remains_inconclusive_instead_of_false_reclassified():
+    assessment = validate_samples("Clean", [
+        {"wrist_lift": 0.12, "knee_angle": 115.0, "hip_angle": 145.0},
+        {"wrist_lift": 0.15, "knee_angle": 118.0, "hip_angle": 148.0},
+        {"wrist_lift": 0.10, "knee_angle": 120.0, "hip_angle": 150.0},
+    ])
+    assert assessment["status"] == "INCONCLUSIVE"
+
+
+def test_quality_report_blocks_unusable_clip():
+    report = quality_report(VideoMetadata(width=240, height=180, fps=8, frame_count=4), [])
+    assert report["status"] == "FAILED"
+    assert report["blockers"]
+
+
+def test_quality_report_warns_when_pose_is_intermittent():
+    samples = [
+        {"knee_angle": 120.0, "hip_angle": 110.0, "trunk_from_vertical": 20.0},
+        {"knee_angle": None, "hip_angle": None, "trunk_from_vertical": None},
+        {"knee_angle": 125.0, "hip_angle": 115.0, "trunk_from_vertical": 22.0},
+        {"knee_angle": None, "hip_angle": None, "trunk_from_vertical": None},
+        {"knee_angle": 130.0, "hip_angle": 120.0, "trunk_from_vertical": 24.0},
+    ]
+    report = quality_report(VideoMetadata(width=1280, height=720, fps=30, frame_count=300), samples)
+    assert report["status"] == "WARNING"
+    assert report["pose_coverage"] == 0.6
+
+
 def test_mismatch_skips_full_analysis_and_ai_reasoning(client, monkeypatch):
     monkeypatch.setattr(main, "validate_video_exercise", lambda *_: (_ for _ in ()).throw(
         ExerciseMismatchError("El video presenta un patrón de Thruster")
     ))
     monkeypatch.setattr(main, "analyze_video", lambda *_args, **_kwargs: pytest.fail("No debe analizar"))
     monkeypatch.setattr(main, "_run_ai_reasoning", lambda *_args: pytest.fail("No debe usar OpenAI"))
+    client.post('/api/auth/login', json={'username': 'gaston', 'password': 'demo1234'})
     response = client.post(
         "/api/analyses", data={"exercise": "Peso muerto", "objective": "Técnica"},
         files={"file": ("thruster.mp4", b"video", "video/mp4")},

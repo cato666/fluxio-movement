@@ -12,7 +12,7 @@ DEMO_ATHLETE_ID = UUID("00000000-0000-4000-8000-000000000001")
 DEMOS = (
     (DEMO_ATHLETE_ID, "gaston", "Gastón Demo", "ATHLETE", None, False),
     (UUID("00000000-0000-4000-8000-000000000002"), "carlos", "Carlos", "COACH", "Weightlifting", "Técnica de levantamientos olímpicos y progresiones de fuerza.", False),
-    (UUID("00000000-0000-4000-8000-000000000003"), "anais", "Anais", "COACH", "Fuerza", "Entrenamiento de fuerza para construir movimiento sólido y sostenible.", False),
+    (UUID("00000000-0000-4000-8000-000000000003"), "anais", "Annais", "COACH", "Fuerza", "Entrenamiento de fuerza para construir movimiento sólido y sostenible.", False),
     (UUID("00000000-0000-4000-8000-000000000004"), "pablo", "Pablo", "COACH", "CrossFit", "Rendimiento funcional y técnica aplicada a movimientos de CrossFit.", False),
     (UUID("00000000-0000-4000-8000-000000000005"), "admin", "Administrador del sistema", "SYSTEM_ADMIN", None, True),
 )

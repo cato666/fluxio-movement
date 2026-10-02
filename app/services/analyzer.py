@@ -26,6 +26,23 @@ CONNECTIONS = [
     (28, 30), (30, 32),
 ]
 
+LANDMARK_GROUPS = {
+    "shoulder": (11, 12), "elbow": (13, 14), "wrist": (15, 16),
+    "hip": (23, 24), "knee": (25, 26), "ankle": (27, 28),
+}
+
+
+def _pose_quality(landmarks, profile):
+    """Confidence for the landmarks a profile actually needs."""
+    names = profile.required_landmarks if profile is not None else ("shoulder", "hip", "knee", "ankle")
+    values = []
+    for name in names:
+        indexes = LANDMARK_GROUPS.get(name, ())
+        if indexes:
+            values.append(max(float(landmarks[index].visibility or 0.0) for index in indexes))
+    confidence = sum(values) / len(values) if values else 0.0
+    return round(confidence, 3), bool(values) and min(values) >= .55
+
 
 def _model_path() -> Path:
     root = Path(__file__).resolve().parents[2]
@@ -414,7 +431,8 @@ def analyze_video(
                         press = _press_metrics(lms, xy)
                         front_deadlift = _front_deadlift_metrics(lms, xy)
 
-                        if selected is not None or press is not None or front_deadlift is not None:
+                        pose_confidence, required_landmarks_valid = _pose_quality(lms, profile)
+                        if (selected is not None or press is not None or front_deadlift is not None) and required_landmarks_valid:
                             last_landmarks_px = [
                                 (
                                     int(p.x * width),
@@ -449,6 +467,7 @@ def analyze_video(
                                 })
                             if front_deadlift is not None:
                                 last_metrics.update(front_deadlift)
+                            last_metrics["pose_confidence"] = pose_confidence
                             timeline.append(last_metrics)
 
                 if last_landmarks_px:
@@ -532,6 +551,14 @@ def analyze_video(
         and x.get("trunk_from_vertical") is not None
         and 0.0 <= float(x["trunk_from_vertical"]) <= 90.0
     ]
+    pose_confidences = [float(x["pose_confidence"]) for x in timeline if x.get("pose_confidence") is not None]
+    average_pose_confidence = round(sum(pose_confidences) / len(pose_confidences), 2) if pose_confidences else 0.0
+    repetition_confidences = [rep.get("count_confidence") for rep in reps]
+    count_confidence = (
+        "high" if repetition_confidences and all(value == "high" for value in repetition_confidences)
+        else "medium" if repetition_confidences and any(value in {"high", "medium"} for value in repetition_confidences)
+        else "low"
+    )
 
     summary = {
         "video": {
@@ -541,8 +568,15 @@ def analyze_video(
             "resolution": [width, height],
         },
         "pose_frames": len(timeline),
+        "pose_quality": {
+            "average_confidence": average_pose_confidence,
+            "valid_samples": len(timeline),
+            "confidence": "high" if average_pose_confidence >= .8 else "medium" if average_pose_confidence >= .65 else "low",
+        },
+        "repetition_count_confidence": count_confidence,
         "exercise_profile": {
             "id": profile.id,
+            "version": profile.version,
             "view": view,
             "supported_views": list(profile.views),
         } if profile is not None else None,

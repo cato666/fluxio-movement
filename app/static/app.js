@@ -319,6 +319,7 @@ function aiObservationCard(observation, actions = null, onJump = seekAthleteVide
   card.append(element("span", "ai-observation-meta", meta));
   card.append(element("h3", "", observation.title));
   card.append(element("p", "", observation.description));
+  if (observation.evidence) card.append(element("p", "ai-observation-evidence", `Evidencia: ${observation.evidence}`));
   if (actions) card.append(actions);
   card.onclick = () => { if (observation.timestamp != null) onJump(observation.timestamp); };
   return card;
@@ -374,6 +375,24 @@ function renderReviewMoments(moments, onDecision, onComment, locked = false) {
   }
 }
 
+function renderPreflight(targetId, report) {
+  const target = $(targetId);
+  if (!target) return;
+  const quality = report?.quality;
+  const exercise = report?.exercise;
+  if (!quality || quality.status === "UNAVAILABLE") { target.hidden = true; target.replaceChildren(); return; }
+  target.hidden = false;
+  const title = quality.status === "PASSED" ? "Captura validada" : "Calidad de captura";
+  const message = quality.status === "PASSED"
+    ? "Pose estable en " + Math.round((quality.pose_coverage || 0) * 100) + " % de las muestras."
+    : [...(quality.warnings || []), ...(quality.blockers || [])].join(" ");
+  target.replaceChildren(
+    element("strong", "", title),
+    element("p", "muted", message || "La captura fue procesada."),
+    exercise?.status === "INCONCLUSIVE" ? element("p", "muted", "El ejercicio no pudo validarse automáticamente; se usó la selección indicada.") : document.createTextNode(""),
+  );
+}
+
 function renderCompleted(item) {
   $("#detail-completed").hidden = false;
   $("#original-video").src = item.original_video_url;
@@ -385,6 +404,7 @@ function renderCompleted(item) {
     metric("Cadera mín.", metrics.min_hip_angle == null ? null : `${metrics.min_hip_angle}°`),
     metric("Inclinación tronco máx.", metrics.max_trunk_from_vertical == null ? null : `${metrics.max_trunk_from_vertical}°`),
   );
+  renderPreflight("#detail-preflight", item.analysis_json?.preflight);
   const reps = $("#reps");
   if (!item.repetitions.length) {
     reps.textContent = NO_REPS_TIP;
@@ -665,7 +685,7 @@ function jumpCoachVideo(timestamp) {
   video.pause();
 }
 
-function renderCoachAnalysis(item, onClassify, onAIDecision, onMomentComment) {
+function renderCoachAnalysis(item, onClassify, onAIDecision, onMomentComment, onCorrection) {
   const analysis = item.analysis;
   $("#coach-review-title").textContent = analysis.exercise || "Revisión";
   $("#coach-review-state").textContent = reviewStateLabels[item.status] || item.status;
@@ -694,6 +714,7 @@ function renderCoachAnalysis(item, onClassify, onAIDecision, onMomentComment) {
     metric("Cadera mín.", metrics.min_hip_angle == null ? null : `${metrics.min_hip_angle}°`),
     metric("Inclinación tronco máx.", metrics.max_trunk_from_vertical == null ? null : `${metrics.max_trunk_from_vertical}°`),
   );
+  renderPreflight("#coach-preflight", analysis.analysis_json?.preflight);
   const reps = $("#coach-reps");
   reps.replaceChildren();
   if (!analysis.repetitions.length) reps.textContent = NO_REPS_TIP;
@@ -706,10 +727,16 @@ function renderCoachAnalysis(item, onClassify, onAIDecision, onMomentComment) {
     for (const [value, label] of [["BEST", "⭐ Mejor"], ["NEEDS_WORK", "⚠ A trabajar"], ["NORMAL", "Normal"]]) {
       const button = element("button", rep.classification === value ? "is-selected" : "", label);
       button.type = "button";
-      button.disabled = item.status === "COMPLETED";
+      button.disabled = item.status === "COMPLETED" || rep.correction_status === "DISCARDED";
       button.onclick = (event) => { event.stopPropagation(); onClassify(rep, value); };
       classifications.append(button);
     }
+    const correction = element("button", "secondary-button", rep.correction_status === "DISCARDED" ? "Restaurar" : "Descartar");
+    correction.type = "button";
+    correction.disabled = item.status === "COMPLETED";
+    correction.onclick = (event) => { event.stopPropagation(); onCorrection(rep, rep.correction_status === "DISCARDED" ? "ACTIVE" : "DISCARDED"); };
+    classifications.append(correction);
+    if (rep.correction_status === "DISCARDED") row.classList.add("is-discarded");
     row.append(classifications);
     reps.append(row);
   }
@@ -840,7 +867,17 @@ async function setupCoachReviewDetail(id) {
       } catch (aiError) {
         summaryStatus.textContent = aiError.message;
       }
-    }, (moment) => { jumpCoachVideo(moment.timestamp); openEditor(null, { timestamp_s: moment.timestamp, type: "COMMENT", text: moment.title, repetition_number: moment.repetition }); });
+    }, (moment) => { jumpCoachVideo(moment.timestamp); openEditor(null, { timestamp_s: moment.timestamp, type: "COMMENT", text: moment.title, repetition_number: moment.repetition }); }, async (rep, correction_status) => {
+      try {
+        await apiJson("/api/coach/reviews/" + encodeURIComponent(id) + "/repetitions/" + encodeURIComponent(rep.id) + "?coach_id=" + encodeURIComponent(coachId), {
+          method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ correction_status }),
+        });
+        $("#manual-rep-status").textContent = correction_status === "DISCARDED" ? "Repetición descartada." : "Repetición restaurada.";
+        await load();
+      } catch (correctionError) {
+        $("#manual-rep-status").textContent = correctionError.message;
+      }
+    });
     fillAnnotationRepetitions(item.analysis.repetitions);
     const startCard = $("#coach-start-card");
     startCard.hidden = item.status !== "PENDING";
@@ -855,6 +892,7 @@ async function setupCoachReviewDetail(id) {
       }
     };
     $("#coach-add-annotation").hidden = item.status === "COMPLETED";
+    $("#coach-repetition-correction").hidden = item.status === "COMPLETED";
     for (const [key, field] of Object.entries(summaryFields)) {
       field.value = item.summary?.[key] || "";
       field.disabled = item.status === "COMPLETED";
@@ -865,6 +903,27 @@ async function setupCoachReviewDetail(id) {
     await loadAnnotations();
   };
   $("#coach-add-annotation").onclick = () => openEditor();
+  $("#manual-rep-save").onclick = async () => {
+    const status = $("#manual-rep-status");
+    const button = $("#manual-rep-save");
+    const rawTimes = ["#manual-rep-start", "#manual-rep-bottom", "#manual-rep-end"].map(selector => $(selector).value.trim());
+    const [start_s, bottom_s, end_s] = rawTimes.map(Number);
+    if (rawTimes.some(value => value === "") || ![start_s, bottom_s, end_s].every(Number.isFinite)) { status.textContent = "Indica inicio, punto bajo y fin."; return; }
+    button.disabled = true;
+    try {
+      await apiJson("/api/coach/reviews/" + encodeURIComponent(id) + "/repetitions?coach_id=" + encodeURIComponent(coachId), {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ start_s, bottom_s, end_s, correction_note: $("#manual-rep-note").value || null }),
+      });
+      status.textContent = "Repetición manual agregada.";
+      ["#manual-rep-start", "#manual-rep-bottom", "#manual-rep-end", "#manual-rep-note"].forEach(selector => { $(selector).value = ""; });
+      await load();
+    } catch (manualError) {
+      status.textContent = manualError.message;
+    } finally {
+      button.disabled = false;
+    }
+  };
   $("#coach-annotation-cancel").onclick = () => { annotationEditor.hidden = true; };
   $("#coach-annotation-save").onclick = async () => {
     const saveButton = $("#coach-annotation-save");

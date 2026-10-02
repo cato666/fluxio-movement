@@ -1,0 +1,126 @@
+{
+  "id": "clean-and-jerk-front",
+  "aliases": [
+    "clean and jerk",
+    "clean & jerk",
+    "clean jerks"
+  ],
+  "views": [
+    "front"
+  ],
+  "required_landmarks": [
+    "shoulder",
+    "elbow",
+    "wrist",
+    "hip",
+    "knee",
+    "ankle"
+  ],
+  "primary_signal": "knee_angle",
+  "states": [
+    "standing",
+    "setup",
+    "pull",
+    "receive",
+    "stand",
+    "jerk_dip",
+    "jerk_drive",
+    "lockout"
+  ],
+  "initial_state": "standing",
+  "bottom_state": "receive",
+  "transitions": [
+    {
+      "to": "setup",
+      "from": "standing",
+      "operator": "<=",
+      "signal": "knee_angle",
+      "threshold": "setup_knee_max"
+    },
+    {
+      "to": "pull",
+      "from": "setup",
+      "operator": ">=",
+      "signal": "knee_angle",
+      "threshold": "pull_knee_min"
+    },
+    {
+      "to": "receive",
+      "from": "pull",
+      "operator": "<=",
+      "signal": "knee_angle",
+      "threshold": "receive_knee_max"
+    },
+    {
+      "to": "stand",
+      "from": "receive",
+      "operator": ">=",
+      "signal": "knee_angle",
+      "threshold": "standing_knee_min"
+    },
+    {
+      "to": "jerk_dip",
+      "from": "stand",
+      "operator": "<=",
+      "signal": "knee_angle",
+      "threshold": "jerk_dip_knee_max"
+    },
+    {
+      "to": "jerk_drive",
+      "from": "jerk_dip",
+      "operator": ">=",
+      "signal": "knee_angle",
+      "threshold": "jerk_drive_knee_min"
+    },
+    {
+      "to": "lockout",
+      "from": "jerk_drive",
+      "completes_rep": true,
+      "conditions": [
+        {
+          "operator": ">=",
+          "threshold": "standing_knee_min",
+          "signal": "knee_angle"
+        },
+        {
+          "operator": ">=",
+          "threshold": "lockout_wrist_min",
+          "signal": "wrist_lift"
+        }
+      ]
+    },
+    {
+      "to": "standing",
+      "from": "lockout",
+      "operator": "<=",
+      "signal": "wrist_lift",
+      "threshold": "reset_wrist_max"
+    }
+  ],
+  "thresholds": {
+    "setup_knee_max": 135.0,
+    "pull_knee_min": 150.0,
+    "receive_knee_max": 125.0,
+    "standing_knee_min": 155.0,
+    "jerk_dip_knee_max": 145.0,
+    "jerk_drive_knee_min": 155.0,
+    "lockout_wrist_min": 0.08,
+    "reset_wrist_max": 0.04
+  },
+  "metrics": [
+    "knee_angle",
+    "hip_angle",
+    "trunk_from_vertical",
+    "wrist_lift",
+    "elbow_angle"
+  ],
+  "noise": {
+    "min_confirm_frames": 2,
+    "max_gap_s": 0.5,
+    "min_rep_duration_s": 0.45,
+    "max_rep_duration_s": 15.0,
+    "cooldown_s": 0.35,
+    "min_pose_confidence": 0.6
+  },
+  "version": "1.0"
+}

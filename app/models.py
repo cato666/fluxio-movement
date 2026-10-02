@@ -88,10 +88,15 @@ class Repetition(Base):
     bottom_s: Mapped[float] = mapped_column(Float)
     end_s: Mapped[float] = mapped_column(Float)
     metrics: Mapped[dict] = mapped_column(JSONB)
+    source: Mapped[str] = mapped_column(String(16), server_default="DETECTED")
+    correction_status: Mapped[str] = mapped_column(String(16), server_default="ACTIVE")
+    correction_note: Mapped[str | None] = mapped_column(Text)
     __table_args__ = (
         UniqueConstraint("analysis_id", "number", name="uq_repetitions_number"),
         UniqueConstraint("id", "analysis_id", name="uq_repetitions_analysis"),
         CheckConstraint("number > 0", name="ck_repetitions_number"),
+        CheckConstraint("source IN ('DETECTED', 'MANUAL')", name="ck_repetitions_source"),
+        CheckConstraint("correction_status IN ('ACTIVE', 'DISCARDED')", name="ck_repetitions_correction_status"),
         CheckConstraint("start_s >= 0 AND bottom_s >= start_s AND end_s >= bottom_s AND end_s < 'Infinity'::float8", name="ck_repetitions_times"),
     )
 
@@ -176,6 +181,7 @@ class AIObservation(Base):
     severity: Mapped[str | None] = mapped_column(String(16))
     title: Mapped[str | None] = mapped_column(String(240))
     description: Mapped[str | None] = mapped_column(Text)
+    evidence: Mapped[str | None] = mapped_column(Text)
     confidence: Mapped[str | None] = mapped_column(String(16))
     model: Mapped[str | None] = mapped_column(String(120))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
