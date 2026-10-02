@@ -436,6 +436,7 @@ button.ai-observation-meta { font-size: 12px; }
 
 /* Mobile is a task surface; desktop retains its existing composition. */
 html { -webkit-text-size-adjust: 100%; }
+.mobile-nav-icon { display: none; }
 .mobile-disclosure { min-width: 0; margin-block: 12px; border-bottom: 1px solid var(--border); }
 .mobile-disclosure > summary { padding: 12px 0; font-weight: 600; }
 .mobile-disclosure-content > .card { margin: 0; }
@@ -504,4 +505,62 @@ html { -webkit-text-size-adjust: 100%; }
   .review-moments:has(.review-moment-controls) > h2 { display: none; }
   .review-moments .moment-progress { font-size: 13px; }
   #coach-review-detail-view .review-moments .muted { font-size: 13px; }
+}
+
+/* Native mobile platform layer. Page content and pinch zoom remain available. */
+@media (max-width: 600px) {
+  :root { --mobile-nav-height: 72px; }
+  html, body { min-height: 100svh; }
+  html:not(.marketing), body:not(.marketing) { overscroll-behavior-y: none; }
+  main { min-height: 100svh; }
+  body:not(.marketing) main {
+    padding-left: max(12px, env(safe-area-inset-left, 0px));
+    padding-right: max(12px, env(safe-area-inset-right, 0px));
+  }
+  body:not(.marketing) .topbar {
+    margin-inline: 0;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  body.marketing .topbar { padding-top: env(safe-area-inset-top, 0px); }
+  body:not(.marketing) .functional-nav {
+    min-height: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom, 0px));
+    padding-right: max(8px, env(safe-area-inset-right, 0px));
+  }
+  body:not(.marketing) .functional-nav a { flex-direction: column; gap: 3px; }
+  .functional-nav .mobile-nav-icon {
+    display: block; width: 22px; height: 22px; flex-shrink: 0;
+    fill: none; stroke: currentColor; stroke-width: 1.8;
+    stroke-linecap: round; stroke-linejoin: round;
+  }
+  #analysis-form .form-actions, #coach-analysis-form .form-actions,
+  #coach-summary-card > .form-actions {
+    bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom, 0px));
+  }
+  body.mobile-keyboard-open .functional-nav { visibility: hidden; pointer-events: none; }
+  body.mobile-keyboard-open #analysis-form .form-actions,
+  body.mobile-keyboard-open #coach-analysis-form .form-actions,
+  body.mobile-keyboard-open #coach-summary-card > .form-actions { position: static; }
+  input, textarea, select { scroll-margin-block: 24px; }
+  .moment-picker, .mobile-disclosure-content { overscroll-behavior: contain; }
+}
+@media (max-width: 900px) and (pointer: coarse) {
+  button, a, summary, [role="button"] {
+    touch-action: manipulation;
+    -webkit-user-select: none; user-select: none;
+    -webkit-touch-callout: none;
+  }
+  button:not(:disabled), a, summary, [role="button"] {
+    transition: transform 100ms var(--ease-out), opacity 100ms var(--ease-out);
+  }
+  button:not(:disabled):active, a:active, summary:active, [role="button"]:active {
+    transform: scale(.97); opacity: .8; transition-duration: 0s;
+  }
+  input, textarea, select { font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  button:not(:disabled):active, a:active, summary:active, [role="button"]:active { transform: none; }
+}
+@media (max-width: 900px) and (pointer: coarse) and (prefers-reduced-motion: reduce) {
+  button:not(:disabled), a, summary, [role="button"] { transition-property: opacity; }
 }
