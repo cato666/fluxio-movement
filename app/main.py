@@ -6,6 +6,7 @@ from pathlib import Path
 from uuid import UUID, uuid4
 import logging
 import os
+import re
 import shutil
 import subprocess
 from alembic.config import Config
@@ -13,7 +14,7 @@ from alembic.script import ScriptDirectory
 
 from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from itsdangerous import BadSignature, TimestampSigner
@@ -200,7 +201,14 @@ def recover_interrupted_analyses():
 @app.get('/coach/athletes/new')
 @app.get('/internal/usage')
 def home():
-    return FileResponse(ROOT / 'app' / 'static' / 'index.html')
+    # Only a public destination number reaches the browser, never provider credentials.
+    destination = os.getenv('WHATSAPP_PUBLIC_NUMBER', '').lstrip('+')
+    if not re.fullmatch(r'[1-9][0-9]{7,14}', destination):
+        destination = ''
+    document = (ROOT / 'app' / 'static' / 'index.html').read_text(encoding='utf-8')
+    document = document.replace('<!-- whatsapp-public-config -->',
+        f'<meta name="whatsapp-destination" content="{destination}">')
+    return HTMLResponse(document, headers={'Cache-Control': 'no-store'})
 
 
 class LoginPayload(BaseModel):

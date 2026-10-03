@@ -104,7 +104,7 @@ def test_text_asks_one_clarification(client, channel, session, monkeypatch, case
     def interpreter(*args):
         if case == 'invalid':
             raise ValueError('fixture failure')
-        value = draft(); value['questions'] = ['¿Qué ejercicios hiciste?', '¿Cuántas repeticiones?']
+        value = draft(); value['workout'] = ''; value['questions'] = ['¿Qué ejercicios hiciste?', '¿Cuántas repeticiones?']
         return value
     monkeypatch.setattr('app.services.training_service.interpret', interpreter)
     initial = count(session)
@@ -399,3 +399,67 @@ def test_channel_costs_count_accepted_inbound_and_download_bytes(client, channel
     monkeypatch.setenv('WHATSAPP_OUTBOUND_UNIT_COST_USD','not-a-rate')
     assert dispatch_one(session,channel[0],Vault())
     assert session.scalar(select(WhatsAppUsage).where(WhatsAppUsage.category=='outbound')).cost is None
+
+
+def test_optional_questions_propose_without_auto_save_and_correction_keeps_source(client, channel, session, monkeypatch):
+    calls = []
+    def interpreter(text, image=None):
+        calls.append(text)
+        value = draft()
+        value['questions'] = ['¿Los 8 minutos son un límite total?', '¿Qué abdominales hiciste?']
+        return value
+    monkeypatch.setattr('app.services.training_service.interpret', interpreter)
+    initial = count(session)
+    step(client, channel, 'Hoy hice 6 rondas del WOD')
+    assert state(session).state == 'CONFIRM' and count(session) == initial
+    out = session.scalar(select(WhatsAppOutbox).order_by(WhatsAppOutbox.created_at.desc()))
+    reply = Vault().decrypt(out.payload_encrypted, out.key_version)
+    assert 'Por confirmar (opcional)' in reply['text']
+    assert 'Corregir' in reply['text']
+    confirm(client, channel, session, 'correct')
+    step(client, channel, 'Solo peso corporal')
+    assert state(session).state == 'CONFIRM'
+    assert '6 rondas' in calls[-1] and 'peso corporal' in calls[-1]
+    assert count(session) == initial
+    confirm(client, channel, session)
+    assert count(session) == initial + 1
+
+
+def test_audio_explicit_date_used_in_proposal_and_saved(client, channel, session, monkeypatch, tmp_path):
+    mock_transcription(monkeypatch, text='El 2 de octubre de 2026 hice 4 rondas en 12 minutos')
+    channel[0].media = DownloadedMedia(make_audio(tmp_path), 'audio/ogg')
+    step(client, channel, '', kind='audio')
+    proposed = snapshot(state(session), Vault())['draft']
+    assert proposed['trained_on'] == '2026-10-02'
+    out = session.scalar(select(WhatsAppOutbox).order_by(WhatsAppOutbox.created_at.desc()))
+    assert '02/10/2026' in Vault().decrypt(out.payload_encrypted, out.key_version)['text']
+    confirm(client, channel, session)
+    row = session.scalar(select(TrainingSession).order_by(TrainingSession.created_at.desc()))
+    assert row.trained_on.isoformat() == '2026-10-02'
+
+
+def test_date_correction_preserved_in_next_proposal(client, channel, session):
+    step(client, channel)
+    confirm(client, channel, session, 'correct')
+    step(client, channel, 'Fue el 2 de octubre de 2026')
+    assert snapshot(state(session), Vault())['draft']['trained_on'] == '2026-10-02'
+
+
+@pytest.mark.parametrize('text,expected', [
+    ('Fue el 2 de octubre', '2026-10-02'),
+    ('Ayer hice 4 rondas', '2026-10-02'),
+    ('Hoy hice 4 rondas', '2026-10-03'),
+    ('AMRAP 12 minutos, 2 rondas', None),
+])
+def test_stated_date(text, expected):
+    from datetime import date
+    from app.whatsapp.capture import stated_date
+    result = stated_date(text, date(2026, 10, 3))
+    assert (result.isoformat() if result else None) == expected
+
+
+def test_invalid_explicit_date_not_silently_replaced():
+    from datetime import date
+    from app.whatsapp.capture import stated_date
+    with pytest.raises(TrainingInvalid):
+        stated_date('Fue el 31 de febrero', date(2026, 10, 3))

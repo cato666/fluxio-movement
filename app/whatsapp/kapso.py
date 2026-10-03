@@ -58,7 +58,11 @@ class KapsoWhatsAppProvider:
                     continue
                 if kapso.get('direction') != ('inbound' if status == 'received' else 'outbound'):
                     raise ValueError()
-                if kapso.get('status') != status:
+                # Real Kapso received events can report delivery of the inbound
+                # message as delivered. Direction still comes from signed bytes;
+                # outbound receipts retain strict status matching.
+                allowed_statuses = {'received', 'delivered'} if status == 'received' else {status}
+                if kapso.get('status') not in allowed_statuses:
                     raise ValueError()
                 identifier = message['id']
                 if not isinstance(identifier, str) or not 1 <= len(identifier) <= 200:
@@ -138,7 +142,9 @@ class KapsoWhatsAppProvider:
     def download_media(self, reference, max_bytes):
         if not re.fullmatch(r'[A-Za-z0-9_.-]{1,160}', reference):
             raise ProviderError('invalid_media_reference')
-        raw, _ = self._read(f'{self.base}/{quote(reference, safe="")}')
+        if not self.number_id:
+            raise ProviderError('provider_not_configured')
+        raw, _ = self._read(f'{self.base}/{quote(reference, safe="")}?phone_number_id={quote(self.number_id, safe="")}')
         try:
             info = json.loads(raw)
             url = info['download_url']

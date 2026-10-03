@@ -87,6 +87,7 @@ window.setupTraining = async function (identifier) {
   }
   try {
     if (!identifier) {
+      if (window.mountWhatsAppLink) root.trainingCleanup = window.mountWhatsAppLink(root);
       const { items } = await api('/api/training-sessions'); status.textContent = '';
       const flash = takeFlash(); if (flash) notify(flash);
       if (!items.length) {

@@ -1,5 +1,5 @@
 """Bounded workout/note state machine. Only TrainingService changes Bitácora."""
-from datetime import timedelta
+from datetime import date, timedelta
 import re
 import secrets
 from uuid import UUID
@@ -20,6 +20,27 @@ def sanitize(text):
     text = re.sub(r'\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b', '[dato omitido]', text)
     text = re.sub(r'\+?\b\d{9,15}\b', '[dato omitido]', text)
     return re.sub(r'\b[0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}\b', '[dato omitido]', text)
+
+
+MONTHS = {name: index for index, name in enumerate(
+    ('enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio',
+     'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'), 1)}
+
+
+def stated_date(text, today):
+    """Use explicit Spanish calendar dates, never infer a date from WOD durations."""
+    lowered = text.casefold()
+    match = re.search(r'\b(\d{1,2}) de (' + '|'.join(MONTHS) + r')(?: de(?:l)? (\d{4}))?\b', lowered)
+    if match:
+        try:
+            return date(int(match[3]) if match[3] else today.year, MONTHS[match[2]], int(match[1]))
+        except ValueError:
+            raise TrainingInvalid('Fecha inválida') from None
+    if re.search(r'\bayer\b', lowered):
+        return today - timedelta(days=1)
+    if re.search(r'\bhoy\b', lowered):
+        return today
+    return None
 
 
 def snapshot(state, vault):
@@ -55,13 +76,17 @@ def propose(session, inbox, message, athlete_id, state, data, vault):
         text = f"Agregar a «{data['title']}» ({data['date']}):\n{data['note']}\n¿Guardar esta nota?"
     else:
         draft = data['draft']
-        text = f"Detecté:\n{draft['title']}\n{draft['workout']}"
+        text = f"Detecté:\nFecha: {date.fromisoformat(data['date']).strftime('%d/%m/%Y')}\n{draft['title']}\n{draft['workout']}"
         if draft.get('result_text'):
             text += '\nResultado: ' + draft['result_text']
         if draft.get('adaptations'):
             text += '\nAdaptaciones: ' + draft['adaptations']
         if draft.get('rpe') is not None:
             text += '\nRPE: ' + str(draft['rpe'])
+        if data.get('questions'):
+            text += '\nPor confirmar (opcional):'
+            text += ''.join('\n• ' + question for question in data['questions'])
+            text += '\nPuedes guardar este borrador o usar Corregir para aclarar estos detalles.'
         text += '\n¿Quieres guardarlo?'
     respond(session, inbox, message, athlete_id, vault, text, actions(state))
 
@@ -73,7 +98,7 @@ def interpret(session, inbox, message, athlete_id, state, data, vault):
     service = TrainingService(session, athlete_id)
     raw = service.interpret(InterpretPayload(text=source, image_id=data.get('image_id')))
     draft = WorkoutDraft.model_validate(raw).model_dump()
-    if draft['questions'] or not draft['workout'].strip():
+    if not draft['workout'].strip():
         transition(state, 'CLARIFY', data, vault)
         question = draft['questions'][0] if draft['questions'] else '¿Qué ejercicios, series o rondas hiciste?'
         respond(session, inbox, message, athlete_id, vault, question[:500])
@@ -81,6 +106,7 @@ def interpret(session, inbox, message, athlete_id, state, data, vault):
     proposed = SessionPayload(trained_on=data['date'], title=draft['title'].strip() or 'Entrenamiento',
         source_text=source, workout=draft['workout'], result_text=draft['result_text'],
         adaptations=draft['adaptations'], rpe=draft['rpe'], blocks=draft['blocks'], source_image_id=data.get('image_id'))
+    data['questions'] = draft['questions']
     data['draft'] = proposed.model_dump(mode='json')
     propose(session, inbox, message, athlete_id, state, data, vault)
 
@@ -241,6 +267,10 @@ def handle_capture(session, inbox, message, athlete_id, vault, provider):
                 transition(state, 'CONTEXT', data, vault)
                 respond(session, inbox, message, athlete_id, vault, 'Recibí tu video. Cuéntame brevemente qué entrenamiento hiciste o envíame una nota de voz.')
                 return
+        if text and data.get('kind') == 'workout':
+            explicit_day = stated_date(text, now().astimezone(ZoneInfo('America/Santiago')).date())
+            if explicit_day:
+                data['date'] = explicit_day.isoformat()
         if text:
             data['source'] = (data.get('source','') + '\nAclaración o corrección: ' + sanitize(text)).strip()[:12000]
         if not data.get('source') and not data.get('image_id'):

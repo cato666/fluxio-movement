@@ -226,6 +226,7 @@ def test_kapso_send_download_errors_and_ssrf():
         if 'media_download' in request.full_url:
             assert not request.has_header('X-api-key')
             return Response(b'photo', 'image/jpeg')
+        assert 'phone_number_id=' in request.full_url
         return Response(b'{"download_url":"https://api.kapso.ai/meta/whatsapp/media_download?token=fixture","file_size":5}')
     provider = KapsoWhatsAppProvider(opener=opener)
     assert provider.send(PHONE,'Propuesta',[{'id':'opaque','title':'Guardar'}]) == 'sent.1'
@@ -236,3 +237,40 @@ def test_kapso_send_download_errors_and_ssrf():
     with pytest.raises(ProviderError) as error:
         KapsoWhatsAppProvider(opener=invalid).send(PHONE,'Hola')
     assert error.value.uncertain
+
+
+def test_real_kapso_inbound_delivered_image_normalizes_and_deduplicates(client, session):
+    # Anonymous structural reproduction; no actual phone, media URL or message ID.
+    data = payload('Resultado de prueba', kind='image', identifier='wamid.sandbox-redacted')
+    data['message']['kapso']['status'] = 'delivered'
+    data['message']['image'].update(id='media-redacted', mime_type='image/jpeg')
+    provider = KapsoWhatsAppProvider()
+    message = provider.normalize(json.dumps(data).encode(), 'whatsapp.message.received')[0]
+    assert message.event == 'received' and message.message_type == 'image'
+    assert message.text == 'Resultado de prueba'
+    assert message.media_reference == 'media-redacted'
+    assert webhook(client, data).json()['accepted'] == 1
+    assert webhook(client, data).json()['accepted'] == 0
+    assert len(session.scalars(select(WhatsAppInbox)).all()) == 1
+    # Relabelling the header cannot turn signed inbound into an outbound receipt.
+    assert webhook(client, data, 'delivered').status_code == 400
+    assert webhook(client, data, signature='0'*64).status_code == 401
+
+
+@pytest.mark.parametrize('status', ['sent','read','failed','unexpected'])
+def test_inbound_received_rejects_unobserved_statuses(status):
+    data = payload()
+    data['message']['kapso']['status'] = status
+    with pytest.raises(ProviderError):
+        KapsoWhatsAppProvider().normalize(json.dumps(data).encode(), 'whatsapp.message.received')
+
+
+def test_public_link_destination_is_digits_only_without_provider_secrets(client, monkeypatch):
+    monkeypatch.setenv('WHATSAPP_PUBLIC_NUMBER', '+56911112222')
+    monkeypatch.setenv('KAPSO_API_KEY', 'private-test-key-never-render')
+    response = client.get('/training')
+    assert response.status_code == 200
+    assert '<meta name="whatsapp-destination" content="56911112222">' in response.text
+    assert 'private-test-key-never-render' not in response.text
+    monkeypatch.setenv('WHATSAPP_PUBLIC_NUMBER', '"><script>alert(1)</script>')
+    assert '<meta name="whatsapp-destination" content="">' in client.get('/training').text
