@@ -29,6 +29,7 @@ from .services.ai_reasoning import run_reasoning
 from .services.exercise_validation import validate_video_exercise
 from .services.review_moments import rank_review_moments
 from .services.auth import hash_password, verify_password
+from .training import router as training_router
 
 ROOT = Path(__file__).resolve().parents[1]
 STORAGE_PATH = Path(os.environ.get('STORAGE_PATH', '/data/storage'))
@@ -104,6 +105,9 @@ def require_internal(request: Request, session: Session = Depends(get_session)) 
     return user
 
 
+app.include_router(training_router(require_athlete))
+
+
 @app.middleware('http')
 async def protect_application_routes(request: Request, call_next):
     """Central guard for the SPA, API and video assets.
@@ -139,7 +143,7 @@ async def protect_application_routes(request: Request, call_next):
             requested_coach = request.query_params.get('coach_id')
             if requested_coach and requested_coach != str(user.id):
                 return JSONResponse(status_code=403, content={'detail': 'No puedes operar como otro coach'})
-        elif path.startswith('/analyses') or path.startswith('/api/analyses') or path == '/api/analyze' or path == '/api/coaches':
+        elif path.startswith('/training') or path.startswith('/analyses') or path.startswith('/api/analyses') or path == '/api/analyze' or path == '/api/coaches':
             if user.role != 'ATHLETE':
                 if not path.startswith('/api/'):
                     return RedirectResponse(url='/coach/reviews', status_code=303)
@@ -181,6 +185,9 @@ def recover_interrupted_analyses():
 @app.get('/para-atletas')
 @app.get('/para-coaches')
 @app.get('/analyses')
+@app.get('/training')
+@app.get('/training/new')
+@app.get('/training/{session_id}')
 @app.get('/analyses/new')
 @app.get('/analyses/{analysis_id}/request-review')
 @app.get('/analyses/{analysis_id}')

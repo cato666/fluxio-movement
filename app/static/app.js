@@ -54,6 +54,8 @@ async function apiJson(url, options) {
 }
 
 function showView(id) {
+  const trainingView = $('#training-view');
+  if (trainingView) trainingView.hidden = id !== 'training-view';
   if (id !== "detail-view" && detailPoller) { detailPoller.stop(); detailPoller = null; }
   // Las rutas públicas no deben revelar accesos del área autenticada.
   const marketing = ["landing-view", "demo-view", "login-view"].includes(id);
@@ -89,6 +91,7 @@ function configureNavigation(user) {
     link.hidden = link.dataset.navRole !== user.role;
     const target = new URL(link.href).pathname;
     const active = currentPath === target
+      || (target === '/training' && currentPath.startsWith('/training/'))
       || (target === "/analyses" && /^\/analyses\/\d/.test(currentPath))
       || (target === "/coach/reviews" && currentPath.startsWith("/coach/reviews/"));
     if (active) link.setAttribute("aria-current", "page");
@@ -1135,6 +1138,11 @@ else if (path === "/coach/athletes/new") setupCoachNewAthlete();
 else if (path === "/coach/reviews") setupCoachReviews();
 else if (path.startsWith("/coach/reviews/")) setupCoachReviewDetail(path.split("/")[3]);
 else if (path === "/analyses") setupList();
+else if (path === "/training" || path.startsWith('/training/')) {
+  const view = element('section'); view.id = 'training-view';
+  $('#workspace').append(view);
+  showView('training-view'); window.setupTraining(path.split('/')[2]);
+}
 else if (path.endsWith("/request-review")) setupCoachSelection(path.split("/")[2]);
 else if (path.startsWith("/analyses/") && path !== "/analyses/new") setupDetail(path.split("/")[2]);
 else if (path === "/") { showView("landing-view"); setupLandingInteractions(); }

@@ -1,9 +1,9 @@
 """F1 persistence schema; review workflows are implemented in later phases."""
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
-    CheckConstraint, DateTime, Float, ForeignKey, ForeignKeyConstraint,
+    CheckConstraint, Date, DateTime, Float, ForeignKey, ForeignKeyConstraint,
     Index, Integer, String, Text, UniqueConstraint, func, text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -35,6 +35,32 @@ class Athlete(Base):
         ForeignKeyConstraint(["user_id", "role"], ["users.id", "users.role"], name="fk_athletes_user_role"),
         CheckConstraint("role = 'ATHLETE'", name="ck_athletes_role"),
     )
+
+
+class TrainingSession(Base):
+    __tablename__ = "training_sessions"
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    athlete_id: Mapped[UUID] = mapped_column(ForeignKey("athletes.user_id"), index=True)
+    trained_on: Mapped[date] = mapped_column(Date)
+    title: Mapped[str] = mapped_column(String(160))
+    source_text: Mapped[str] = mapped_column(Text)
+    workout: Mapped[str] = mapped_column(Text)
+    result_text: Mapped[str | None] = mapped_column(Text)
+    adaptations: Mapped[str | None] = mapped_column(Text)
+    rpe: Mapped[int | None] = mapped_column(Integer)
+    video_links: Mapped[list] = mapped_column(JSONB, default=list)
+    blocks: Mapped[list] = mapped_column(JSONB, default=list)
+    source_image_id: Mapped[UUID | None] = mapped_column(ForeignKey('training_images.id'))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    __table_args__ = (CheckConstraint("rpe IS NULL OR rpe BETWEEN 1 AND 10", name="ck_training_sessions_rpe"),)
+
+
+class TrainingImage(Base):
+    __tablename__ = 'training_images'
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    athlete_id: Mapped[UUID] = mapped_column(ForeignKey('athletes.user_id'), index=True)
+    path: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class Coach(Base):
