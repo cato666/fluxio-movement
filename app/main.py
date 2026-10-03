@@ -31,6 +31,7 @@ from .services.review_moments import rank_review_moments
 from .services.auth import hash_password, verify_password
 from .training import router as training_router
 from .services.training_usage import extend_usage
+from .whatsapp.routes import router as whatsapp_router
 
 ROOT = Path(__file__).resolve().parents[1]
 STORAGE_PATH = Path(os.environ.get('STORAGE_PATH', '/data/storage'))
@@ -107,6 +108,7 @@ def require_internal(request: Request, session: Session = Depends(get_session)) 
 
 
 app.include_router(training_router(require_athlete))
+app.include_router(whatsapp_router(require_athlete))
 
 
 @app.middleware('http')
@@ -117,7 +119,7 @@ async def protect_application_routes(request: Request, call_next):
     unauthenticated browser from opening a functional route or a stored video.
     """
     path = request.url.path
-    public = {'/', '/demo', '/login', '/para-atletas', '/para-coaches', '/health', '/api/health', '/api/auth/login'}
+    public = {'/', '/demo', '/login', '/para-atletas', '/para-coaches', '/health', '/api/health', '/api/auth/login', '/webhooks/whatsapp/kapso'}
     if path in public or path.startswith('/static') or path.startswith('/docs') or path.startswith('/openapi'):
         return await call_next(request)
     with SessionLocal() as session:

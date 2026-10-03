@@ -1,6 +1,7 @@
 from alembic import context
 from app.database import Base, engine
 from app import models  # noqa: F401 - register metadata
+from app.whatsapp import models as whatsapp_models  # noqa: F401
 
 if context.is_offline_mode():
     context.configure(url=engine.url, target_metadata=Base.metadata, literal_binds=True)
