@@ -6,9 +6,11 @@ import time
 from sqlalchemy import or_, select, text
 from sqlalchemy.orm import Session
 from ..database import SessionLocal, engine
+from ..models import TrainingImage, TrainingSession
 from .identity import now
 from .kapso import KapsoWhatsAppProvider
-from .models import ConversationState, WhatsAppInbox, WhatsAppOutbox
+from .models import ConversationState, WhatsAppInbox, WhatsAppOutbox, WhatsAppMedia
+from .media import private_root
 from .provider import InboundWhatsAppMessage
 from .queue import dispatch_one
 from .security import Vault, enabled
@@ -68,7 +70,11 @@ def process_one(provider, vault):
 
 
 def cleanup(session):
-    for row in session.scalars(select(ConversationState).where(ConversationState.expires_at <= now()).with_for_update(skip_locked=True)):
+    for row in session.scalars(select(WhatsAppMedia).where(WhatsAppMedia.training_session_id.is_(None),
+            WhatsAppMedia.expires_at.is_(None)).with_for_update(skip_locked=True)):
+        row.expires_at = now() + timedelta(hours=24)
+    for row in session.scalars(select(ConversationState).where(ConversationState.expires_at <= now(),
+            ConversationState.state != 'IDLE').with_for_update(skip_locked=True)):
         row.state, row.pending_action, row.payload_minimized = 'IDLE', None, None
         row.version += 1
     for model, field in ((WhatsAppInbox, 'payload_encrypted'), (WhatsAppOutbox, 'payload_encrypted')):
@@ -77,6 +83,22 @@ def cleanup(session):
             setattr(row, field, None)
             if row.state in {'PENDING', 'RETRY', 'PROCESSING'}:
                 row.state = 'EXPIRED'
+    for row in session.scalars(select(WhatsAppMedia).where(WhatsAppMedia.expires_at <= now(),
+            WhatsAppMedia.training_session_id.is_(None)).with_for_update(skip_locked=True)):
+        root = private_root().resolve()
+        target = (root / row.path).resolve()
+        if not target.is_relative_to(root) or not row.path.startswith(('training-images/', 'original/whatsapp/')):
+            continue
+        if row.media_type == 'image':
+            image = session.scalar(select(TrainingImage).where(TrainingImage.path == target.name,
+                TrainingImage.athlete_id == row.athlete_id).with_for_update())
+            if image and session.scalar(select(TrainingSession.id).where(TrainingSession.source_image_id == image.id).limit(1)):
+                row.expires_at = None
+                continue
+            if image:
+                session.delete(image)
+        target.unlink(missing_ok=True)
+        session.delete(row)
     session.commit()
 
 

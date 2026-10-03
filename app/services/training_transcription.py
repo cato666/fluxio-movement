@@ -1,6 +1,7 @@
 """Bounded audio validation and transcription; recordings are not persisted."""
 import json
 import os
+import math
 from pathlib import Path
 import subprocess
 import tempfile
@@ -17,8 +18,11 @@ class AudioUnavailable(RuntimeError):
 
 def transcribe(raw: bytes) -> str:
     from .training_usage import report_usage
-    if not (raw.startswith(b'\x1a\x45\xdf\xa3') or (raw.startswith(b'RIFF') and raw[8:12] == b'WAVE') or raw[4:8] == b'ftyp'):
-        raise ValueError('Audio inválido. Graba nuevamente en formato WebM, MP4 o WAV.')
+    if len(raw) > AUDIO_LIMIT:
+        raise ValueError('El audio supera 8 MB')
+    ogg = raw.startswith(b'OggS')
+    if not (raw.startswith(b'\x1a\x45\xdf\xa3') or (raw.startswith(b'RIFF') and raw[8:12] == b'WAVE') or raw[4:8] == b'ftyp' or ogg):
+        raise ValueError('Audio inválido. Graba nuevamente en formato WebM, MP4, WAV u OGG/Opus.')
     if not os.getenv('OPENAI_API_KEY') or os.getenv('TRAINING_VOICE_ENABLED', 'true').lower() not in {'true', '1', 'yes'}:
         raise AudioUnavailable('La transcripción no está configurada. Puedes escribir tu entrenamiento.')
     with tempfile.TemporaryDirectory(prefix='training-voice-') as directory:
@@ -26,13 +30,16 @@ def transcribe(raw: bytes) -> str:
         normalized = Path(directory) / 'audio.wav'
         original.write_bytes(raw)
         try:
-            probe = subprocess.run(['ffprobe', '-v', 'error', '-protocol_whitelist', 'file,pipe', '-show_entries', 'format=duration:stream=codec_type', '-of', 'json', str(original)], capture_output=True, timeout=15, check=True)
+            probe = subprocess.run(['ffprobe', '-v', 'error', '-protocol_whitelist', 'file,pipe', '-show_entries', 'format=duration:stream=codec_type,codec_name', '-of', 'json', str(original)], capture_output=True, timeout=15, check=True)
             info = json.loads(probe.stdout)
             duration = float(info.get('format', {}).get('duration', 0))
             # Some browser WebM recordings lack a duration header. Decode a bounded
             # sample and check its actual length below rather than trusting metadata.
-            if duration > MAX_SECONDS or not any(stream.get('codec_type') == 'audio' for stream in info.get('streams', [])):
+            streams = info.get('streams', [])
+            if not math.isfinite(duration) or duration < 0 or duration > MAX_SECONDS or not any(stream.get('codec_type') == 'audio' for stream in streams):
                 raise ValueError('Audio inválido o superior a 3 minutos')
+            if ogg and (any(stream.get('codec_type') != 'audio' for stream in streams) or not all(stream.get('codec_name') == 'opus' for stream in streams)):
+                raise ValueError('La nota OGG debe contener únicamente audio Opus')
             subprocess.run(['ffmpeg', '-v', 'error', '-protocol_whitelist', 'file,pipe', '-i', str(original), '-t', str(MAX_SECONDS + 1), '-vn', '-ac', '1', '-ar', '16000', '-y', str(normalized)], capture_output=True, timeout=20, check=True)
             import wave
             with wave.open(str(normalized), 'rb') as audio:

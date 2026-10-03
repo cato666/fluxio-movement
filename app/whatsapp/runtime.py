@@ -33,7 +33,8 @@ def handle(session, inbox, message, vault, provider):
     elif athlete_id is None:
         reply(session, vault, inbox, message.phone, 'Inicia sesión en Fluxio y genera un código de vinculación para usar WhatsApp.')
     else:
-        reply(session, vault, inbox, message.phone, HELP, athlete_id=athlete_id)
+        from .capture import handle_capture
+        handle_capture(session, inbox, message, athlete_id, vault, provider)
     inbox.athlete_id = athlete_id
     usage(session, f'inbound:{inbox.id}', 'inbound', athlete_id)
     if athlete_id:

@@ -23,12 +23,20 @@ def fields(row):
 
 class TrainingService:
     def __init__(self, session: Session, athlete_id: UUID, *, media=None,
-                 interpreter=None, transcriber=None):
+                 interpreter=None, transcriber=None, commit=True):
         self.session = session
         self.athlete_id = athlete_id
         self.media = media if media is not None else TrainingMediaStore()
         self.interpreter = interpreter if interpreter is not None else interpret
         self.transcriber = transcriber if transcriber is not None else transcribe
+        self.commit = commit
+
+    def _persist(self):
+        # Web keeps its existing commit. Durable channels can join their transaction.
+        if self.commit:
+            self.session.commit()
+        else:
+            self.session.flush()
 
     def owned_image(self, identifier):
         row = self.session.scalar(select(TrainingImage).where(
@@ -45,7 +53,7 @@ class TrainingService:
         row = TrainingImage(id=identifier, athlete_id=self.athlete_id, path=path.name)
         try:
             self.session.add(row)
-            self.session.commit()
+            self._persist()
         except Exception:
             path.unlink(missing_ok=True)
             raise
@@ -107,7 +115,7 @@ class TrainingService:
         row = TrainingSession(athlete_id=self.athlete_id)
         self._assign(row, payload)
         self.session.add(row)
-        self.session.commit()
+        self._persist()
         return fields(row)
 
     def detail(self, identifier):
@@ -117,11 +125,27 @@ class TrainingService:
         payload = SessionPayload.model_validate(payload)
         row = self.owned(identifier)
         self._assign(row, payload)
-        self.session.commit()
+        self._persist()
         return fields(row)
 
     def delete(self, identifier):
         row = self.owned(identifier)
         self.session.delete(row)
-        self.session.commit()
+        self._persist()
         return {'deleted': True}
+
+    def add_athlete_note(self, identifier, note: str, source='whatsapp'):
+        if source not in {'web', 'whatsapp', 'ai'} or not note.strip() or len(note) > 4000:
+            raise TrainingInvalid('Nota inválida')
+        row = self.session.scalar(select(TrainingSession).where(
+            TrainingSession.id == identifier, TrainingSession.athlete_id == self.athlete_id).with_for_update())
+        if row is None:
+            raise TrainingNotFound('Sesión no encontrada')
+        addition = f'Nota del atleta ({source}): {note.strip()}'
+        combined = '\n\n'.join(filter(None, [row.adaptations, addition]))
+        if len(combined) > 4000:
+            raise TrainingInvalid('La nota supera el espacio disponible en este entrenamiento')
+        row.adaptations = combined
+        row.athlete_notes = [*(row.athlete_notes or []), {'type': 'athlete_note', 'source': source, 'text': note.strip()}]
+        self._persist()
+        return fields(row)

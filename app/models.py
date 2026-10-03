@@ -51,6 +51,7 @@ class TrainingSession(Base):
     video_links: Mapped[list] = mapped_column(JSONB, default=list)
     blocks: Mapped[list] = mapped_column(JSONB, default=list)
     source_image_id: Mapped[UUID | None] = mapped_column(ForeignKey('training_images.id'))
+    athlete_notes: Mapped[list] = mapped_column(JSONB, default=list, server_default=text("'[]'::jsonb"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     __table_args__ = (CheckConstraint("rpe IS NULL OR rpe BETWEEN 1 AND 10", name="ck_training_sessions_rpe"),)
 

@@ -105,3 +105,15 @@ class WhatsAppUsage(Base):
     cost: Mapped[Decimal | None] = mapped_column(Numeric(18, 8))
     currency: Mapped[str] = mapped_column(String(3), default='USD')
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class WhatsAppMedia(Base):
+    __tablename__ = 'whatsapp_media'
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    athlete_id: Mapped[UUID] = mapped_column(ForeignKey('athletes.user_id'), index=True)
+    training_session_id: Mapped[UUID | None] = mapped_column(ForeignKey('training_sessions.id', ondelete='SET NULL'))
+    inbox_id: Mapped[UUID] = mapped_column(ForeignKey('whatsapp_inbox.id'), unique=True)
+    path: Mapped[str] = mapped_column(Text)
+    media_type: Mapped[str] = mapped_column(String(16))
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

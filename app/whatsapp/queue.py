@@ -1,8 +1,9 @@
 from datetime import timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 import os
 from uuid import uuid4
-from sqlalchemy import select
+from sqlalchemy import select, exists, func
+from sqlalchemy.orm import aliased
 from sqlalchemy.dialects.postgresql import insert
 from .identity import now
 from .models import WhatsAppInbox, WhatsAppOutbox, WhatsAppUsage
@@ -10,9 +11,10 @@ from .security import ChannelError
 
 
 def usage(session, event_key, category, athlete_id=None, units=1, cost=None):
-    session.execute(insert(WhatsAppUsage).values(id=uuid4(), athlete_id=athlete_id,
+    statement = insert(WhatsAppUsage).values(id=uuid4(), athlete_id=athlete_id,
         event_key=event_key, category=category, units=units, cost=cost, currency='USD')
-        .on_conflict_do_nothing(index_elements=['event_key']))
+    session.execute(statement.on_conflict_do_update(index_elements=['event_key'],
+        set_={'athlete_id':func.coalesce(WhatsAppUsage.athlete_id, statement.excluded.athlete_id)}))
 
 
 def accept(session, messages, vault):
@@ -30,14 +32,23 @@ def accept(session, messages, vault):
             .on_conflict_do_nothing(index_elements=['provider', 'provider_message_id']).returning(WhatsAppInbox.id))
         if result.scalar_one_or_none():
             accepted += 1
+            if message.event == 'received':
+                usage(session, f'inbound:{identifier}', 'inbound')
     return accepted
 
 
 def reply(session, vault, inbox, phone, text, *, athlete_id=None, actions=None, action='reply'):
+    # Interactive bodies are bounded to 1024; long proposals remain complete.
+    if len(text) > (1024 if actions else 4096):
+        for index, start in enumerate(range(0, len(text), 1000)):
+            last = start + 1000 >= len(text)
+            reply(session, vault, inbox, phone, text[start:start+1000], athlete_id=athlete_id,
+                  actions=actions if last else None, action=f'{action}~{index:03d}')
+        return
     key = f'{inbox.id}:{action}'
     session.execute(insert(WhatsAppOutbox).values(id=uuid4(), athlete_id=athlete_id,
         dedupe_key=key, action=action, payload_encrypted=vault.encrypt({'phone': phone, 'text': text, 'actions': actions}),
-        key_version=vault.version, expires_at=now() + timedelta(hours=23))
+        key_version=vault.version, created_at=now(), expires_at=now() + timedelta(hours=23))
         .on_conflict_do_nothing(index_elements=['dedupe_key']))
 
 
@@ -46,8 +57,13 @@ def dispatch_one(session, provider, vault):
     for stale in session.scalars(select(WhatsAppOutbox).where(WhatsAppOutbox.state == 'SENDING',
         WhatsAppOutbox.lease_until < now()).with_for_update(skip_locked=True)):
         stale.state, stale.error_code = 'UNCERTAIN', 'send_interrupted'
+    predecessor = aliased(WhatsAppOutbox)
+    blocked = exists(select(predecessor.id).where(
+        predecessor.dedupe_key.like(func.substr(WhatsAppOutbox.dedupe_key, 1, 36) + ':%'),
+        predecessor.created_at < WhatsAppOutbox.created_at,
+        predecessor.state.not_in(('SENT','DELIVERED','READ'))))
     row = session.scalar(select(WhatsAppOutbox).where(WhatsAppOutbox.state.in_(('PENDING', 'RETRY')),
-        WhatsAppOutbox.next_attempt_at <= now()).order_by(WhatsAppOutbox.created_at)
+        WhatsAppOutbox.next_attempt_at <= now(), ~blocked).order_by(WhatsAppOutbox.created_at, WhatsAppOutbox.id)
         .with_for_update(skip_locked=True).limit(1))
     if row is None:
         session.commit()
@@ -72,8 +88,14 @@ def dispatch_one(session, provider, vault):
     else:
         row.state, row.provider_message_id, row.error_code = 'SENT', identifier, None
         rate = os.getenv('WHATSAPP_OUTBOUND_UNIT_COST_USD')
+        try:
+            cost = Decimal(rate) if rate else None
+            if cost is not None and (not cost.is_finite() or cost < 0):
+                cost = None
+        except InvalidOperation:
+            cost = None
         usage(session, f'outbound:{row.id}', 'outbound', row.athlete_id,
-              cost=Decimal(rate) if rate else None)
+              cost=cost)
     row.lease_until = None
     session.commit()
     return True
