@@ -194,13 +194,13 @@ test('existing session opens as a note, preserves edits between views and uses t
   assert.equal(await page.locator('.training-note').isVisible(),true);
   assert.equal(await page.locator('.training-note').getByRole('heading',{name:'AMRAP 12'}).isVisible(),true);
   assert.equal(await page.locator('.training-note').getByText('5 rondas',{exact:true}).isVisible(),true);
-  await page.getByRole('button',{name:'Ver detalle y editar'}).click();
+  await page.getByRole('button',{name:'Editar entrenamiento'}).click();
   assert.equal(await page.locator('.training-form').isVisible(),true);
   await page.locator('[name=title]').fill('AMRAP confirmado');
   await page.getByRole('button',{name:'Volver al resumen'}).click();
   assert.equal(await page.getByText('Tienes cambios sin guardar en el detalle.').isVisible(),true);
   assert.equal(await page.locator('.training-note').getByRole('heading',{name:'AMRAP 12'}).isVisible(),true);
-  await page.getByRole('button',{name:'Ver detalle y editar'}).click();
+  await page.getByRole('button',{name:'Editar entrenamiento'}).click();
   assert.equal(await page.locator('[name=title]').inputValue(),'AMRAP confirmado');
   await page.getByRole('button',{name:'Guardar cambios',exact:true}).click();await page.waitForURL('**/training');
   assert.equal(request.method(),'PUT');assert.equal(request.postDataJSON().title,'AMRAP confirmado');
@@ -217,10 +217,10 @@ test('saved note supports long content, absent optional data and 320–430px',()
   for(const width of [320,390,430,768,1440]){
     await page.setViewportSize({width,height:900});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-    assert.ok(await page.getByRole('button',{name:'Ver detalle y editar'}).evaluate(el=>el.getBoundingClientRect().height>=44));
+    assert.ok(await page.getByRole('button',{name:'Editar entrenamiento'}).evaluate(el=>el.getBoundingClientRect().height>=44));
   }
   await page.emulateMedia({reducedMotion:'reduce'});
-  assert.equal(await page.getByRole('button',{name:'Ver detalle y editar'}).evaluate(el=>getComputedStyle(el).transitionDuration),'0s');
+  assert.equal(await page.getByRole('button',{name:'Editar entrenamiento'}).evaluate(el=>getComputedStyle(el).transitionDuration),'0s');
 }));
 test('private thumbnails appear only for attached photos in list and note; missing image has a fallback',()=>harness(async page=>{
   const session={...draft,id:'photo-session',trained_on:'2026-10-01',source_image_id:'private-photo',video_links:[],source_text:''};
@@ -245,4 +245,30 @@ test('private thumbnails appear only for attached photos in list and note; missi
   await page.evaluate(()=>{document.querySelector('.training-note .training-thumbnail img').src+='?missing=1'});
   await page.getByText('Imagen no disponible',{exact:true}).waitFor();
   assert.equal(await thumbnail.getAttribute('href'),null);
+}));
+test('chronology, weekly counts and read-only blocks use stored data; reading and editing stay distinct',()=>harness(async page=>{
+  const today=await page.evaluate(()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`});
+  const title=await page.evaluate(date=>new Intl.DateTimeFormat('es-CL',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(new Date(date+'T12:00:00')),today);
+  const session={...draft,id:'chronology',trained_on:today,title,video_links:[{analysis_id:'linked',movement:'Thrusters',context:'Ronda 1'}],source_image_id:null};
+  await page.route('**/api/training-sessions',r=>r.fulfill({json:{items:[session,{...session,id:'second'}, {...session,id:'old',trained_on:'2000-01-01',title:'Fuerza'}]}}));
+  await page.evaluate(()=>window.setupTraining());
+  assert.equal(await page.locator('.training-day').count(),2);
+  assert.equal(await page.locator('.training-day').first().locator('article').count(),2);
+  assert.match(await page.locator('.training-week-count').textContent(),/2 entrenamientos registrados · 1 día activo/);
+  assert.equal(await page.locator('.training-entry-content > a').first().textContent(),'Metcon');
+  for(const width of [320,390,430,768,1440]) {
+    await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  }
+  await page.screenshot({path:'.impeccable/training-evolution-list-desktop.png',fullPage:true});
+  await page.setViewportSize({width:390,height:844});await page.screenshot({path:'.impeccable/training-evolution-list-mobile.png',fullPage:true});
+  await page.route('**/api/training-sessions/chronology',r=>r.fulfill({json:session}));
+  await page.evaluate(()=>window.setupTraining('chronology'));
+  assert.equal(await page.locator('.training-reading-blocks details').first().getAttribute('open'),'');
+  assert.equal(await page.locator('.training-reading-blocks input').count(),0);
+  assert.equal(await page.locator('.training-note a[href="/analyses/linked"]').count(),1);
+  await page.screenshot({path:'.impeccable/training-evolution-detail-mobile.png',fullPage:true});
+  await page.getByRole('button',{name:'Editar entrenamiento',exact:true}).click();
+  assert.equal(await page.getByRole('heading',{name:'Editar entrenamiento',exact:true}).count(),1);
+  assert.equal(await page.locator('[name=title]').inputValue(),title);
+  await page.screenshot({path:'.impeccable/training-evolution-edit-mobile.png',fullPage:true});
 }));

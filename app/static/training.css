@@ -101,3 +101,29 @@
   #training-view button,#training-view .button-link { transition:none; }
   #training-view button:active:not(:disabled),#training-view .button-link:active { transform:none; }
 }
+
+/* Chronology and reading share the product's existing surfaces and spacing. */
+.training-journal { max-width:740px; margin-inline:auto; }
+.training-week { background:var(--soft); padding:20px 24px; border-radius:var(--radius); margin-bottom:32px; }
+.training-week h2 { margin:0; font-size:20px; }
+.training-week p { margin:8px 0 0; }
+.training-week-count { font-weight:600; }
+.training-day { margin-bottom:32px; }
+.training-day > h2 { font-size:16px; margin:0 0 8px; }
+.training-entry-content > a { font-size:16px; }
+.training-entry .training-entry-result { font-size:20px; font-weight:600; color:var(--text); line-height:1.35; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+.training-entry-note { color:var(--muted); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.training-entry-meta { font-size:14px; color:var(--muted); }
+.training-thumbnail-note { width:100%; height:280px; }
+.training-reading-blocks { margin-block:24px; }
+.training-reading-blocks h3 { margin-bottom:8px; }
+.training-reading-blocks details,.training-reading-original { padding:8px 0; border-bottom:1px solid var(--border); }
+.training-reading-blocks p,.training-reading-original p { white-space:pre-wrap; overflow-wrap:anywhere; }
+.training-reading-blocks ul { padding-left:20px; }
+.training-reading-blocks li + li { margin-top:8px; }
+.training-note-section > a { display:flex; align-items:center; min-height:44px; overflow-wrap:anywhere; }
+.training-form details:not([open]) .training-block-preview { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+@media(max-width:600px) {
+  .training-week { padding:20px 16px; margin-bottom:24px; }
+  .training-thumbnail-note { height:220px; }
+}

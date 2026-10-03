@@ -8,6 +8,16 @@ window.setupTraining = async function (identifier) {
     return node;
   };
   const link = (text, href) => { const node = make('a', text); node.href = href; return node; };
+  const formats = {strength:'Fuerza',for_time:'Por tiempo',amrap:'AMRAP',emom:'EMOM',other:'Otro'};
+  const calendarDate = value => new Date(value + 'T12:00:00');
+  const dateLabel = value => new Intl.DateTimeFormat('es-CL', {dateStyle:'long'}).format(calendarDate(value));
+  const localISO = date => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+  function displayName(item) {
+    const dated = new Intl.DateTimeFormat('es-CL', {weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(calendarDate(item.trained_on));
+    const title = (item.title || '').trim();
+    return [dated,dateLabel(item.trained_on)].some(value => value.toLocaleLowerCase('es-CL') === title.toLocaleLowerCase('es-CL'))
+      ? (item.blocks?.map(block => block.title).filter(Boolean).join(' · ') || 'Entrenamiento') : title;
+  }
   function thumbnail(imageId, sessionId, fullPhoto = false) {
     const url = '/api/training-sessions/images/' + imageId;
     const node = link('', fullPhoto ? url : '/training/' + sessionId);
@@ -57,12 +67,31 @@ window.setupTraining = async function (identifier) {
         const start = link('Registrar mi primer entrenamiento', '/training/new'); start.className = 'button-link';
         empty.append(make('h2', 'Guarda cómo te fue hoy'), make('p', 'Una foto de la pizarra, unas palabras o tu voz. Después revisas el WOD y tu resultado.'), start); root.append(empty);
       }
-      for (const item of items) {
+      const journal = make('div', '', 'training-journal');
+      const monday = new Date(); monday.setHours(12,0,0,0); monday.setDate(monday.getDate() - (monday.getDay()+6)%7);
+      const sunday = new Date(monday); sunday.setDate(sunday.getDate()+6);
+      const week = items.filter(item => item.trained_on >= localISO(monday) && item.trained_on <= localISO(sunday));
+      const weekly = make('section', '', 'training-week');
+      weekly.append(make('h2', 'Esta semana'), make('p', `${dateLabel(localISO(monday))} — ${dateLabel(localISO(sunday))}`, 'training-hint'));
+      const days = new Set(week.map(item => item.trained_on)).size;
+      weekly.append(make('p', `${week.length} ${week.length === 1 ? 'entrenamiento registrado' : 'entrenamientos registrados'} · ${days} ${days === 1 ? 'día activo' : 'días activos'}`, 'training-week-count'));
+      if (!week.length) weekly.append(make('p', 'Tu próximo registro aparecerá aquí.', 'training-hint'));
+      if (items.length >= 200) weekly.append(make('p', 'Resumen de los registros cargados; puede haber registros anteriores fuera de esta lista.', 'training-hint'));
+      journal.append(weekly); root.insertBefore(journal, root.querySelector('.training-empty'));
+      let group, previousDate;
+      for (const item of [...items].sort((a,b) => b.trained_on.localeCompare(a.trained_on))) {
+        if (item.trained_on !== previousDate) {
+          group = make('section', '', 'training-day');
+          const heading = make('h2', `${item.trained_on === localISO(new Date()) ? 'Hoy · ' : ''}${dateLabel(item.trained_on)}`);
+          group.append(heading); journal.append(group); previousDate = item.trained_on;
+        }
         const row = make('article', '', 'training-entry');
         const content = make('div', '', 'training-entry-content');
-        content.append(make('p', new Intl.DateTimeFormat('es-CL', {dateStyle: 'long'}).format(new Date(item.trained_on + 'T12:00:00'))));
-        content.append(link(item.title, '/training/' + item.id), make('p', item.result_text || 'Resultado sin registrar'));
-        if (item.rpe !== null) content.append(make('p', `Esfuerzo ${item.rpe}/10`));
+        const name = link(displayName(item), '/training/' + item.id);
+        content.append(name, make('p', item.result_text || 'Resultado sin registrar', 'training-entry-result'));
+        if (item.adaptations) content.append(make('p', item.adaptations, 'training-entry-note'));
+        if (item.rpe !== null && item.rpe !== undefined) content.append(make('p', `Esfuerzo ${item.rpe}/10`, 'training-entry-meta'));
+        if (item.video_links?.length) content.append(link(`${item.video_links.length} ${item.video_links.length === 1 ? 'video vinculado' : 'videos vinculados'}`, '/training/' + item.id));
         if (item.source_image_id) row.append(thumbnail(item.source_image_id, item.id));
         else {
           const placeholder = make('div', '', 'training-thumbnail training-thumbnail-placeholder');
@@ -74,7 +103,7 @@ window.setupTraining = async function (identifier) {
           svg.append(path); placeholder.append(svg); row.append(placeholder);
         }
         row.append(content);
-        root.append(row);
+        group.append(row);
       }
       return;
     }
@@ -93,9 +122,9 @@ window.setupTraining = async function (identifier) {
     const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
     const layout = make('div', '', 'training-layout');
     const note = make('article', '', 'training-note');
-    const noteHeading = make('h2', data.title); noteHeading.tabIndex = -1;
+    const noteHeading = make('h2', editing ? displayName(data) : data.title); noteHeading.tabIndex = -1;
     const unsavedNote = make('p', 'Tienes cambios sin guardar en el detalle.', 'training-hint'); unsavedNote.hidden = true;
-    const viewDetail = make('button', 'Ver detalle y editar'); viewDetail.type = 'button';
+    const viewDetail = make('button', 'Editar entrenamiento'); viewDetail.type = 'button';
     if (editing) {
       const date = make('time', new Intl.DateTimeFormat('es-CL', {dateStyle:'long'}).format(new Date(data.trained_on + 'T12:00:00')), 'training-note-date');
       date.dateTime = data.trained_on;
@@ -112,11 +141,30 @@ window.setupTraining = async function (identifier) {
         } else section.append(make('p', text));
         note.append(section);
       }
-      noteText('Cómo me fue', data.result_text || 'Todavía no anotaste tu resultado. Puedes añadirlo en el detalle.');
-      noteText('Lo que entrené', data.workout);
+      noteText('Cómo me fue', data.result_text || 'Todavía no anotaste tu resultado. Puedes añadirlo al editar.');
+      if (data.blocks?.length) {
+        const section = make('section', '', 'training-reading-blocks');
+        section.append(make('h3', 'Bloques del entrenamiento'));
+        data.blocks.forEach((block,index) => {
+          const disclosure = make('details'); disclosure.open = index === 0;
+          disclosure.append(make('summary', `${block.title} · ${formats[block.format] || 'Otro'}`));
+          if (block.prescription) disclosure.append(make('p', block.prescription));
+          const movements = make('ul');
+          for (const movement of block.movements || []) movements.append(make('li', `${movement.name}${movement.prescription ? ': ' + movement.prescription : ''}`));
+          if (movements.childElementCount) disclosure.append(movements);
+          section.append(disclosure);
+        });
+        note.append(section);
+        const original = make('details', '', 'training-reading-original');
+        original.append(make('summary', 'Ver el entrenamiento como texto'), make('p', data.workout)); note.append(original);
+      } else noteText('Lo que entrené', data.workout);
       if (data.adaptations) noteText('Cargas y adaptaciones', data.adaptations);
       if (data.rpe !== null && data.rpe !== undefined) note.append(make('p', `Esfuerzo percibido: ${data.rpe}/10`, 'training-note-meta'));
-      if (data.video_links?.length) note.append(make('p', `${data.video_links.length} ${data.video_links.length === 1 ? 'video vinculado' : 'videos vinculados'} · disponibles en el detalle`, 'training-note-meta'));
+      if (data.video_links?.length) {
+        const media = make('section', '', 'training-note-section'); media.append(make('h3', 'Videos vinculados'));
+        for (const video of data.video_links) media.append(link(`${video.movement}${video.context ? ' · ' + video.context : ''}`, '/analyses/' + video.analysis_id));
+        note.append(media);
+      }
       note.append(viewDetail, unsavedNote);
     }
     const conversation = make('section', '', 'training-conversation');
@@ -150,10 +198,11 @@ window.setupTraining = async function (identifier) {
     composer.append(photoLabel, preview, removePhoto, sourceLabel, captureActions);
     conversation.append(composer, manual, make('p', 'Al interpretar, el texto y la foto se procesan con IA. Siempre revisas antes de guardar.', 'training-hint'));
     const form = make('form', '', 'training-form');
-    const reviewHeading = make('h2', 'Revisa tu entrenamiento'); reviewHeading.tabIndex = -1;
+    const reviewHeading = make('h2', editing ? 'Información del entrenamiento' : 'Revisa tu entrenamiento'); reviewHeading.tabIndex = -1;
     form.append(reviewHeading, make('p', 'Así quedará en tu bitácora. Revisa el WOD y añade cómo te fue.', 'training-intro'), messages);
     const editSource = make('button', 'Volver a mi descripción', 'secondary-button'); editSource.type = 'button';
     function showReview(focus = true) {
+      header.querySelector('h1').textContent = editing ? 'Editar entrenamiento' : 'Registrar entrenamiento';
       note.hidden = true;
       conversation.hidden = true; form.hidden = false; form.append(status);
       if (focus) reviewHeading.focus();
@@ -167,6 +216,7 @@ window.setupTraining = async function (identifier) {
       viewDetail.onclick = () => showReview();
     }
     function showNote() {
+      header.querySelector('h1').textContent = 'Tu entrenamiento';
       conversation.hidden = true; form.hidden = true; note.hidden = false;
       unsavedNote.hidden = !dirty; note.append(status);
     }
