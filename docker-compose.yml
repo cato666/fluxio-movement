@@ -18,7 +18,7 @@ services:
   app:
     build: .
     restart: unless-stopped
-    environment:
+    environment: &app_environment
       APP_ENV: ${APP_ENV:-production}
       SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env}
       DEMO_PASSWORD: ${DEMO_PASSWORD:-demo1234}
@@ -34,6 +34,19 @@ services:
       TRAINING_AI_MODEL: ${TRAINING_AI_MODEL:-}
       TRAINING_VOICE_ENABLED: ${TRAINING_VOICE_ENABLED:-true}
       TRAINING_TRANSCRIPTION_MODEL: ${TRAINING_TRANSCRIPTION_MODEL:-gpt-transcribe}
+
+      WHATSAPP_ENABLED: ${WHATSAPP_ENABLED:-false}
+      WHATSAPP_PROVIDER: ${WHATSAPP_PROVIDER:-kapso}
+      WHATSAPP_PUBLIC_NUMBER: ${WHATSAPP_PUBLIC_NUMBER:-}
+      KAPSO_API_KEY: ${KAPSO_API_KEY:-}
+      KAPSO_WEBHOOK_SECRET: ${KAPSO_WEBHOOK_SECRET:-}
+      KAPSO_PHONE_NUMBER_ID: ${KAPSO_PHONE_NUMBER_ID:-}
+      WHATSAPP_ENCRYPTION_KEY: ${WHATSAPP_ENCRYPTION_KEY:-}
+      WHATSAPP_KEY_VERSION: ${WHATSAPP_KEY_VERSION:-1}
+      WHATSAPP_ENCRYPTION_KEYS: ${WHATSAPP_ENCRYPTION_KEYS:-{}}
+      PHONE_HASH_KEY: ${PHONE_HASH_KEY:-}
+      WHATSAPP_OUTBOUND_UNIT_COST_USD: ${WHATSAPP_OUTBOUND_UNIT_COST_USD:-}
+      FORWARDED_ALLOW_IPS: ${FORWARDED_ALLOW_IPS:-127.0.0.1}
 
     ports:
       - "${APP_PORT:-8000}:8000"
@@ -51,6 +64,20 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+
+  whatsapp-worker:
+    build: .
+    restart: unless-stopped
+    environment: *app_environment
+    command:
+      - /bin/sh
+      - -c
+      - 'if [ "$$WHATSAPP_ENABLED" = "true" ]; then exec python -m app.whatsapp.worker; else exec sleep infinity; fi'
+    volumes:
+      - app_storage:/data/storage
+    depends_on:
+      app:
+        condition: service_healthy
 
 volumes:
   postgres_data:
