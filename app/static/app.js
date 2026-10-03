@@ -63,7 +63,7 @@ function showView(id) {
   document.documentElement.classList.toggle("marketing", marketing);
   for (const selector of [".functional-nav", ".functional-actions"]) {
     const item = document.querySelector(selector);
-    item.hidden = marketing;
+    item.hidden = marketing || document.querySelector(".functional-nav").dataset.ready !== "true";
   }
   const marketingNav = document.querySelector(".marketing-nav");
   const marketingActions = document.querySelector(".auth-actions");
@@ -74,7 +74,7 @@ function showView(id) {
   }
 }
 
-async function sessionUser() { return apiJson("/api/auth/me"); }
+async function sessionUser() { return apiJson("/api/auth/me", {cache:"no-store"}); }
 
 function setupLogout() {
   const button = $("#logout-button");
@@ -86,6 +86,7 @@ function setupLogout() {
 }
 
 function configureNavigation(user) {
+  document.querySelector(".functional-nav").dataset.ready = "true";
   const currentPath = window.location.pathname.replace(/\/$/, "");
   for (const link of document.querySelectorAll("[data-nav-role]")) {
     link.hidden = link.dataset.navRole !== user.role;
@@ -96,6 +97,10 @@ function configureNavigation(user) {
       || (target === "/coach/reviews" && currentPath.startsWith("/coach/reviews/"));
     if (active) link.setAttribute("aria-current", "page");
     else link.removeAttribute("aria-current");
+  }
+  if (!document.body.classList.contains('marketing')) {
+    document.querySelector('.functional-nav').hidden = false;
+    document.querySelector('.functional-actions').hidden = false;
   }
 }
 
@@ -1160,10 +1165,26 @@ else if (path === "/") { showView("landing-view"); setupLandingInteractions(); }
 else setupNew();
 
 if (path !== "/" && !["/login", "/demo", "/para-atletas", "/para-coaches"].includes(path)) {
-  sessionUser().then((user) => {
-    const label = $("#session-user");
-    if (label) label.textContent = user.name;
-    configureNavigation(user);
-    setupLogout();
-  }).catch(() => {});
+  let navigationCheck = 0;
+  async function refreshSessionNavigation() {
+    const check = ++navigationCheck;
+    const nav = document.querySelector('.functional-nav');
+    delete nav.dataset.ready;
+    nav.hidden = true;
+    document.querySelector('.functional-actions').hidden = true;
+    for (const link of nav.querySelectorAll('[data-nav-role]')) link.hidden = true;
+    try {
+      const user = await sessionUser();
+      if (check !== navigationCheck) return;
+      const label = $('#session-user');
+      if (label) label.textContent = user.name;
+      configureNavigation(user);
+      setupLogout();
+    } catch {
+      // Keep the current form intact; never reveal unconfirmed role links.
+    }
+  }
+  refreshSessionNavigation();
+  window.addEventListener('pageshow', event => { if (event.persisted) refreshSessionNavigation(); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshSessionNavigation(); });
 }

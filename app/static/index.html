@@ -16,7 +16,7 @@
   <link rel="stylesheet" href="/static/training.css?v=12">
   <script src="/static/training-voice.js?v=3" defer></script>
   <script src="/static/training.js?v=14" defer></script>
-  <script src="/static/app.js?v=training-usage-2" defer></script>
+  <script src="/static/app.js?v=session-navigation-1" defer></script>
   <script src="/static/mobile-ux.js?v=mobile-native-1" defer></script>
 </head>
 <body>
@@ -32,13 +32,13 @@
         <a href="#preguntas">Preguntas</a>
       </nav>
       <nav class="functional-nav" aria-label="Navegación de la aplicación" hidden>
-        <a data-nav-role="ATHLETE" href="/analyses/new">Nuevo análisis</a>
-        <a data-nav-role="ATHLETE" href="/analyses">Mis análisis</a>
-        <a data-nav-role="ATHLETE" href="/training">Bitácora</a>
-        <a data-nav-role="COACH" href="/coach/reviews">Bandeja coach</a>
-        <a data-nav-role="COACH" href="/coach/analyses/new">Subir video</a>
-        <a data-nav-role="COACH" href="/coach/athletes/new">Registrar atleta</a>
-        <a data-nav-role="SYSTEM_ADMIN" href="/internal/usage">Uso IA</a>
+        <a hidden data-nav-role="ATHLETE" href="/analyses/new">Nuevo análisis</a>
+        <a hidden data-nav-role="ATHLETE" href="/analyses">Mis análisis</a>
+        <a hidden data-nav-role="ATHLETE" href="/training">Bitácora</a>
+        <a hidden data-nav-role="COACH" href="/coach/reviews">Bandeja coach</a>
+        <a hidden data-nav-role="COACH" href="/coach/analyses/new">Subir video</a>
+        <a hidden data-nav-role="COACH" href="/coach/athletes/new">Registrar atleta</a>
+        <a hidden data-nav-role="SYSTEM_ADMIN" href="/internal/usage">Uso IA</a>
       </nav>
       <div class="auth-actions"><a class="mvp-link" href="/login">Probar gratis</a></div>
       <div class="functional-actions" hidden><span id="session-user" class="session-user"></span><button id="logout-button" class="logout-button" type="button">Salir</button></div>
