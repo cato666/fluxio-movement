@@ -289,3 +289,15 @@ test('delete confirms, preserves a failed session and prevents duplicate request
   fail=false;await page.getByRole('button',{name:'Eliminar entrenamiento',exact:true}).dblclick();
   await page.waitForURL('**/training');assert.equal(calls,2);assert.match(await page.evaluate(()=>sessionStorage.getItem('flash')),/Entrenamiento eliminado/);
 }));
+test('saving confirmed session removes the separate audio leave warning; failed saves keep it',()=>harness(async page=>{
+ await page.getByLabel('Descripción del entrenamiento').fill('Sentadilla 5x5');
+ await page.getByRole('button',{name:'Dictar entrenamiento'}).click();
+ await page.getByText('Grabando. Termina la grabación',{exact:false}).waitFor();await page.waitForTimeout(1200);
+ await page.getByRole('button',{name:'Terminar grabación'}).click();await page.getByText('Grabación lista.',{exact:false}).waitFor();
+ await page.getByRole('button',{name:'Completar manualmente'}).click();
+ let fail=true;await page.route('**/api/training-sessions',r=>r.fulfill({status:fail?503:200,json:fail?{detail:'No disponible'}:{id:'saved'}}));
+ await page.getByRole('button',{name:'Guardar sesión',exact:true}).click();await page.getByText('Tu borrador se conserva',{exact:false}).waitFor();
+ assert.equal(await page.evaluate(()=>{const e=new Event('beforeunload',{cancelable:true});window.dispatchEvent(e);return e.defaultPrevented}),true);
+ const dialogs=[];page.on('dialog',async dialog=>{dialogs.push(dialog.type());await dialog.dismiss()});
+ fail=false;await page.getByRole('button',{name:'Guardar sesión',exact:true}).click();await page.waitForURL('**/training');assert.deepEqual(dialogs,[]);
+}));

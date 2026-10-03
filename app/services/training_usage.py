@@ -62,6 +62,9 @@ def extend_usage(data, session):
     missing = case((or_(usage.input_tokens.is_(None), usage.output_tokens.is_(None)), 1), else_=0)
     summary = session.execute(select(func.count(usage.id), summed(case((usage.status == 'COMPLETED', 1), else_=0)),
                                      summed(usage.input_tokens), summed(usage.output_tokens), summed(usage.reasoning_tokens), summed(missing))).one()
+    audio_calls, audio_seconds = session.execute(select(func.count(usage.id), summed(usage.duration_seconds)).where(usage.operation == 'TRANSCRIBE')).one()
+    data['totals']['transcription_runs'] = audio_calls
+    data['totals']['audio_seconds'] = audio_seconds
     data['totals']['training_runs'] = summary[0]
     data['totals']['completed_runs'] += summary[1]
     data['totals']['input_tokens'] += summary[2]

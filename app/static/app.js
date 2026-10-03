@@ -173,6 +173,8 @@ async function setupUsage() {
       metric("Tokens de entrada", number(totals.input_tokens)),
       metric("Tokens de salida", number(totals.output_tokens)),
       metric("Tokens reportados", number(totals.total_tokens)),
+      metric("Llamadas de transcripción", number(totals.transcription_runs)),
+      metric("Audio enviado", `${number(totals.audio_seconds)} s`),
     );
     const models = $("#usage-by-model"); models.replaceChildren();
     if (!data.by_model.length) models.textContent = "Aún no hay consumo de IA registrado.";

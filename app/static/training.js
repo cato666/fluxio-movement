@@ -436,7 +436,7 @@ window.setupTraining = async function (identifier) {
       payload.source_text = source.value; payload.video_links = videoLinks; payload.blocks=blocks; payload.source_image_id=imageId;
       try {
         await api('/api/training-sessions' + (editing ? '/' + identifier : ''), {method: editing ? 'PUT' : 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)});
-        dirty = false; setFlash(editing ? 'Cambios guardados en tu bitácora.' : 'Entrenamiento guardado en tu bitácora.'); window.location.assign('/training');
+        dirty = false; root.trainingCleanup?.(); setFlash(editing ? 'Cambios guardados en tu bitácora.' : 'Entrenamiento guardado en tu bitácora.'); window.location.assign('/training');
       } catch (error) { notify(`${error.message} Tu borrador se conserva en esta pantalla.`, true); save.disabled = false; save.textContent = editing ? 'Guardar cambios' : 'Guardar sesión'; }
       finally { processing(false); form.setAttribute('aria-busy','false'); }
     };

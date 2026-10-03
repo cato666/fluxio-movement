@@ -73,3 +73,11 @@ def test_audio_records_tokens_and_duration_then_duration_only(athlete_client,ses
     assert rows[1].input_tokens is None and rows[1].output_tokens is None
     assert athlete_client.post('/api/training-sessions/transcribe',files={'file':('audio.wav',b'invalid')}).status_code==422
     assert len(session.scalars(select(TrainingAIUsage)).all())==2
+
+    athlete_client.post('/api/auth/logout');athlete_client.post('/api/auth/login',json={'username':'admin','password':'demo1234'})
+    data=athlete_client.get('/api/internal/ai-usage').json()
+    assert data['totals']['transcription_runs']==2
+    assert data['totals']['audio_seconds']==2
+    assert data['totals']['input_tokens']==45
+    assert data['totals']['output_tokens']==12
+    assert data['totals']['unreported_training_runs']==1
