@@ -13,10 +13,10 @@
   <link rel="stylesheet" href="/static/styles.css?v=mobile-native-1">
   <script src="/static/review-state.js" defer></script>
   <script src="/static/athlete-state.js?v=athlete-ux-2" defer></script>
-  <link rel="stylesheet" href="/static/training.css?v=2">
-  <script src="/static/training-voice.js?v=1" defer></script>
-  <script src="/static/training.js?v=3" defer></script>
-  <script src="/static/app.js?v=training-1" defer></script>
+  <link rel="stylesheet" href="/static/training.css?v=7">
+  <script src="/static/training-voice.js?v=3" defer></script>
+  <script src="/static/training.js?v=9" defer></script>
+  <script src="/static/app.js?v=training-usage-2" defer></script>
   <script src="/static/mobile-ux.js?v=mobile-native-1" defer></script>
 </head>
 <body>
@@ -88,10 +88,11 @@
       <div class="section-head">
         <div><h1>Uso de IA</h1><p class="section-context">Vista interna · Operación</p></div>
       </div>
-      <p class="muted">Control de tokens consumidos por los análisis con razonamiento IA. Los tokens de razonamiento ya están incluidos en la salida.</p>
+      <p class="muted">Consumo reportado de análisis, interpretación de WOD y dictado. Los tokens de razonamiento ya están incluidos en la salida. La bitácora se registra desde esta actualización.</p>
       <div id="usage-totals" class="metrics"></div>
       <section class="card"><h2>Consumo por modelo</h2><div id="usage-by-model"></div></section>
-      <section class="card"><h2>Últimos análisis con IA</h2><div id="usage-recent-runs"></div></section>
+      <section class="card"><h2>Bitácora por atleta</h2><div id="usage-by-athlete"></div></section>
+      <section class="card"><h2>Últimas operaciones con IA</h2><div id="usage-recent-runs"></div></section>
       <p id="usage-status" class="muted" role="status"></p>
     </section>
 

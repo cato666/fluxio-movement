@@ -219,6 +219,26 @@ class AIObservation(Base):
     )
 
 
+class TrainingAIUsage(Base):
+    __tablename__ = 'training_ai_usage'
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    athlete_id: Mapped[UUID] = mapped_column(ForeignKey('athletes.user_id'), index=True)
+    operation: Mapped[str] = mapped_column(String(16))
+    model: Mapped[str] = mapped_column(String(120))
+    status: Mapped[str] = mapped_column(String(16))
+    input_tokens: Mapped[int | None] = mapped_column(Integer)
+    output_tokens: Mapped[int | None] = mapped_column(Integer)
+    reasoning_tokens: Mapped[int | None] = mapped_column(Integer)
+    duration_seconds: Mapped[float | None] = mapped_column(Float)
+    latency_ms: Mapped[int | None] = mapped_column(Integer)
+    error: Mapped[str | None] = mapped_column(String(80))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    __table_args__ = (
+        CheckConstraint("operation IN ('INTERPRET', 'TRANSCRIBE')", name='ck_training_usage_operation'),
+        CheckConstraint("status IN ('RUNNING', 'COMPLETED', 'FAILED')", name='ck_training_usage_status'),
+    )
+
+
 class AIReasoningRun(Base):
     __tablename__ = "ai_reasoning_runs"
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)

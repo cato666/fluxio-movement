@@ -1,0 +1,22 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs'),vm=require('node:vm');
+test('usage UI shows training attribution and missing tokens without claiming zero consumption',async()=>{
+  const nodes=new Map();let counter=0;
+  const node=id=>{if(!nodes.has(id))nodes.set(id,{children:[],textContent:'',append(...items){this.children.push(...items)},replaceChildren(...items){this.children=items}});return nodes.get(id)};
+  const data={totals:{completed_runs:2,input_tokens:20,output_tokens:10,total_tokens:30,unreported_training_runs:1},by_model:[{model:'m',runs:3,total_tokens:30}],training_by_athlete:[{athlete_name:'Atleta',runs:3,total_tokens:30,audio_seconds:8,unreported_runs:1}],recent_runs:[{exercise:'Dictado de entrenamiento',athlete_name:'Atleta',model:'m',status:'COMPLETED',created_at:'2026-10-02T12:00:00Z',total_tokens:null,input_tokens:null,output_tokens:null,duration_seconds:8}]};
+  Object.assign(data.by_model[0], {input_tokens:20,output_tokens:10});
+  Object.assign(data.training_by_athlete[0], {input_tokens:20,output_tokens:10});
+  const context=vm.createContext({document:{querySelector:node,createElement:()=>node(`new-${++counter}`)},Intl,console});
+  vm.runInContext(fs.readFileSync(require.resolve('../app/static/app.js'),'utf8').split('const path = window.location.pathname;')[0],context);
+  context.data=data;vm.runInContext('showView=()=>{}; metric=(label,value)=>element("div","",label+": "+value); apiJson=async()=>data;',context);
+  await context.setupUsage();
+  const text=n=>[n.textContent,...n.children.map(text)].join(' ');
+  assert.match(text(node('#usage-recent-runs')),/Tokens no reportados por el proveedor/);
+  assert.match(text(node('#usage-recent-runs')),/Atleta.*m.*8 s/);
+  assert.match(text(node('#usage-by-athlete')),/3 llamadas.*30 tokens reportados.*1 llamadas sin detalle/);
+  assert.match(node('#usage-status').textContent,/solo incluye tokens reportados/);
+  assert.match(text(node('#usage-totals')),/Tokens reportados: 30/);
+  assert.match(text(node('#usage-by-model')),/entrada 20.*salida 10.*total 30/);
+  assert.match(text(node('#usage-by-athlete')),/entrada 20.*salida 10.*total 30/);
+});

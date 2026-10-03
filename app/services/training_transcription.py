@@ -16,6 +16,7 @@ class AudioUnavailable(RuntimeError):
 
 
 def transcribe(raw: bytes) -> str:
+    from .training_usage import report_usage
     if not (raw.startswith(b'\x1a\x45\xdf\xa3') or (raw.startswith(b'RIFF') and raw[8:12] == b'WAVE') or raw[4:8] == b'ftyp'):
         raise ValueError('Audio inválido. Graba nuevamente en formato WebM, MP4 o WAV.')
     if not os.getenv('OPENAI_API_KEY') or os.getenv('TRAINING_VOICE_ENABLED', 'true').lower() not in {'true', '1', 'yes'}:
@@ -51,8 +52,11 @@ def transcribe(raw: bytes) -> str:
     body += f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="recording.wav"\r\nContent-Type: audio/wav\r\n\r\n'.encode()
     body += audio_bytes + f'\r\n--{boundary}--\r\n'.encode()
     request = Request('https://api.openai.com/v1/audio/transcriptions', data=body, headers={'Authorization': 'Bearer ' + os.environ['OPENAI_API_KEY'], 'Content-Type': 'multipart/form-data; boundary=' + boundary}, method='POST')
+    report_usage(fields['model'], duration_seconds=seconds)
     with urlopen(request, timeout=45) as response:
         data = json.loads(response.read())
+    usage = data.get('usage')
+    report_usage(fields['model'], usage, usage.get('seconds', seconds) if isinstance(usage, dict) else seconds)
     text = data.get('text')
     if not isinstance(text, str) or not text.strip() or len(text) > 12000:
         raise ValueError('No se obtuvo una transcripción legible. Intenta hablar más cerca del micrófono.')

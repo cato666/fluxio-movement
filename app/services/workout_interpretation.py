@@ -53,18 +53,22 @@ def enabled():
 
 
 def interpret(text: str, image: bytes | None = None) -> dict:
+    from .training_usage import report_usage
     if not enabled():
         raise RuntimeError('La interpretación automática no está configurada. Puedes completar la ficha manualmente.')
     content = [{'type': 'input_text', 'text': text or 'Lee la programación de esta pizarra.'}]
     if image:
         content.append({'type': 'input_image', 'image_url': 'data:image/jpeg;base64,' + base64.b64encode(image).decode(), 'detail': 'high'})
+    model = os.getenv('TRAINING_AI_MODEL') or os.getenv('AI_REASONING_MODEL', 'gpt-5.6-terra')
+    report_usage(model)
     response = _request({
-        'model': os.getenv('TRAINING_AI_MODEL') or os.getenv('AI_REASONING_MODEL', 'gpt-5.6-terra'),
+        'model': model,
         'store': False,
         'input': [{'role': 'system', 'content': PROMPT}, {'role': 'user', 'content': content}],
         'text': {'format': {'type': 'json_schema', 'name': 'training_draft', 'strict': True, 'schema': WorkoutDraft.model_json_schema()}},
         'max_output_tokens': 4500,
     }, os.environ['OPENAI_API_KEY'])
+    report_usage(response.get('model') or model, response.get('usage'))
     if response.get('status') == 'incomplete':
         raise ValueError('Interpretación incompleta')
     draft = WorkoutDraft.model_validate_json(_output_text(response))

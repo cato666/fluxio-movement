@@ -30,6 +30,7 @@ from .services.exercise_validation import validate_video_exercise
 from .services.review_moments import rank_review_moments
 from .services.auth import hash_password, verify_password
 from .training import router as training_router
+from .services.training_usage import extend_usage
 
 ROOT = Path(__file__).resolve().parents[1]
 STORAGE_PATH = Path(os.environ.get('STORAGE_PATH', '/data/storage'))
@@ -279,7 +280,7 @@ def internal_ai_usage(_user: User = Depends(require_internal), session: Session 
         .limit(25)
     ).all()
     input_tokens, output_tokens, reasoning_tokens = (int(value or 0) for value in totals[1:])
-    return {
+    data = {
         'totals': {
             'completed_runs': int(totals[0] or 0),
             'input_tokens': input_tokens,
@@ -306,6 +307,7 @@ def internal_ai_usage(_user: User = Depends(require_internal), session: Session 
             for run, analysis in recent
         ],
     }
+    return extend_usage(data, session)
 
 
 def _validate_upload(file: UploadFile):

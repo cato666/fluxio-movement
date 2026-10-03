@@ -1,65 +1,175 @@
 /* Training log: independent sessions, explicit confirmation, optional videos. */
 window.setupTraining = async function (identifier) {
   const root = document.getElementById('training-view');
+  root.trainingCleanup?.();
   const make = (tag, text, className) => {
     const node = document.createElement(tag); node.textContent = text || '';
     if (className) node.className = className;
     return node;
   };
   const link = (text, href) => { const node = make('a', text); node.href = href; return node; };
+  function thumbnail(imageId, sessionId, fullPhoto = false) {
+    const url = '/api/training-sessions/images/' + imageId;
+    const node = link('', fullPhoto ? url : '/training/' + sessionId);
+    node.className = 'training-thumbnail' + (fullPhoto ? ' training-thumbnail-note' : '');
+    node.setAttribute('aria-label', fullPhoto ? 'Ver foto de la pizarra en otra pestaña' : 'Abrir entrenamiento con foto de la pizarra');
+    if (fullPhoto) { node.target = '_blank'; node.rel = 'noopener'; }
+    const image = make('img'); image.src = url; image.alt = 'Pizarra del entrenamiento'; image.width = 96; image.height = 72; image.loading = 'lazy'; image.decoding = 'async';
+    image.onerror = () => {
+      node.replaceChildren(make('span', 'Imagen no disponible'));
+      node.setAttribute('aria-label', 'Imagen no disponible');
+      if (fullPhoto) { node.removeAttribute('href'); node.removeAttribute('target'); }
+    };
+    node.append(image); return node;
+  }
   const api = async (url, options) => {
-    const response = await fetch(url, options); const data = await response.json();
+    let response;
+    try { response = await fetch(url, options); }
+    catch { throw new Error('No pudimos conectar. Revisa tu conexión e inténtalo nuevamente.'); }
+    let data;
+    try { data = await response.json(); }
+    catch { throw new Error('No pudimos leer la respuesta. Inténtalo nuevamente.'); }
+    if (response.status === 401) throw new Error('Tu sesión expiró. Vuelve a iniciar sesión para continuar.');
+    if (response.status === 403) throw new Error('No tienes permiso para esta acción. Puedes volver a tu bitácora.');
     if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Revisa los campos e inténtalo nuevamente.');
     return data;
   };
   root.replaceChildren();
   const header = make('header', '', 'training-header');
-  header.append(make('h1', identifier ? 'Tu entrenamiento' : 'Mi bitácora'));
+  header.append(make('h1', identifier === 'new' ? 'Registrar entrenamiento' : identifier ? 'Tu entrenamiento' : 'Mi bitácora'));
   header.append(link(identifier ? 'Volver a la bitácora' : 'Registrar entrenamiento', identifier ? '/training' : '/training/new'));
   root.append(header);
   const status = make('p', 'Cargando…', 'training-status'); status.setAttribute('role', 'status'); root.append(status);
+  status.setAttribute('aria-atomic', 'true');
+  const notify = (message, error = false) => {
+    status.textContent = message; status.classList.toggle('is-error', error);
+    if (message.includes('Tu sesión expiró.')) {
+      const login = link('Iniciar sesión en otra pestaña', '/login?next=' + encodeURIComponent(window.location.pathname));
+      login.target = '_blank'; login.rel = 'noopener'; status.append(document.createTextNode(' '), login);
+    }
+  };
   try {
     if (!identifier) {
       const { items } = await api('/api/training-sessions'); status.textContent = '';
+      const flash = takeFlash(); if (flash) notify(flash);
       if (!items.length) {
-        root.append(make('h2', 'Tu próximo entrenamiento empieza aquí'), make('p', 'Registra el WOD y cómo te fue. Puedes agregar un video después.'));
+        const empty = make('section', '', 'training-empty');
+        const start = link('Registrar mi primer entrenamiento', '/training/new'); start.className = 'button-link';
+        empty.append(make('h2', 'Guarda cómo te fue hoy'), make('p', 'Una foto de la pizarra, unas palabras o tu voz. Después revisas el WOD y tu resultado.'), start); root.append(empty);
       }
       for (const item of items) {
         const row = make('article', '', 'training-entry');
-        row.append(make('p', new Intl.DateTimeFormat('es-CL', {dateStyle: 'long'}).format(new Date(item.trained_on + 'T12:00:00'))));
-        row.append(link(item.title, '/training/' + item.id), make('p', item.result_text || 'Resultado sin registrar'));
-        if (item.rpe !== null) row.append(make('p', `Esfuerzo ${item.rpe}/10`));
+        const content = make('div', '', 'training-entry-content');
+        content.append(make('p', new Intl.DateTimeFormat('es-CL', {dateStyle: 'long'}).format(new Date(item.trained_on + 'T12:00:00'))));
+        content.append(link(item.title, '/training/' + item.id), make('p', item.result_text || 'Resultado sin registrar'));
+        if (item.rpe !== null) content.append(make('p', `Esfuerzo ${item.rpe}/10`));
+        if (item.source_image_id) row.append(thumbnail(item.source_image_id, item.id));
+        else {
+          const placeholder = make('div', '', 'training-thumbnail training-thumbnail-placeholder');
+          placeholder.setAttribute('role', 'img'); placeholder.setAttribute('aria-label', 'Entrenamiento sin foto');
+          const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('aria-hidden', 'true');
+          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          path.setAttribute('d', 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM3 17l6-6 4 4 3-3 5 5M16 7h.01');
+          svg.append(path); placeholder.append(svg); row.append(placeholder);
+        }
+        row.append(content);
         root.append(row);
       }
       return;
     }
     const editing = identifier !== 'new';
     let dirty = false;
-    root.addEventListener('input', () => { dirty = true; });
-    window.addEventListener('beforeunload', event => {
+    let voice;
+    const markDirty = () => { dirty = true; };
+    const warnDraft = event => {
       if (dirty) { event.preventDefault(); event.returnValue = ''; }
-    });
+    };
+    root.addEventListener('input', markDirty);
+    window.addEventListener('beforeunload', warnDraft);
+    root.trainingCleanup = () => { root.removeEventListener('input', markDirty); window.removeEventListener('beforeunload', warnDraft); voice?.cleanup(); };
     const data = editing ? await api('/api/training-sessions/' + identifier) : {};
     const now = new Date();
     const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
     const layout = make('div', '', 'training-layout');
+    const note = make('article', '', 'training-note');
+    const noteHeading = make('h2', data.title); noteHeading.tabIndex = -1;
+    const unsavedNote = make('p', 'Tienes cambios sin guardar en el detalle.', 'training-hint'); unsavedNote.hidden = true;
+    const viewDetail = make('button', 'Ver detalle y editar'); viewDetail.type = 'button';
+    if (editing) {
+      const date = make('time', new Intl.DateTimeFormat('es-CL', {dateStyle:'long'}).format(new Date(data.trained_on + 'T12:00:00')), 'training-note-date');
+      date.dateTime = data.trained_on;
+      note.append(date, noteHeading);
+      if (data.source_image_id) note.append(thumbnail(data.source_image_id, data.id, true));
+      function noteText(title, value) {
+        const section = make('section', '', 'training-note-section');
+        section.append(make('h3', title));
+        const text = value || '';
+        if (text.length > 650) {
+          const cut = text.slice(0,650).replace(/\s+\S*$/, '');
+          section.append(make('p', cut + '…'));
+          const more = make('details'); more.append(make('summary', 'Leer ' + title.toLowerCase() + ' completo'), make('p', text)); section.append(more);
+        } else section.append(make('p', text));
+        note.append(section);
+      }
+      noteText('Cómo me fue', data.result_text || 'Todavía no anotaste tu resultado. Puedes añadirlo en el detalle.');
+      noteText('Lo que entrené', data.workout);
+      if (data.adaptations) noteText('Cargas y adaptaciones', data.adaptations);
+      if (data.rpe !== null && data.rpe !== undefined) note.append(make('p', `Esfuerzo percibido: ${data.rpe}/10`, 'training-note-meta'));
+      if (data.video_links?.length) note.append(make('p', `${data.video_links.length} ${data.video_links.length === 1 ? 'video vinculado' : 'videos vinculados'} · disponibles en el detalle`, 'training-note-meta'));
+      note.append(viewDetail, unsavedNote);
+    }
     const conversation = make('section', '', 'training-conversation');
-    conversation.append(make('h2', '¿Qué entrenaste hoy?'), make('p', 'Sube la pizarra o escribe el WOD y cómo te fue. Luego confirma la ficha.'));
+    conversation.append(make('h2', '¿Qué entrenaste hoy?'), make('p', 'Cuéntame el WOD y cómo te fue. Puedes escribir, añadir la pizarra o usar tu voz.', 'training-chat-prompt'));
     const messages = make('div', '', 'training-messages'); messages.setAttribute('aria-live', 'polite');
-    const source = make('textarea'); source.rows = 6; source.maxLength = 12000; source.value = data.source_text || '';
+    const source = make('textarea'); source.rows = 4; source.maxLength = 12000; source.value = data.source_text || '';
     source.placeholder = 'Ej.: AMRAP de 12 minutos: 10 thrusters y 12 burpees.'; source.setAttribute('aria-label', 'Descripción del entrenamiento');
     let imageId = data.source_image_id || null;
-    const photoLabel = make('label', 'Foto de la pizarra · opcional');
+    const photoLabel = make('label', 'Foto de la pizarra · opcional', 'training-file-label');
     const photo = make('input'); photo.type = 'file'; photo.accept = 'image/jpeg,image/png,image/webp';
     photoLabel.append(photo);
+    const choosePhoto = make('button', 'Añadir foto de la pizarra', 'secondary-button'); choosePhoto.type = 'button'; choosePhoto.onclick = () => photo.click();
     const preview = make('img'); preview.alt = 'Foto de la pizarra'; preview.className = 'training-photo'; preview.hidden = !imageId;
     if (imageId) preview.src = '/api/training-sessions/images/' + imageId;
-    const removePhoto = make('button', 'Quitar foto'); removePhoto.type = 'button'; removePhoto.hidden = !imageId;
-    removePhoto.onclick = () => { imageId = null; photo.value = ''; preview.removeAttribute('src'); preview.hidden = true; removePhoto.hidden = true; dirty = true; };
+    const removePhoto = make('button', 'Quitar foto', 'secondary-button'); removePhoto.type = 'button'; removePhoto.hidden = !imageId;
+    removePhoto.onclick = () => { imageId = null; photo.value = ''; preview.removeAttribute('src'); preview.hidden = true; removePhoto.hidden = true; dirty = true; notify('Foto quitada. Tu descripción se conserva.'); };
     const prepare = make('button', 'Interpretar WOD'); prepare.type = 'button';
-    const manual = make('button', 'Completar manualmente'); manual.type = 'button';
-    conversation.append(messages, photoLabel, preview, removePhoto, source, prepare, manual, make('p', 'Al interpretar, tu descripción y la foto se procesan con IA. Revisa los datos antes de guardar. Puedes añadir aclaraciones al texto y volver a interpretar; se reemplazará la ficha.', 'training-hint'));
-    const form = make('form', '', 'training-form'); form.append(make('h2', 'Confirma tu sesión'));
+    const manual = make('button', 'Completar manualmente', 'secondary-button'); manual.type = 'button';
+    const composer = make('div', '', 'training-composer');
+    const captureActions = make('div', '', 'training-capture-actions training-chat-toolbar'); captureActions.append(choosePhoto, prepare);
+    const sourceLabel = make('label'); sourceLabel.append(make('span', 'WOD y cómo te fue', 'training-composer-label'), source);
+    function iconButton(button, path) {
+      const label = button.textContent;
+      button.replaceChildren(make('span', label, 'training-composer-label'));
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('viewBox','0 0 24 24'); svg.setAttribute('aria-hidden','true');
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'path'); line.setAttribute('d',path); svg.append(line); button.append(svg);
+      button.classList.add('training-chat-icon'); button.title = label;
+    }
+    iconButton(choosePhoto, 'M12 5v14M5 12h14');
+    composer.append(photoLabel, preview, removePhoto, sourceLabel, captureActions);
+    conversation.append(composer, manual, make('p', 'Al interpretar, el texto y la foto se procesan con IA. Siempre revisas antes de guardar.', 'training-hint'));
+    const form = make('form', '', 'training-form');
+    const reviewHeading = make('h2', 'Revisa tu entrenamiento'); reviewHeading.tabIndex = -1;
+    form.append(reviewHeading, make('p', 'Así quedará en tu bitácora. Revisa el WOD y añade cómo te fue.', 'training-intro'), messages);
+    const editSource = make('button', 'Volver a mi descripción', 'secondary-button'); editSource.type = 'button';
+    function showReview(focus = true) {
+      note.hidden = true;
+      conversation.hidden = true; form.hidden = false; form.append(status);
+      if (focus) reviewHeading.focus();
+    }
+    editSource.onclick = () => { form.hidden = true; conversation.hidden = false; captureActions.after(status); source.focus(); };
+    form.append(editSource);
+    if (editing) {
+      const backToNote = make('button', 'Volver al resumen', 'secondary-button'); backToNote.type = 'button';
+      backToNote.onclick = () => { showNote(); noteHeading.focus(); };
+      form.insertBefore(backToNote, editSource);
+      viewDetail.onclick = () => showReview();
+    }
+    function showNote() {
+      conversation.hidden = true; form.hidden = true; note.hidden = false;
+      unsavedNote.hidden = !dirty; note.append(status);
+    }
     const controls = {};
     function field(name, label, type, value, required = false, max = 4000) {
       const group = make('label', label);
@@ -71,12 +181,36 @@ window.setupTraining = async function (identifier) {
       group.append(input); form.append(group); controls[name] = input; return input;
     }
     field('trained_on', 'Fecha del entrenamiento', 'date', data.trained_on || today, true);
-    field('title', 'Nombre', 'text', data.title, true, 160);
+    const dateName = value => {
+      if (!value) return '';
+      const text = new Intl.DateTimeFormat('es-CL', {weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(new Date(value + 'T12:00:00'));
+      return text.charAt(0).toUpperCase() + text.slice(1);
+    };
+    let defaultTitle = dateName(controls.trained_on.value);
+    field('title', 'Nombre del entrenamiento', 'text', editing ? data.title : defaultTitle, true, 160);
+    controls.trained_on.addEventListener('change', () => {
+      if (!editing && controls.title.value === defaultTitle && controls.trained_on.value) {
+        defaultTitle = dateName(controls.trained_on.value); controls.title.value = defaultTitle;
+      }
+    });
     field('workout', 'Entrenamiento programado · ejercicios, series, repeticiones y cargas', 'textarea', data.workout, true, 12000);
     field('result_text', 'Tu resultado · tiempo, rondas o series realizadas', 'textarea', data.result_text);
     field('adaptations', 'Cargas utilizadas y adaptaciones · opcional', 'textarea', data.adaptations);
     const rpe = field('rpe', 'Esfuerzo percibido · opcional (1 mínimo, 10 máximo)', 'number', data.rpe);
     rpe.min = 1; rpe.max = 10; rpe.step = 1;
+    rpe.inputMode = 'numeric';
+    function disclosure(title, nodes, open = false) {
+      const section = make('details', '', 'training-disclosure'); section.open = open;
+      section.append(make('summary', title), ...nodes); form.append(section); return section;
+    }
+    const contextDetails = disclosure('Cargas, adaptaciones y esfuerzo · opcional', [controls.adaptations.parentElement, rpe.parentElement], Boolean(data.adaptations || data.rpe));
+    const workoutDetails = disclosure('Ver o editar el WOD como texto', [make('p', 'Editar este texto reemplaza los bloques por tu descripción libre.', 'training-hint'), controls.workout.parentElement]);
+    // Native validation must reveal required inputs even inside closed disclosures.
+    form.addEventListener('invalid', event => {
+      let parent = event.target.parentElement;
+      while (parent && parent !== form) { if (parent.tagName === 'DETAILS') parent.open = true; parent = parent.parentElement; }
+      notify('Revisa los campos indicados antes de guardar.', true);
+    }, true);
     let blocks = data.blocks || [];
     let openBlock = -1;
     const blockArea = make('section', '', 'training-blocks');
@@ -122,51 +256,56 @@ window.setupTraining = async function (identifier) {
       });
       const addBlock=make('button','Agregar bloque');addBlock.type='button';
       addBlock.onclick=()=>{if(blocks.length>=12)return;openBlock=blocks.length;blocks.push({title:'',format:'other',prescription:'',movements:[]});updateBlocks();renderBlocks()};blockArea.append(addBlock);
+      workoutDetails.open = !blocks.length;
     }
-    form.insertBefore(blockArea, controls.result_text.parentElement); renderBlocks();
+    form.insertBefore(workoutDetails, controls.result_text.parentElement);
+    form.insertBefore(blockArea, workoutDetails); renderBlocks();
     controls.workout.addEventListener('input',()=>{if(blocks.length){blocks=[];renderBlocks();status.textContent='Conservé tu edición libre; los bloques anteriores se quitaron para evitar datos contradictorios.'}});
     manual.onclick = () => {
-      if (!source.value.trim()) { source.focus(); return; }
       if (!controls.workout.value.trim()) controls.workout.value = source.value.trim();
-      messages.replaceChildren(make('p', source.value, 'training-message'), make('p', 'Conservé tu descripción. Separa la programación de tu resultado y confirma los datos.'));
+      messages.replaceChildren(); showReview(false);
       controls.title.focus();
     };
     let busy = false;
-    let voice;
     function processing(value, fromVoice = false) {
       busy = value;
+      layout.setAttribute('aria-busy', String(value));
       for (const input of root.querySelectorAll('input, textarea, select, button')) input.disabled = value;
       voice?.setExternalBusy(fromVoice ? false : value);
     }
     voice=window.createTrainingVoice({container:conversation,source,onBusy:value=>processing(value,true),onText:()=>{dirty=true;source.dispatchEvent(new Event('input',{bubbles:true}));}});
-    conversation.insertBefore(conversation.querySelector('.training-voice'),source);
+    iconButton(voice.recordButton, 'M9 5a3 3 0 0 1 6 0v7a3 3 0 0 1-6 0V5M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8');
+    captureActions.insertBefore(voice.recordButton, prepare);
+    composer.insertBefore(conversation.querySelector('.training-voice'), captureActions);
     photo.onchange = async () => {
       const file = photo.files[0]; if (!file) return;
-      if (file.size > 8*1024*1024) { status.textContent = 'La imagen supera 8 MB. Elige una más pequeña.'; photo.value=''; return; }
-      processing(true); status.textContent='Guardando foto…';
+      if (file.size > 8*1024*1024) { notify('La imagen supera 8 MB. Elige una más pequeña.', true); photo.value=''; return; }
+      processing(true); notify('Guardando foto…');
       try {
         const body = new FormData(); body.append('file',file);
         const uploaded=await api('/api/training-sessions/images',{method:'POST',body});
-        imageId=uploaded.id; preview.src=uploaded.url; preview.hidden=false; removePhoto.hidden=false; dirty=true; status.textContent='Foto lista. Puedes añadir tu resultado e interpretar el WOD.';
-      } catch(error) { status.textContent=error.message; photo.value=''; }
+        imageId=uploaded.id; preview.src=uploaded.url; preview.hidden=false; removePhoto.hidden=false; dirty=true; notify('Foto lista. Puedes añadir tu resultado e interpretar el WOD.');
+      } catch(error) { notify(error.message, true); photo.value=''; }
       finally { processing(false); }
     };
     prepare.onclick = async () => {
       if (busy) return;
       if (!source.value.trim() && !imageId) { status.textContent='Escribe el WOD o agrega una foto de la pizarra.'; source.focus(); return; }
-      processing(true); status.textContent='Interpretando el entrenamiento…';
+      processing(true); notify('Interpretando el entrenamiento…'); prepare.textContent = 'Interpretando…';
       try {
         const draft=await api('/api/training-sessions/interpret',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:source.value,image_id:imageId})});
-        for (const key of ['title','workout','result_text','adaptations','rpe']) controls[key].value=draft[key] ?? '';
+        for (const key of (editing ? ['title','workout','result_text','adaptations','rpe'] : ['workout','result_text','adaptations','rpe'])) controls[key].value=draft[key] ?? '';
         blocks=draft.blocks;renderBlocks();dirty=true;
-        messages.replaceChildren(make('p', source.value || 'Foto de la pizarra', 'training-message'),make('p','Preparé un borrador. Revisa la programación y tu resultado.'));
+        contextDetails.open = Boolean(draft.adaptations || draft.rpe);
+        messages.replaceChildren();
         if (draft.questions.length) {
           messages.append(make('h3','Por confirmar'));
           const list=make('ul'); draft.questions.forEach(question=>list.append(make('li',question)));messages.append(list,make('p','Añade tus aclaraciones al texto y vuelve a interpretar, o corrige la ficha directamente.'));
         }
-        status.textContent='Ficha lista para revisar. Todavía no se ha guardado la sesión.';
-      } catch(error) { status.textContent=error.message; }
-      finally { processing(false); }
+        notify('Ficha lista para revisar. Todavía no se ha guardado la sesión.');
+        showReview();
+      } catch(error) { notify(error.message + ' Puedes reintentar o completar manualmente.', true); }
+      finally { processing(false); prepare.textContent = 'Interpretar WOD'; }
     };
     const videos = make('fieldset'); videos.append(make('legend', 'Videos · opcional'));
     const linked = make('div'); videos.append(linked);
@@ -181,7 +320,7 @@ window.setupTraining = async function (identifier) {
       });
     };
     renderLinks();
-    const choose = make('button', 'Vincular análisis existente'); choose.type = 'button'; videos.append(choose);
+    const choose = make('button', 'Vincular análisis existente', 'secondary-button'); choose.type = 'button'; videos.append(choose);
     choose.onclick = async () => {
       choose.disabled = true;
       try {
@@ -195,27 +334,31 @@ window.setupTraining = async function (identifier) {
         add.onclick = () => {
           if (!movement.value.trim()) { movement.focus(); return; }
           if (videoLinks.length >= 30) { status.textContent = 'Puedes vincular hasta 30 videos por sesión.'; return; }
-          dirty = true; videoLinks.push({analysis_id: select.value, movement: movement.value.trim(), context: context.value.trim()}); renderLinks(); movement.value = ''; context.value = '';
+          dirty = true; videoLinks.push({analysis_id: select.value, movement: movement.value.trim(), context: context.value.trim()}); renderLinks(); movement.value = ''; context.value = ''; notify('Video vinculado al borrador. Guarda la sesión para confirmar.');
         };
         videos.append(select, movement, context, add); choose.hidden = true;
       } catch (error) { status.textContent = error.message; choose.disabled = false; }
     };
-    form.append(videos);
-    const save = make('button', editing ? 'Guardar cambios' : 'Guardar sesión'); save.type = 'submit'; form.append(save);
+    disclosure('Videos · opcional', [videos], Boolean(videoLinks.length));
+    const actions = make('div', '', 'form-actions training-save-actions');
+    const save = make('button', editing ? 'Guardar cambios' : 'Guardar sesión'); save.type = 'submit'; actions.append(save); form.append(actions);
     form.onsubmit = async (event) => {
       event.preventDefault(); if (busy) return;
-      save.disabled = true; status.textContent = 'Guardando…';
+      processing(true); save.textContent = 'Guardando…'; notify('Guardando tu entrenamiento…'); form.setAttribute('aria-busy','true');
       const payload = Object.fromEntries(Object.entries(controls).map(([key, input]) => [key, input.value.trim()]));
       payload.rpe = payload.rpe === '' ? null : Number(payload.rpe);
       payload.source_text = source.value; payload.video_links = videoLinks; payload.blocks=blocks; payload.source_image_id=imageId;
       try {
         await api('/api/training-sessions' + (editing ? '/' + identifier : ''), {method: editing ? 'PUT' : 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)});
-        dirty = false; window.location.assign('/training');
-      } catch (error) { status.textContent = `${error.message} Tu borrador se conserva en esta pantalla.`; save.disabled = false; }
+        dirty = false; setFlash(editing ? 'Cambios guardados en tu bitácora.' : 'Entrenamiento guardado en tu bitácora.'); window.location.assign('/training');
+      } catch (error) { notify(`${error.message} Tu borrador se conserva en esta pantalla.`, true); save.disabled = false; save.textContent = editing ? 'Guardar cambios' : 'Guardar sesión'; }
+      finally { processing(false); form.setAttribute('aria-busy','false'); }
     };
-    layout.append(conversation, form); root.append(layout); status.textContent = '';
+    layout.append(note, conversation, form); root.append(layout); status.textContent = '';
+    if (editing) showNote();
+    else { note.hidden = true; form.hidden = true; captureActions.after(status); }
   } catch (error) {
-    status.textContent = error.message;
+    notify(error.message, true);
     const retry = make('button', 'Reintentar'); retry.onclick = () => window.setupTraining(identifier); root.append(retry);
   }
 };

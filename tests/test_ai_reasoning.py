@@ -166,6 +166,6 @@ def test_internal_usage_aggregates_completed_runs(client, session):
     ])
     session.commit()
     payload = client.get('/api/internal/ai-usage').json()
-    assert payload['totals'] == {'completed_runs': 1, 'input_tokens': 120, 'output_tokens': 80, 'reasoning_tokens': 30, 'total_tokens': 200}
+    assert payload['totals'] == {'completed_runs': 1, 'input_tokens': 120, 'output_tokens': 80, 'reasoning_tokens': 30, 'total_tokens': 200, 'training_runs': 0, 'unreported_training_runs': 0}
     assert payload['by_model'] == [{'model': 'test-model', 'runs': 1, 'input_tokens': 120, 'output_tokens': 80, 'total_tokens': 200}]
     assert {run['status'] for run in payload['recent_runs']} == {'COMPLETED', 'FAILED'}

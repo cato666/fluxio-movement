@@ -164,29 +164,40 @@ async function setupUsage() {
     const data = await apiJson("/api/internal/ai-usage");
     const totals = data.totals;
     $("#usage-totals").replaceChildren(
-      metric("Análisis completados", number(totals.completed_runs)),
+      metric("Operaciones completadas", number(totals.completed_runs)),
       metric("Tokens de entrada", number(totals.input_tokens)),
       metric("Tokens de salida", number(totals.output_tokens)),
-      metric("Total facturable", number(totals.total_tokens)),
+      metric("Tokens reportados", number(totals.total_tokens)),
     );
     const models = $("#usage-by-model"); models.replaceChildren();
-    if (!data.by_model.length) models.textContent = "Aún no hay análisis con razonamiento IA completado.";
+    if (!data.by_model.length) models.textContent = "Aún no hay consumo de IA registrado.";
     for (const item of data.by_model) {
       const row = element("div", "rep");
       row.append(element("strong", "", item.model));
-      row.append(element("span", "", ` · ${number(item.runs)} análisis · ${number(item.total_tokens)} tokens`));
+      row.append(element("span", "", ` · ${number(item.runs)} operaciones · entrada ${number(item.input_tokens)} · salida ${number(item.output_tokens)} · total ${number(item.total_tokens)} tokens reportados`));
       models.append(row);
     }
+    const athletes = $("#usage-by-athlete"); athletes.replaceChildren();
+    for (const athlete of data.training_by_athlete || []) {
+      const row = element("div", "rep");
+      row.append(element("strong", "", athlete.athlete_name));
+      row.append(element("span", "", ` · ${number(athlete.runs)} llamadas · entrada ${number(athlete.input_tokens)} · salida ${number(athlete.output_tokens)} · total ${number(athlete.total_tokens)} tokens reportados · ${number(athlete.audio_seconds)} s de audio enviado`));
+      if (athlete.unreported_runs) row.append(element("span", "", ` · ${number(athlete.unreported_runs)} llamadas sin detalle de tokens`));
+      athletes.append(row);
+    }
+    if (!athletes.children.length) athletes.textContent = "Aún no hay llamadas de la bitácora registradas.";
     const recent = $("#usage-recent-runs"); recent.replaceChildren();
     if (!data.recent_runs.length) recent.textContent = "Aún no hay ejecuciones registradas.";
     for (const run of data.recent_runs) {
       const row = element("div", "rep");
       row.append(element("strong", "", run.exercise));
+      if (run.athlete_name) row.append(element("span", "", ` · ${run.athlete_name} · ${run.model}`));
       row.append(element("span", "", ` · ${fmtDate(run.created_at)} · ${run.status}`));
-      row.append(element("span", "", ` · entrada ${number(run.input_tokens)} · salida ${number(run.output_tokens)} · total ${number(run.total_tokens)}`));
+      row.append(element("span", "", run.total_tokens === null ? ' · Tokens no reportados por el proveedor' : ` · entrada ${number(run.input_tokens)} · salida ${number(run.output_tokens)} · total ${number(run.total_tokens)}`));
+      if (run.duration_seconds !== null && run.duration_seconds !== undefined) row.append(element("span", "", ` · ${number(run.duration_seconds)} s de audio enviado`));
       recent.append(row);
     }
-    status.textContent = "";
+    status.textContent = totals.unreported_training_runs ? `${number(totals.unreported_training_runs)} llamadas de la bitácora no tienen detalle de tokens; el total solo incluye tokens reportados.` : "";
   } catch (error) {
     status.textContent = error.message;
   }

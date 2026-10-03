@@ -14,6 +14,7 @@ from .database import get_session
 from .models import Analysis, TrainingImage, TrainingSession, User
 from .services.workout_interpretation import WorkoutBlock, interpret
 from .services.training_transcription import AUDIO_LIMIT, AudioUnavailable, transcribe
+from .services.training_usage import track_usage
 
 IMAGE_LIMIT = 8 * 1024 * 1024
 
@@ -61,14 +62,15 @@ def router(require_athlete):
     routes = APIRouter(prefix='/api/training-sessions')
 
     @routes.post('/transcribe')
-    def transcribe_recording(file: UploadFile = File(...), user: User = Depends(require_athlete)):
+    def transcribe_recording(file: UploadFile = File(...), user: User = Depends(require_athlete), session: Session = Depends(get_session)):
         raw = file.file.read(AUDIO_LIMIT + 1)
         if len(raw) > AUDIO_LIMIT:
             raise HTTPException(413, 'El audio supera 8 MB')
         if not raw:
             raise HTTPException(422, 'La grabación está vacía')
         try:
-            return {'text': transcribe(raw)}
+            with track_usage(session, user.id, 'TRANSCRIBE'):
+                return {'text': transcribe(raw)}
         except AudioUnavailable as error:
             raise HTTPException(503, str(error)) from error
         except ValueError as error:
@@ -133,7 +135,8 @@ def router(require_athlete):
                 raise HTTPException(404, 'Imagen no disponible')
             image = path.read_bytes()
         try:
-            return interpret(payload.text, image)
+            with track_usage(session, user.id, 'INTERPRET'):
+                return interpret(payload.text, image)
         except RuntimeError as error:
             raise HTTPException(503, str(error)) from error
         except Exception as error:

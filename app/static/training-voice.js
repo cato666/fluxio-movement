@@ -1,13 +1,15 @@
 /* Record locally, review, then explicitly request an editable transcript. */
 window.createTrainingVoice = function ({container, source, onBusy, onText}) {
   const panel=document.createElement('section');panel.className='training-voice';
-  function button(text) {const node=document.createElement('button');node.type='button';node.textContent=text;panel.append(node);return node;}
+  function button(text) {const node=document.createElement('button');node.type='button';node.className='secondary-button';node.textContent=text;panel.append(node);return node;}
   const record=button('Dictar entrenamiento');
   const stop=button('Terminar grabación');
   const discard=button('Descartar grabación');
   const send=button('Transcribir audio');
   const player=document.createElement('audio');player.controls=true;player.setAttribute('aria-label','Escuchar tu grabación');panel.append(player);
   const status=document.createElement('p');status.setAttribute('role','status');panel.append(status);
+  status.setAttribute('aria-atomic','true');
+  const elapsed=document.createElement('span');elapsed.className='training-recording-time';elapsed.setAttribute('aria-hidden','true');panel.append(elapsed);
   const hint=document.createElement('p');hint.className='training-hint';hint.textContent='Graba hasta 3 minutos. Al transcribir, el audio se procesa con IA. Revisa el texto antes de interpretar el WOD.';panel.append(hint);
   container.append(panel);
   let recorder=null,stream=null,blob=null,url=null,timer=null,chunks=[],size=0;
@@ -17,6 +19,9 @@ window.createTrainingVoice = function ({container, source, onBusy, onText}) {
     record.hidden=active;stop.hidden=!active;discard.hidden=!active&&!blob;send.hidden=!blob;player.hidden=!blob;
     record.disabled=!supported||pending||external;stop.disabled=pending||external;
     discard.disabled=pending||external;send.disabled=pending||external;
+    hint.hidden=!active&&!blob;elapsed.hidden=!active;
+    panel.setAttribute('aria-busy',String(pending));
+    send.textContent=pending&&blob?'Transcribiendo…':'Transcribir audio';
   }
   function release() {clearInterval(timer);timer=null;stream?.getTracks().forEach(track=>track.stop());stream=null;}
   function clearAudio() {blob=null;if(url)URL.revokeObjectURL(url);url=null;player.removeAttribute('src');player.load();}
@@ -38,8 +43,8 @@ window.createTrainingVoice = function ({container, source, onBusy, onText}) {
         chunks=[];onBusy(false);sync();
       };
       recorder.onerror=()=>{cancelled=true;finish();active=false;release();onBusy(false);status.textContent='La grabación se interrumpió. Puedes reintentar o escribir.';sync();};
-      clearAudio();recorder.start(1000);active=true;started=Date.now();status.textContent='Grabando · 0:00';
-      timer=setInterval(()=>{const seconds=Math.floor((Date.now()-started)/1000);status.textContent=`Grabando · ${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`;if(seconds>=180)finish();},500);
+      clearAudio();recorder.start(1000);active=true;started=Date.now();status.textContent='Grabando. Termina la grabación cuando estés listo.';elapsed.textContent='0:00 / 3:00';
+      timer=setInterval(()=>{const seconds=Math.floor((Date.now()-started)/1000);elapsed.textContent=`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')} / 3:00`;if(seconds>=180)finish();},500);
     } catch(error) {
       release();onBusy(false);status.textContent=error.name==='NotAllowedError'?'No se permitió el micrófono. Habilítalo en tu navegador o escribe el entrenamiento.':'No se pudo abrir el micrófono. Revisa que esté conectado o escribe el entrenamiento.';
     } finally {pending=false;if(!active)onBusy(false);sync();}
@@ -56,8 +61,8 @@ window.createTrainingVoice = function ({container, source, onBusy, onText}) {
       if(typeof data.text!=='string'||!data.text.trim())throw new Error('No se obtuvo texto legible. Graba nuevamente o escribe el entrenamiento.');
       const text=[source.value.trim(),data.text].filter(Boolean).join('\n\n');
       if(text.length>12000)throw new Error('El texto completo supera el límite. Acorta tu descripción antes de reintentar.');
-      source.value=text;onText();clearAudio();status.textContent='Texto agregado. Corrige nombres, cargas o repeticiones antes de interpretar.';
-    } catch(error){status.textContent=error.message+' La grabación se conserva para reintentar.';}
+      source.value=text;onText();clearAudio();status.textContent='Texto agregado. Corrige nombres, cargas o repeticiones antes de interpretar.';source.focus();
+    } catch(error){status.textContent=(navigator.onLine?error.message:'Sin conexión. Revisa tu conexión e inténtalo nuevamente.')+' La grabación se conserva para reintentar.';}
     finally{pending=false;onBusy(false);sync();}
   };
   function warn(event){if(active||blob){event.preventDefault();event.returnValue='';}}
@@ -66,5 +71,5 @@ window.createTrainingVoice = function ({container, source, onBusy, onText}) {
   window.addEventListener('pagehide',cleanup,{once:true});
   if(!supported)status.textContent='Tu navegador no permite grabar aquí. Usa HTTPS o localhost, o escribe el entrenamiento.';
   sync();
-  return {setExternalBusy(value){external=value;sync();},cleanup};
+  return {recordButton:record,setExternalBusy(value){external=value;sync();},cleanup};
 };
