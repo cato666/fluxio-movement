@@ -138,5 +138,9 @@
   #training-view .training-delete:hover:not(:disabled) { color:var(--error); background:var(--error-bg); border-color:transparent; }
 }
 #training-view .training-delete:active:not(:disabled) { background:var(--error-bg); }
-.training-entry-content > .training-delete { float:right; margin-left:12px; }
-.training-entry-content::after { content:""; display:block; clear:both; }
+.training-entry-actions { display:flex; justify-content:flex-end; align-items:center; flex-wrap:wrap; gap:4px; margin-top:12px; }
+#training-view .training-entry-actions .training-delete { margin-top:0; }
+.training-edit { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-width:44px; min-height:44px; padding:10px 12px; border-radius:9px; color:var(--brand); font-size:14px; font-weight:600; text-decoration:none; }
+.training-edit svg { width:18px; height:18px; flex:none; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+@media(hover:hover) and (pointer:fine) { .training-edit:hover { background:var(--soft); } }
+.training-edit:active { background:var(--soft); }

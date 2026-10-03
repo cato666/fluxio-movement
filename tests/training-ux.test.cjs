@@ -253,6 +253,7 @@ test('chronology, weekly counts and read-only blocks use stored data; reading an
   await page.route('**/api/training-sessions',r=>r.fulfill({json:{items:[session,{...session,id:'second'}, {...session,id:'old',trained_on:'2000-01-01',title:'Fuerza'}]}}));
   await page.evaluate(()=>window.setupTraining());
   assert.equal(await page.locator('.training-day').count(),2);
+  assert.equal(await page.locator('.training-entry-actions').first().getByRole('link',{name:'Editar entrenamiento'}).getAttribute('href'),'/training/chronology?edit=1');
   assert.equal(await page.locator('.training-day').first().locator('article').count(),2);
   assert.match(await page.locator('.training-week-count').textContent(),/2 entrenamientos registrados · 1 día activo/);
   assert.equal(await page.locator('.training-entry-content > a').first().textContent(),'Metcon');
@@ -271,6 +272,9 @@ test('chronology, weekly counts and read-only blocks use stored data; reading an
   assert.equal(await page.getByRole('heading',{name:'Editar entrenamiento',exact:true}).count(),1);
   assert.equal(await page.locator('[name=title]').inputValue(),title);
   await page.screenshot({path:'.impeccable/training-evolution-edit-mobile.png',fullPage:true});
+  await page.evaluate(()=>{history.replaceState({},'', '/training/chronology?edit=1');return window.setupTraining('chronology')});
+  assert.equal(await page.locator('.training-form').isVisible(),true);
+  assert.equal(await page.locator('.training-note').isVisible(),false);
 }));
 test('delete confirms, preserves a failed session and prevents duplicate requests',()=>harness(async page=>{
   const session={...draft,id:'delete-session',trained_on:'2026-10-02',source_image_id:null,video_links:[]};

@@ -133,7 +133,11 @@ window.setupTraining = async function (identifier) {
         const date = make('time', new Intl.DateTimeFormat('es-CL', {day:'2-digit',month:'2-digit',year:'numeric'}).format(calendarDate(item.trained_on)), 'training-thumbnail-date');
         date.dateTime = item.trained_on;
         media.append(row.firstElementChild, date);
-        content.append(deleteAction(item));
+        const actions = make('div', '', 'training-entry-actions');
+        const edit = link('', '/training/' + item.id + '?edit=1'); edit.className = 'training-edit'; edit.setAttribute('aria-label', 'Editar entrenamiento');
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox','0 0 24 24'); svg.setAttribute('aria-hidden','true');
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path'); path.setAttribute('d','M15 5l4 4M4 20l4-1L20 7a2.8 2.8 0 0 0-4-4L4 15v5Z'); svg.append(path);
+        edit.append(svg, make('span', 'Editar')); actions.append(edit, deleteAction(item)); content.append(actions);
         row.append(media, content);
         group.append(row);
       }
@@ -437,7 +441,10 @@ window.setupTraining = async function (identifier) {
       finally { processing(false); form.setAttribute('aria-busy','false'); }
     };
     layout.append(note, conversation, form); root.append(layout); status.textContent = '';
-    if (editing) showNote();
+    if (editing) {
+      if (new URLSearchParams(window.location.search).get('edit') === '1') showReview();
+      else showNote();
+    }
     else { note.hidden = true; form.hidden = true; captureActions.after(status); }
   } catch (error) {
     notify(error.message, true);
