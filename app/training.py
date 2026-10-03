@@ -182,4 +182,11 @@ def router(require_athlete):
         session.commit()
         return fields(row)
 
+    @routes.delete('/{identifier}')
+    def delete_session(identifier: UUID, user: User = Depends(require_athlete), session: Session = Depends(get_session)):
+        row = owned(identifier, user, session)
+        session.delete(row)
+        session.commit()
+        return {'deleted': True}
+
     return routes

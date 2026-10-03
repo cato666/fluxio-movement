@@ -58,6 +58,33 @@ window.setupTraining = async function (identifier) {
       login.target = '_blank'; login.rel = 'noopener'; status.append(document.createTextNode(' '), login);
     }
   };
+  function deleteAction(item) {
+    const button = make('button', '', 'secondary-button training-delete'); button.type = 'button';
+    button.setAttribute('aria-label', 'Eliminar entrenamiento');
+    function renderDelete() {
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('viewBox','0 0 24 24'); svg.setAttribute('aria-hidden','true');
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d','M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6');
+      svg.append(path); button.replaceChildren(svg, make('span', 'Eliminar'));
+    }
+    renderDelete();
+    let deleting = false;
+    button.onclick = async () => {
+      if (deleting || !window.confirm(`¿Eliminar «${item.title}» del ${dateLabel(item.trained_on)}? Esta acción no se puede deshacer. Los análisis de video vinculados se conservan.`)) return;
+      deleting = true; button.disabled = true; button.textContent = 'Eliminando…'; button.setAttribute('aria-label', 'Eliminando entrenamiento'); notify('Eliminando el entrenamiento…');
+      try {
+        await api('/api/training-sessions/' + item.id, {method:'DELETE'});
+        setFlash('Entrenamiento eliminado de tu bitácora.');
+        root.trainingCleanup?.();
+        window.location.assign('/training');
+      } catch (error) {
+        notify(`${error.message} El entrenamiento sigue en esta pantalla; puedes reintentar.`, true);
+        deleting = false; button.disabled = false; button.setAttribute('aria-label', 'Eliminar entrenamiento'); renderDelete();
+      }
+    };
+    return button;
+  }
   try {
     if (!identifier) {
       const { items } = await api('/api/training-sessions'); status.textContent = '';
@@ -102,7 +129,12 @@ window.setupTraining = async function (identifier) {
           path.setAttribute('d', 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM3 17l6-6 4 4 3-3 5 5M16 7h.01');
           svg.append(path); placeholder.append(svg); row.append(placeholder);
         }
-        row.append(content);
+        const media = make('div', '', 'training-entry-media');
+        const date = make('time', new Intl.DateTimeFormat('es-CL', {day:'2-digit',month:'2-digit',year:'numeric'}).format(calendarDate(item.trained_on)), 'training-thumbnail-date');
+        date.dateTime = item.trained_on;
+        media.append(row.firstElementChild, date);
+        content.append(deleteAction(item));
+        row.append(media, content);
         group.append(row);
       }
       return;
@@ -165,7 +197,7 @@ window.setupTraining = async function (identifier) {
         for (const video of data.video_links) media.append(link(`${video.movement}${video.context ? ' · ' + video.context : ''}`, '/analyses/' + video.analysis_id));
         note.append(media);
       }
-      note.append(viewDetail, unsavedNote);
+      note.append(viewDetail, deleteAction(data), unsavedNote);
     }
     const conversation = make('section', '', 'training-conversation');
     conversation.append(make('h2', '¿Qué entrenaste hoy?'), make('p', 'Cuéntame el WOD y cómo te fue. Puedes escribir, añadir la pizarra o usar tu voz.', 'training-chat-prompt'));

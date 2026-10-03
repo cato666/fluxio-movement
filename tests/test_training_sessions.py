@@ -44,6 +44,8 @@ def test_ownership(athlete_client, session):
     session.add(analysis); session.commit()
     assert athlete_client.get('/api/training-sessions/' + str(row.id)).status_code == 404
     assert athlete_client.put('/api/training-sessions/' + str(row.id), json=payload()).status_code == 404
+    assert athlete_client.delete('/api/training-sessions/' + str(row.id)).status_code == 404
+    assert session.get(TrainingSession, row.id) is not None
     assert athlete_client.get('/api/training-sessions').json()['items'] == []
     assert athlete_client.post('/api/training-sessions', json=payload(video_links=[{'analysis_id': analysis.id, 'movement': 'Thruster'}])).status_code == 404
 
@@ -60,3 +62,24 @@ def test_link_own_analysis(athlete_client, session):
 def test_requires_login(client):
     assert client.get('/api/training-sessions').status_code == 401
     assert client.get('/training', follow_redirects=False).status_code == 303
+
+
+def test_delete_own_session_keeps_linked_analysis(athlete_client, session):
+    from app.seed import DEMO_ATHLETE_ID
+    session.add(Analysis(id='kept-analysis', athlete_id=DEMO_ATHLETE_ID, original_filename='mine.mp4', video_path='uploads/mine.mp4'))
+    session.commit()
+    row = athlete_client.post('/api/training-sessions', json=payload(video_links=[{'analysis_id':'kept-analysis', 'movement':'Thrusters'}])).json()
+    url = '/api/training-sessions/' + row['id']
+    assert athlete_client.delete(url).status_code == 200
+    assert athlete_client.get(url).status_code == 404
+    assert athlete_client.get('/api/training-sessions').json()['items'] == []
+    assert session.get(Analysis, 'kept-analysis') is not None
+    assert athlete_client.delete(url).status_code == 404
+
+
+def test_delete_requires_login(client):
+    assert client.delete('/api/training-sessions/' + str(uuid4())).status_code == 401
+
+
+def test_delete_requires_athlete(coach_client):
+    assert coach_client.delete('/api/training-sessions/' + str(uuid4())).status_code == 403

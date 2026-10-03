@@ -272,3 +272,16 @@ test('chronology, weekly counts and read-only blocks use stored data; reading an
   assert.equal(await page.locator('[name=title]').inputValue(),title);
   await page.screenshot({path:'.impeccable/training-evolution-edit-mobile.png',fullPage:true});
 }));
+test('delete confirms, preserves a failed session and prevents duplicate requests',()=>harness(async page=>{
+  const session={...draft,id:'delete-session',trained_on:'2026-10-02',source_image_id:null,video_links:[]};
+  let calls=0,fail=true,accept=false;
+  await page.route('**/api/training-sessions',r=>r.fulfill({json:{items:[session]}}));
+  await page.route('**/api/training-sessions/delete-session',r=>{calls++;return r.fulfill({status:fail?503:200,json:fail?{detail:'No disponible'}:{deleted:true}})});
+  page.on('dialog',dialog=>accept?dialog.accept():dialog.dismiss());
+  await page.evaluate(()=>window.setupTraining());
+  await page.getByRole('button',{name:'Eliminar entrenamiento',exact:true}).click();assert.equal(calls,0);
+  accept=true;await page.getByRole('button',{name:'Eliminar entrenamiento',exact:true}).click();
+  await page.getByText('El entrenamiento sigue en esta pantalla',{exact:false}).waitFor();assert.equal(calls,1);assert.equal(await page.locator('.training-entry').count(),1);
+  fail=false;await page.getByRole('button',{name:'Eliminar entrenamiento',exact:true}).dblclick();
+  await page.waitForURL('**/training');assert.equal(calls,2);assert.match(await page.evaluate(()=>sessionStorage.getItem('flash')),/Entrenamiento eliminado/);
+}));

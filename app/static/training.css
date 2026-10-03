@@ -127,3 +127,16 @@
   .training-week { padding:20px 16px; margin-bottom:24px; }
   .training-thumbnail-note { height:220px; }
 }
+
+.training-entry-media { flex:0 0 96px; width:96px; }
+.training-thumbnail-date { display:block; margin-top:8px; text-align:center; font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; }
+
+#training-view .training-delete { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-width:44px; min-height:44px; padding:10px 12px; color:var(--error); background:transparent; border-color:transparent; margin-top:12px; font-size:14px; }
+.training-delete svg { width:18px; height:18px; flex:none; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+#training-view .training-delete:disabled { color:var(--muted); }
+@media(hover:hover) and (pointer:fine) {
+  #training-view .training-delete:hover:not(:disabled) { color:var(--error); background:var(--error-bg); border-color:transparent; }
+}
+#training-view .training-delete:active:not(:disabled) { background:var(--error-bg); }
+.training-entry-content > .training-delete { float:right; margin-left:12px; }
+.training-entry-content::after { content:""; display:block; clear:both; }
