@@ -1,0 +1,15 @@
+{
+  "description": "Explicit synthetic assumptions, not outputs or labels from real videos. Calibration 175 degrees, reviewed complete phase, visible bilateral chains and verified geometry.",
+  "calibration_angle": 175,
+  "times": [1.0, 1.1, 1.2, 1.3, 1.4],
+  "cases": {
+    "correct": {"angles": [174, 175, 174, 175, 174], "detected": false, "reason": "no_deficit_observed"},
+    "incorrect": {"angles": [149, 150, 151, 150, 149], "detected": true, "reason": "sustained_deficit_candidate"},
+    "borderline": {"angles": [164, 165, 164, 165, 164], "detected": false, "reason": "borderline_or_unstable_signal"},
+    "incomplete_landmarks": {"angles": [150, 150, 150, 150, 150], "remove_visibility": true, "detected": false, "reason": "joint_visibility_required"},
+    "temporal_noise": {"angles": [150, 174, 150, 174, 150], "detected": false, "reason": "borderline_or_unstable_signal"},
+    "partial_motion": {"angles": [150, 150, 150, 150, 150], "complete_attempt": false, "detected": false, "reason": "incomplete_attempt"},
+    "duplicate_frame": {"angles": [150, 150, 150, 150, 150], "duplicate_only": true, "detected": false, "reason": "insufficient_samples"},
+    "wrong_exercise": {"angles": [150, 150, 150, 150, 150], "exercise_id": "clean", "detected": false, "reason": "wrong_exercise"}
+  }
+}
