@@ -85,4 +85,28 @@ No agregues Nginx, Caddy ni certificados al repositorio: Easypanel se encarga de
 
 ## Límites del MVP
 
+## Biblioteca de ejercicios
+
+La sección **Exercise Library** (`/exercises`) está disponible para usuarios autenticados.
+`GET /api/exercises` permite combinar filtros `category`, `priority` y
+`analysis_status`; `GET /api/exercises/{exercise_id}` devuelve el detalle (404 si
+no existe). `GET /api/exercise-categories` expone la taxonomía configurada.
+
+El catálogo vive en `app/services/exercise_library/exercises.json`; la taxonomía
+en `taxonomy.json`. Los perfiles del detector conservan su formato y aceptan
+metadata opcional validada, accesible mediante `ExerciseProfile.library`.
+`detector_profiles` enlaza el catálogo con los detectores existentes sin cambiar
+alias, umbrales ni señales. `supported` indica soporte de conteo de repeticiones,
+no detección de todos los errores técnicos. `air_squat` referencia el detector
+de squat; las variantes power conservan `reference_only` porque los alias
+genéricos existentes no validan su recepción específica.
+
+Los 20 ejercicios tienen referencias del canal oficial CrossFit. Solo se guardan
+URLs e identificadores: no se descargan videos. Los segmentos están pendientes
+de revisión editorial (`segments_status: pending_review`); se admite inicio y
+fin finitos y ordenados, y construir embeds por segmento. Los errores iniciales
+tienen `detectable: false`. En `reference_only`, las cámaras son vistas previstas
+para futuras implementaciones. `ExerciseFinding` define un contrato futuro sin
+ejecutar razonamiento ni agregar modelos.
+
 No hay autenticación real todavía; las identidades son demo. El análisis es síncrono y las métricas dependen del ángulo de cámara. Conserva respaldos de los dos volúmenes antes de actualizar un entorno con datos reales.
