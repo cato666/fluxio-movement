@@ -1,0 +1,217 @@
+/* Reference composition. Presentation only; contracts live in the existing modules. */
+:root{--canvas:#f5f6f6;--surface:#fff;--soft:#eef1f1;--text:#101819;--muted:#626b6f;--border:#e3e7e8;--brand:#07392b;--navy:#08251e;--lime:#c9f274}
+body:not(.marketing):not(.weekly-public){background:var(--canvas)}
+body:not(.marketing) .brand{font-size:13px;text-transform:uppercase;letter-spacing:0;line-height:1.15;color:white}
+body:not(.marketing) .logo-mark{color:var(--lime);width:32px;height:32px}
+body:not(.marketing) .functional-nav a{font-size:12px;gap:12px}
+body:not(.marketing) .functional-nav a[aria-current=page]{background:#173c30;color:var(--lime)}
+body:not(.marketing) .functional-actions{font-size:12px}
+@media(min-width:901px){
+ body:not(.marketing):not(.weekly-public) main{margin-left:184px;padding:0 32px 40px}
+ body:not(.marketing) .topbar{width:184px;padding:28px 12px;background:var(--navy)}
+ body:not(.marketing) .brand{padding:0 8px 36px}
+ body:not(.marketing) .functional-nav a{padding:8px 12px}
+ body:not(.marketing) .functional-actions{padding-inline:8px}
+ body:not(.marketing) .topbar::after{content:'BETTER\A ATHLETES\A EVERY DAY';white-space:pre;position:absolute;bottom:176px;left:24px;letter-spacing:5px;line-height:1.7;font-size:10px;font-weight:600;color:#8aa299}
+}
+#training-view{max-width:960px;margin:auto;--field-fill:#fff}
+.training-header{margin:26px 0 20px;gap:16px;max-width:none;flex-wrap:nowrap}
+.training-heading-group{flex:1;min-width:0}
+.training-header h1{font-size:28px;letter-spacing:-.03em;line-height:1.2}
+.training-subtitle{margin:6px 0 0;font-size:13px;line-height:1.45}
+#training-view .training-register{min-height:44px;padding:10px 16px;border-radius:10px;font-size:12px;flex:none}
+.training-whatsapp{max-width:none;background:#183e32;color:white;border:0;border-radius:10px;margin:0 0 16px;padding:14px 18px}
+.training-whatsapp>summary{color:white;min-height:36px;gap:14px}
+.training-whatsapp .whatsapp-action-icon{color:var(--lime);width:32px;height:32px}
+.training-whatsapp .whatsapp-action-copy strong{font-size:14px;color:white}
+.training-whatsapp .whatsapp-action-copy>span{font-size:12px;color:#d3ded8}
+.training-whatsapp .whatsapp-chevron{color:white}
+.training-whatsapp-content{color:#eef4f0;padding-top:16px}
+.training-whatsapp-content a{color:var(--lime)}
+.training-week.weekly-dense{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 154px;gap:4px 24px;padding:20px 224px 20px 20px;min-height:158px;margin:0 0 22px;border:0;border-radius:12px;background:white;box-shadow:0 2px 10px rgba(16,24,25,.025)}
+.weekly-dense>h2{grid-column:1;grid-row:1;margin:0;text-transform:uppercase;font-size:10px;letter-spacing:.03em}
+.weekly-dense .weekly-snapshot{grid-column:1;grid-row:2 / 4}
+.weekly-dense .weekly-date-range{font-size:22px;margin:0 0 14px;letter-spacing:-.025em;line-height:1.2}
+.weekly-compact-metrics,.recap-compact-metrics{display:flex;gap:24px;margin:0}
+.recap-compact-metrics dd{margin:0 0 4px;font-weight:600;font-variant-numeric:tabular-nums}
+.recap-compact-metrics dt{font-weight:400;color:var(--muted)}
+.weekly-compact-metrics dd,.recap-compact-metrics dd{font-size:24px;gap:0;line-height:1.15}
+.weekly-compact-metrics dd svg,.recap-compact-metrics dd svg{display:none}
+.weekly-compact-metrics dt,.recap-compact-metrics dt{font-size:11px;text-transform:lowercase;white-space:nowrap}
+.weekly-dense .weekly-activity{grid-column:2;grid-row:1 / 3;gap:8px;align-self:end;max-width:154px}
+.weekly-dense .weekly-activity-day{height:44px;gap:6px;font-size:10px}
+.weekly-dense .weekly-activity-day i{width:9px;background:#e1e9e5}
+.weekly-dense .weekly-activity-day i.is-active{background:var(--brand)}
+.weekly-dense .weekly-activity-day:nth-child(4) i.is-active{background:var(--lime)}
+.weekly-dense .weekly-disclosure{grid-column:2;grid-row:3;align-self:center}
+#training-view .weekly-disclosure>summary{display:flex;justify-content:flex-start;align-items:center;gap:8px;min-height:44px;font-size:12px;white-space:nowrap}
+.weekly-motto{position:absolute;inset:0 0 0 auto;width:200px;border-radius:0 12px 12px 0;background:var(--navy);color:white;display:flex;flex-direction:column;justify-content:center;padding:24px 28px}
+.weekly-motto strong{white-space:pre-line;font-size:13px;line-height:1.6;letter-spacing:4px}
+.weekly-motto>span{height:3px;width:28px;background:var(--lime);margin-top:14px}
+.training-journal .training-day{margin-bottom:18px}
+.training-journal .training-day>h2{font-size:12px;font-weight:600;margin:0 0 8px;line-height:1.5}
+.training-journal .training-day>h2::after{display:none}
+.training-journal .training-entry{padding:14px;gap:20px;border-radius:12px;margin-bottom:8px;min-height:110px;box-shadow:0 2px 10px rgba(16,24,25,.025)}
+.training-journal .training-entry-media{width:108px;flex-basis:108px}
+.training-journal .training-thumbnail{width:108px;height:80px;border-radius:6px}
+.training-thumbnail img{width:100%;height:100%;object-fit:cover}
+.training-entry-content{padding-right:48px;min-width:0;flex:1}
+.training-category{font-size:10px;text-transform:uppercase;line-height:1.2;padding:3px 7px;border-radius:4px;margin:0 0 5px;background:#ddebfa;color:#205b85}
+.training-category[data-category=strength]{background:#e0efd9;color:#234b2e}
+.training-category[data-category=amrap],.training-category[data-category=emom],.training-category[data-category=for_time]{background:#ffe0e1;color:#a42a31}
+.training-journal .training-entry-content>a:first-of-type{font-size:18px;font-weight:600;color:var(--text);min-height:0;line-height:1.3;text-decoration:none;display:block}
+.training-journal .training-entry-result{font-size:13px;font-weight:400;line-height:1.4;margin:4px 0 0;color:var(--text)}
+.training-journal .training-entry-result.is-pending{color:var(--muted)}
+.training-journal .training-entry-note{font-size:12px;margin:3px 0 0;line-height:1.4;color:var(--muted)}
+.training-metadata{margin-top:7px;font-size:11px;gap:18px}
+.training-metadata svg{width:14px;height:14px}
+.training-entry-options{position:absolute;right:8px;top:3px;margin:0}
+#training-view .training-entry-options>summary{background:transparent;width:44px;height:44px}
+.training-entry-options>summary svg{fill:none;stroke:currentColor}
+.training-entry-options>summary svg circle{fill:currentColor;stroke:none}
+.training-entry-open{position:absolute;right:8px;bottom:8px;display:grid;place-items:center;width:44px;height:44px;color:var(--brand)}
+.training-layout{max-width:640px;margin:0 auto}
+.training-form{border:0;background:transparent;padding:0;gap:12px;box-shadow:none}
+.training-form>h2{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+.training-form>.training-intro{display:none}
+.training-form>.secondary-button{font-size:12px;min-height:32px;padding:0}
+.training-source-actions{display:flex;gap:16px;flex-wrap:wrap}
+#training-view .training-source-actions button{background:transparent;color:var(--brand);border:0;min-height:44px;font-size:12px;padding:4px 0}
+.training-form .training-main-fields{grid-template-columns:1fr;gap:14px}
+.training-form label{font-size:12px;gap:6px}
+.training-form input,.training-form textarea,.training-form select{min-height:44px;padding:10px 12px;border:1px solid #d5dcdf;border-radius:8px;background:white;font-size:16px}
+.training-form .training-result-field{padding:0;background:transparent;font-size:13px}
+.training-result-field textarea{min-height:48px;height:48px;resize:vertical;line-height:1.5}
+.training-review-photo h3{font-size:12px;margin:0 0 8px}
+.training-review-photo>div{display:flex;align-items:center;gap:12px;background:white;border:1px solid var(--border);border-radius:8px;overflow:hidden;min-height:76px}
+.training-review-photo img{width:140px;height:76px;object-fit:contain;background:var(--soft)}
+.training-review-photo .training-hint{margin:0;padding:16px}
+#training-view .training-review-photo button{margin-left:auto;border:0;background:transparent;color:var(--text);font-size:12px;gap:8px;min-height:44px;padding:10px 16px}
+.training-messages{border:0;background:#eaf8ca;border-radius:8px;padding:14px 16px;font-size:12px;color:var(--navy)}
+.training-messages h3{font-size:14px}
+.training-messages h3::before{content:none}
+.training-blocks{gap:8px}
+.training-blocks h3{font-size:13px;margin:0}
+.training-blocks details{border:0;background:white;padding:12px;border-radius:10px}
+.training-blocks summary{font-size:12px;color:#91252b}
+.training-block-preview{font-size:12px;color:var(--text);font-weight:400;line-height:1.4;margin-top:6px}
+.training-form :is(input,textarea,select){scroll-margin-block:100px 180px}
+.training-blocks>button{justify-self:start;background:transparent;color:var(--brand);font-size:12px;min-height:44px;padding:8px 0}
+.training-disclosure{padding:0;border:0;border-top:1px solid var(--border);background:transparent;border-radius:0}
+#training-view .training-disclosure>summary{font-size:12px;min-height:44px;gap:8px}
+.training-disclosure>summary>svg:first-child{display:none}
+.training-disclosure>summary>svg:last-child{order:-1;width:14px;height:14px}
+.training-save-actions{background:var(--canvas);border:0;padding:10px 0;bottom:12px}
+#training-view .training-save-actions>button{background:var(--brand);color:white;min-height:44px;min-width:0;width:100%;font-size:13px;border-radius:8px}
+.weekly-recap-dialog{width:min(920px,calc(100% - 48px));max-height:86dvh;overflow:auto;overscroll-behavior:contain;border:0;border-radius:16px;padding:24px;color:var(--text);background:white;box-shadow:0 18px 64px rgba(8,37,30,.2)}
+.weekly-recap-dialog:popover-open{display:grid;grid-template-columns:minmax(0,1fr) 160px 260px;column-gap:24px;row-gap:12px}
+.weekly-recap-dialog::backdrop,.weekly-share-sheet::backdrop{background:rgba(8,25,20,.4)}
+.weekly-recap-header{grid-column:1 / -1;display:flex;align-items:center;justify-content:space-between}
+.weekly-recap-header h2{font-size:18px;margin:0}
+.weekly-recap-metrics{grid-column:1 / 3}
+.weekly-recap-activity{grid-column:1 / 3}
+.weekly-recap-activity .weekly-activity{max-width:260px}
+.weekly-recap-dialog .weekly-expanded-content{grid-column:1;grid-row:4;border:0;margin:0;padding:0;min-width:0}
+.weekly-recap-dialog .weekly-session-row{border:0;padding:6px 0;gap:8px}
+.weekly-recap-dialog .weekly-session-row>img{width:32px;height:32px;object-fit:cover;border-radius:5px}
+.weekly-recap-dialog .weekly-session-copy>span{font-size:11px}
+.weekly-recap-dialog .weekly-session-copy>strong{font-size:12px}
+.weekly-recap-dialog .weekly-session-copy small{font-size:10px}
+.weekly-recap-dialog .weekly-session-row>svg:last-child{display:none}
+.weekly-navigation{flex-wrap:wrap;gap:0}
+.weekly-navigation-range{font-size:12px}
+.weekly-navigation>.weekly-ghost-button{margin-left:0}
+.weekly-repeated{grid-column:2;grid-row:4;border-left:1px solid var(--border);padding-left:16px}
+.weekly-repeated h3{font-size:12px;margin:0 0 12px}
+.weekly-repeated>div{display:grid;grid-template-columns:24px 1fr;gap:4px 8px;margin-bottom:16px}
+.weekly-repeated svg{grid-row:1 / 3}
+.weekly-repeated strong{font-size:12px;overflow-wrap:anywhere}
+.weekly-repeated small{grid-column:2;font-size:11px;color:var(--muted)}
+.weekly-recap-sharing{grid-column:3;grid-row:2 / 5;background:#f5f7f6;border-radius:10px;padding:16px;min-width:0}
+.weekly-recap-sharing:empty{display:none}
+.weekly-recap-sharing .weekly-sheet-week{font-size:13px;font-weight:600}
+#training-view .weekly-create-link{background:var(--brand);color:white;font-size:12px;min-height:44px}
+.weekly-link-row strong{font-size:12px}.weekly-link-row span,.weekly-link-row small{font-size:10px}
+.mobile-more-trigger{display:none}
+.mobile-account-sheet{width:min(420px,calc(100% - 24px));border:0;border-radius:16px;padding:20px;color:var(--text);background:white}
+.mobile-account-sheet::backdrop{background:rgba(8,25,20,.4)}
+.mobile-account-sheet h2{font-size:18px;margin:0 0 12px}
+body:not(.marketing) .mobile-account-sheet .functional-actions{position:static;width:auto;display:flex;flex-direction:column;align-items:flex-start;margin:0;padding:12px 0;gap:12px;border:0;color:var(--text)}
+body:not(.marketing) .mobile-account-sheet .logout-button{color:var(--brand);background:var(--soft);padding:12px;min-height:44px}
+.weekly-recap-sharing h3{font-size:12px;margin:18px 0 6px}
+.weekly-recap-sharing .weekly-link-row{gap:4px;flex-wrap:wrap;border:0;padding:10px 0}
+.weekly-recap-sharing .weekly-link-actions{margin-left:auto}
+.weekly-recap-sharing .weekly-output input{width:100%;min-width:0;font-size:16px}
+@media(max-width:1200px) and (min-width:901px){.training-week.weekly-dense{padding-right:180px;grid-template-columns:minmax(0,1fr) 130px;gap:4px 16px}.weekly-motto{width:160px;padding:20px}.weekly-compact-metrics,.recap-compact-metrics{gap:18px}.weekly-compact-metrics dd,.recap-compact-metrics dd{font-size:22px}}
+@media(max-width:900px){
+ .weekly-motto{display:none}.training-week.weekly-dense{grid-template-columns:minmax(0,1fr) 150px;padding:18px;min-height:148px}
+ .weekly-recap-dialog:popover-open{grid-template-columns:1fr 150px}.weekly-recap-header{grid-column:1 / -1}.weekly-recap-metrics,.weekly-recap-activity{grid-column:1 / -1}.weekly-repeated{grid-column:2}.weekly-recap-sharing{display:none}
+}
+@media(max-width:600px){
+ body:not(.marketing):not(.weekly-public) main{padding:0 max(16px,env(safe-area-inset-right)) calc(88px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));margin:0}
+ body:not(.marketing) .topbar{display:contents}
+ body:not(.marketing) .topbar>.brand,body:not(.marketing) .topbar>.functional-actions{display:none}
+ body:not(.marketing) .functional-nav{display:flex;position:fixed;inset:auto 0 0;height:calc(68px + env(safe-area-inset-bottom));padding:4px 12px calc(4px + env(safe-area-inset-bottom));background:white;z-index:25;justify-content:space-around;border-top:1px solid var(--border)}
+ body:not(.marketing) .functional-nav a{flex:1;font-size:10px;min-height:52px;gap:4px;justify-content:center;padding:8px 4px}
+ body:not(.marketing) .functional-nav a[aria-current=page]{background:transparent;color:var(--brand);font-weight:600}
+ body:not(.marketing) .functional-nav a .mobile-nav-icon{width:20px;height:20px}
+ body:not(.marketing) .functional-nav .mobile-more-trigger{display:flex;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:52px;margin:0;padding:8px 4px;border:0;background:transparent;color:var(--muted);font-size:10px;border-radius:0}
+ .mobile-account-sheet{margin:auto 12px calc(12px + env(safe-area-inset-bottom));max-height:80dvh;overflow:auto}
+ .training-header{margin:22px 0 18px;flex-wrap:nowrap;gap:12px}
+ .training-heading-group{flex:1 1 auto}
+ .training-header h1{font-size:24px;line-height:1.2}
+ .training-subtitle{font-size:12px;margin-top:4px}
+ #training-view.training-overview .training-register{position:static;inset:auto;box-shadow:none;width:44px;height:44px;min-height:44px;padding:10px;font-size:0;border-radius:50%;gap:0}
+ .training-register svg{width:20px;height:20px}
+ .training-overview{padding-bottom:0}
+ .training-whatsapp{padding:10px 12px!important;margin-bottom:12px}
+ .training-whatsapp>summary{min-height:44px;gap:10px}
+ .training-whatsapp .whatsapp-action-copy strong{font-size:12px}
+ .training-whatsapp .whatsapp-action-copy>span{font-size:10px;line-height:1.4}
+ .training-whatsapp .whatsapp-action-icon{width:26px;height:26px}
+ .training-week.weekly-dense{grid-template-columns:1fr 100px;padding:16px;min-height:178px;gap:5px 10px;margin-bottom:20px}
+ .weekly-dense>h2{grid-column:1 / -1;grid-row:1;font-size:10px;text-transform:none}
+ .weekly-dense .weekly-snapshot{grid-column:1 / -1;grid-row:2}
+ .weekly-dense .weekly-date-range{font-size:19px!important;margin-bottom:14px}
+ .weekly-compact-metrics,.recap-compact-metrics{justify-content:space-between;gap:12px}
+ .weekly-compact-metrics dd,.recap-compact-metrics dd{font-size:22px}
+ .weekly-compact-metrics dt,.recap-compact-metrics dt{font-size:10px;white-space:normal}
+ .weekly-dense .weekly-activity{grid-column:1;grid-row:3;align-self:center;gap:8px;max-width:170px;width:100%}
+ .weekly-dense .weekly-activity-day{height:40px;font-size:9px}
+ .weekly-dense .weekly-disclosure{grid-column:2;grid-row:3}
+ #training-view .weekly-disclosure>summary{font-size:10px;gap:4px;justify-content:flex-end}
+ .weekly-disclosure svg{width:14px;height:14px}
+ .training-journal .training-day{margin-bottom:14px}
+ .training-journal .training-day>h2{font-size:11px;margin-bottom:7px}
+ .training-journal .training-entry{gap:12px;padding:10px;min-height:80px;border-radius:10px}
+ .training-journal .training-entry-media{width:58px;flex-basis:58px}
+ .training-journal .training-thumbnail{width:58px;height:58px;border-radius:5px}
+ .training-category{font-size:9px;padding:3px 5px;margin-bottom:4px}
+ .training-entry-content{padding-right:25px}
+ .training-journal .training-entry-content>a:first-of-type{font-size:14px;line-height:1.3}
+ .training-journal .training-entry-result{font-size:11px;margin-top:3px}
+ .training-journal .training-entry-note{font-size:10px}
+ .training-metadata{display:none}
+ .training-entry-options{top:0;right:0}
+ .training-entry-open{right:0;bottom:0}
+ .training-entry-options svg,.training-entry-open svg{width:16px;height:16px}
+ .training-header>a:not(.training-register){font-size:11px;max-width:80px;line-height:1.4}
+ .training-form{padding:0;gap:12px}
+ .training-review-photo img{width:128px;height:64px}
+ .training-review-photo>div{min-height:64px}
+ #training-view .training-review-photo button{font-size:11px;padding:8px 12px}
+ .training-save-actions{bottom:calc(68px + env(safe-area-inset-bottom));padding:10px 0;background:var(--canvas);z-index:10}
+ body.mobile-keyboard-open .training-save-actions{position:static}
+ .weekly-recap-dialog{width:100%;max-width:none;max-height:90dvh;margin:auto 0 0;border-radius:16px 16px 0 0;padding:20px 16px calc(24px + env(safe-area-inset-bottom))}
+ .weekly-recap-dialog:popover-open{grid-template-columns:1fr;gap:14px}
+ .weekly-recap-header,.weekly-recap-metrics,.weekly-recap-activity,.weekly-recap-dialog .weekly-expanded-content,.weekly-repeated{grid-column:1;grid-row:auto}
+ .weekly-repeated{border:0;padding:0}
+ .weekly-recap-dialog .weekly-date-range{font-size:18px}
+ .weekly-recap-dialog .weekly-compact-metrics,.recap-compact-metrics{max-width:none}
+ .weekly-recap-dialog .weekly-share-trigger{font-size:13px;border-top:1px solid var(--border)}
+}
+button,a,summary{touch-action:manipulation}
+button,summary{-webkit-user-select:none;user-select:none}
+@media(hover:hover) and (pointer:fine){.training-entry-content>a:hover{text-decoration:underline}.training-entry-open:hover{color:#529140}.training-register:hover{background:#dcf6a5}}
+@media(prefers-reduced-motion:no-preference){.training-journal{animation:none}}
+@media(prefers-reduced-motion:reduce){.weekly-recap-dialog,.weekly-share-sheet{animation:none;transition:none}}

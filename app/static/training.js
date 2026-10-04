@@ -9,6 +9,10 @@ window.setupTraining = async function (identifier) {
   };
   const link = (text, href) => { const node = make('a', text); node.href = href; return node; };
   const icon = path => {
+    const names = {'M12 5v14M5 12h14':'Plus','m9 6 6 6-6 6':'ChevronRight','m14 6-6 6 6 6':'ChevronLeft','m10 6 6 6-6 6':'ChevronRight','M6 6l12 12M6 18 18 6':'X','M9 9h12v12H9ZM15 9V3H3v12h6':'Copy'};
+    const name = names[path] || (path.startsWith('M7 3') ? 'CalendarDays' : path.startsWith('M10 13') ? 'Link' : path.startsWith('M3 6h18') ? 'Trash2' : path.startsWith('M5 16') ? 'ChartNoAxesColumnIncreasing' : path.startsWith('M3 8') ? 'Dumbbell' : path.startsWith('M15 8') ? 'Video' : 'NotebookPen');
+    const libraryIcon = window.fluxioIcon?.(name);
+    if (libraryIcon) return libraryIcon;
     const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
     svg.setAttribute('viewBox','0 0 24 24'); svg.setAttribute('aria-hidden','true'); svg.classList.add('fluxio-icon');
     const line = document.createElementNS(svg.namespaceURI,'path'); line.setAttribute('d',path); svg.append(line); return svg;
@@ -52,11 +56,11 @@ window.setupTraining = async function (identifier) {
   root.replaceChildren();
   root.classList.toggle('training-overview', !identifier);
   const header = make('header', '', 'training-header');
-  header.append(make('h1', identifier === 'new' ? 'Registrar entrenamiento' : identifier ? 'Tu entrenamiento' : 'Mi bitácora'));
+  header.append(make('h1', identifier === 'new' ? 'Registrar entrenamiento' : identifier ? 'Tu entrenamiento' : 'Bitácora'));
   header.append(link(identifier ? 'Volver a la bitácora' : 'Registrar entrenamiento', identifier ? '/training' : '/training/new'));
   if (!identifier) header.lastElementChild.className = 'button-link training-register';
   const headingGroup = make('div','','training-heading-group');
-  headingGroup.append(header.firstElementChild, make('p', !identifier ? 'Tus entrenamientos, en un solo lugar.' : 'Guarda tu entrenamiento y sigue construyendo tu progreso.', 'training-subtitle'));
+  headingGroup.append(header.firstElementChild, make('p', !identifier ? 'Tus entrenamientos, en un solo lugar.' : 'Revisa lo que detectamos y completa lo que falta.', 'training-subtitle'));
   header.prepend(headingGroup);
   if (!identifier) header.lastElementChild.prepend(icon('M12 5v14M5 12h14'));
   root.append(header);
@@ -77,7 +81,7 @@ window.setupTraining = async function (identifier) {
       svg.setAttribute('viewBox','0 0 24 24'); svg.setAttribute('aria-hidden','true');
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       path.setAttribute('d','M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6');
-      svg.append(path); button.replaceChildren(svg, make('span', 'Eliminar'));
+      svg.append(path); button.replaceChildren(window.fluxioIcon?.('Trash2') || svg, make('span', 'Eliminar'));
     }
     renderDelete();
     let deleting = false;
@@ -97,12 +101,13 @@ window.setupTraining = async function (identifier) {
     return button;
   }
   async function mountWeek(section, knownSessions) {
-    section.classList.add('weekly-dense');
+    section.classList.add('weekly-summary-card');
     const heading = make('h2', 'Resumen semanal');
+    const overview=make('div','','weekly-summary-overview');
+    const workouts=make('div','','weekly-summary-workouts');
+    const sharing=make('div','','weekly-summary-share');
     const details = make('div', '', 'weekly-snapshot');
     const activity = make('div', '', 'weekly-activity'); activity.setAttribute('role','img');
-    const disclosure = make('details', '', 'weekly-disclosure');
-    const disclosureLabel = make('summary', 'Ver resumen'); disclosureLabel.append(icon('m9 6 6 6-6 6'));
     const controls = make('div', '', 'weekly-navigation');
     const compactButton = (label, path, className = 'weekly-icon-button') => {
       const button = make('button', '', className); button.type='button'; button.setAttribute('aria-label',label); button.title=label; button.append(icon(path)); return button;
@@ -114,14 +119,20 @@ window.setupTraining = async function (identifier) {
     const calendar = make('details','','weekly-date-control');
     const calendarTrigger = make('summary'); calendarTrigger.setAttribute('aria-label','Elegir fecha de la semana'); calendarTrigger.title='Elegir fecha de la semana'; calendarTrigger.append(icon('M7 3v4M17 3v4M4 10h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1'));
     const dateLabelNode = make('label','Ver semana del'); const picker=make('input'); picker.type='date'; dateLabelNode.append(picker); calendar.append(calendarTrigger,dateLabelNode);
-    controls.append(previous,range,next,current,calendar);
+    controls.append(previous,current,next,calendar);
+    range.classList.add('weekly-summary-sr-only'); controls.append(range);
     const entries = make('div','','weekly-session-preview');
     const shareTrigger = make('button','','weekly-share-trigger'); shareTrigger.type='button';
     const shareCopy = make('span'); const shareCount=make('span','','weekly-share-count');
-    shareCopy.append(make('strong','Compartir semana'),shareCount); shareTrigger.append(icon('M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2'),shareCopy,icon('m9 6 6 6-6 6'));
+    shareCopy.append(shareCount); shareTrigger.append(icon('M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2'),shareCopy,icon('m9 6 6 6-6 6'));
     const message = make('p','','weekly-message'); message.setAttribute('role','status');
-    const expanded=make('div','','weekly-expanded-content');expanded.append(controls,entries,shareTrigger,message);disclosure.append(disclosureLabel,expanded);
-    section.append(heading,details,activity,disclosure);
+    overview.append(heading,details,activity);
+    workouts.append(controls,make('h3','Entrenamientos de la semana'),entries,message);
+    const shareHeader=make('div','','weekly-summary-share-heading');const shareDescription=make('div');
+    shareDescription.append(make('h3','Compartir semana'),make('p','Crea un enlace público para compartir tu progreso.'));
+    shareHeader.append(icon('M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2'),shareDescription);
+    const createFromCard=make('button','Crear enlace','weekly-summary-create');createFromCard.type='button';
+    sharing.append(shareHeader,createFromCard,shareTrigger);section.append(overview,workouts,sharing);
 
     const sheet=make('dialog','','weekly-share-sheet'); sheet.setAttribute('aria-labelledby','weekly-share-title');
     const sheetHeader=make('header','','weekly-sheet-header'); const sheetTitle=make('h2','Compartir esta semana'); sheetTitle.id='weekly-share-title';
@@ -135,39 +146,41 @@ window.setupTraining = async function (identifier) {
     const sheetStatus=make('p','','weekly-message'); sheetStatus.setAttribute('role','status'); sheetStatus.setAttribute('aria-live','polite');
     const revoke=make('button','Revocar enlaces de esta semana','weekly-revoke-all'); revoke.type='button'; revoke.prepend(icon('M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6'));
     sheet.append(sheetHeader,sheetWeek,hint,share,listTitle,shareList,output,sheetStatus,revoke); section.append(sheet);
-    let selected, activeShares=[], busy=false, panelAnimation, summaryAnimation;
-    disclosureLabel.onclick=event=>{
-      if(!event.detail||!window.matchMedia('(prefers-reduced-motion: no-preference)').matches)return;
-      event.preventDefault();summaryAnimation?.cancel();
-      if(disclosure.open){summaryAnimation=expanded.animate([{opacity:1},{opacity:0}],{duration:100,easing:'cubic-bezier(.16,1,.3,1)'});summaryAnimation.finished.then(()=>{disclosure.open=false;},()=>{});}
-      else{disclosure.open=true;summaryAnimation=expanded.animate([{opacity:.6,transform:'translateY(-4px)'},{opacity:1,transform:'translateY(0)'}],{duration:160,easing:'cubic-bezier(.16,1,.3,1)'});}
-    };
-    const localLinks=new Map();
+    let selected, activeShares=[], busy=false, panelAnimation, disposing=false, shareOpener=shareTrigger;
+    const localLinks=new Map(),localCreated=new Map();
     const shortDate=value=>new Intl.DateTimeFormat('es-CL',{day:'numeric',month:'short'}).format(calendarDate(value)).replaceAll('.','');
-    const closeSheet=()=>sheet.close(); close.onclick=closeSheet;
+    const restoreFocus=()=>{if(!disposing)shareOpener.focus();};
+    const closeSheet=()=>{sheet.close();restoreFocus();}; close.onclick=closeSheet;
+    sheet.addEventListener('cancel',event=>{event.preventDefault();closeSheet();});
     sheet.addEventListener('click',event=>{if(event.target===sheet){const box=sheet.getBoundingClientRect();if(event.clientX<box.left||event.clientX>box.right||event.clientY<box.top||event.clientY>box.bottom)closeSheet();}});
-    sheet.addEventListener('close',()=>{panelAnimation?.cancel(); shareTrigger.focus();});
-    shareTrigger.onclick=event=>{
+    sheet.addEventListener('close',()=>{panelAnimation?.cancel();restoreFocus();});
+    function openShare(event,opener=shareTrigger){
       if(!selected)return;
+      shareOpener=opener;
       root.querySelectorAll('.training-entry-options').forEach(other=>other.open=false);
       sheet.showModal();
       if(event.detail && window.matchMedia('(prefers-reduced-motion: no-preference)').matches) { panelAnimation?.cancel(); panelAnimation=sheet.animate([{opacity:.7,transform:'translateY(12px)'},{opacity:1,transform:'translateY(0)'}],{duration:200,easing:'cubic-bezier(.16,1,.3,1)'}); }
-    };
+    }
+    shareTrigger.onclick=event=>openShare(event);
+    createFromCard.onclick=event=>{if(busy||!selected)return;openShare(event,createFromCard);share.click();};
     const previousCleanup=root.trainingCleanup;
-    root.trainingCleanup=()=>{panelAnimation?.cancel();summaryAnimation?.cancel();if(sheet.open)sheet.close();previousCleanup?.();};
-    const lock=value=>{busy=value;[previous,next,current,share,revoke].forEach(button=>button.disabled=value);picker.disabled=value;shareList.querySelectorAll('button').forEach(button=>button.disabled=value);};
+    root.trainingCleanup=()=>{disposing=true;panelAnimation?.cancel();if(sheet.open)sheet.close();previousCleanup?.();};
+    const lock=value=>{busy=value;[previous,next,current,share,revoke,createFromCard].forEach(button=>button.disabled=value);picker.disabled=value;shareList.querySelectorAll('button').forEach(button=>button.disabled=value);};
     const copyLink=async(url,button)=>{
       try{await navigator.clipboard.writeText(url);sheetStatus.textContent='Enlace copiado.';}
       catch{const label=make('label','Enlace para compartir');const field=make('input');field.readOnly=true;field.value=url;label.append(field);output.replaceChildren(label);field.focus();field.select();sheetStatus.textContent='Selecciona y copia el enlace del campo.';}
     };
     const renderShares=()=>{
       shareCount.textContent=`${activeShares.length} ${activeShares.length===1?'enlace activo':'enlaces activos'}`;
+      shareTrigger.setAttribute('aria-label','Compartir semana · '+shareCount.textContent);
       shareList.replaceChildren();
       if(!activeShares.length)shareList.append(make('p','No hay enlaces activos para esta semana.','weekly-sheet-hint'));
       for(const item of activeShares){
         const row=make('article','','weekly-link-row'); const text=make('div');
         const expires=new Intl.DateTimeFormat('es-CL',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'America/Santiago'}).format(new Date(item.expires_at));
         text.append(make('strong','Enlace activo'),make('span',`Vence ${expires} · Santiago`));
+        const createdAt=item.created_at || localCreated.get(item.id);
+        text.append(make('small',createdAt ? 'Creado '+new Intl.DateTimeFormat('es-CL',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'America/Santiago'}).format(new Date(createdAt))+' · Santiago' : 'Fecha de creación no disponible'));
         row.append(icon('M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2'),text);
         const actions=make('div','','weekly-link-actions'); const url=localLinks.get(item.id);
         if(url){const copy=compactButton('Copiar enlace','M9 9h12v12H9ZM15 9V3H3v12h6');copy.onclick=()=>copyLink(url,copy);actions.append(copy);}
@@ -192,14 +205,17 @@ window.setupTraining = async function (identifier) {
       counts.forEach((count,index)=>{const day=make('span','','weekly-activity-day');const bar=make('i');bar.style.setProperty('--activity-height',`${count?8+16*count/Math.max(...counts,1):4}px`);bar.classList.toggle('is-active',count>0);day.append(bar,make('span',['L','M','X','J','V','S','D'][index]));activity.append(day);});
       entries.replaceChildren();const used=new Set();
       if(!data.items.length)entries.append(make('p','No hay entrenamientos registrados en esta semana.','weekly-empty'));
-      for(const item of [...data.items].reverse()){
+      for(const item of [...data.items].sort((a,b)=>b.trained_on.localeCompare(a.trained_on))){
         const known=knownSessions.find(row=>!used.has(row.id)&&['trained_on','title','workout','result_text','adaptations','rpe','source_image_id'].every(key=>String(row[key]??'')===String(item[key]??'')));
         if(known)used.add(known.id);
-        const row=known?link('','/training/'+known.id):make('div');row.className='weekly-session-row';
-        if(item.source_image_id){const image=make('img');image.src='/api/training-sessions/images/'+item.source_image_id;image.alt='Foto del entrenamiento';image.loading='lazy';image.onerror=()=>image.remove();row.append(image);}
-        else row.append(icon('M3 8v8M7 6v12M17 6v12M21 8v8M7 12h10'));
-        const text=make('div','','weekly-session-copy');text.append(make('span',known?displayName(known):item.title),make('strong',item.result_text||'Resultado sin registrar'));
-        if(item.rpe!==null)text.append(make('small',`Esfuerzo ${item.rpe}/10`));row.append(text);
+        const row=known?link('','/training/'+known.id):make('div');row.className='weekly-session-row workout-row';
+        const media=make('div','','weekly-workout-media');
+        const placeholder=()=>{media.replaceChildren(icon('M3 8v8M7 6v12M17 6v12M21 8v8M7 12h10'));};
+        if(item.source_image_id){const image=make('img');image.src='/api/training-sessions/images/'+item.source_image_id;image.alt='Foto del entrenamiento';image.loading='lazy';image.onerror=placeholder;media.append(image);}else placeholder();row.append(media);
+        const text=make('div','','weekly-session-copy');const format=known?.blocks?.[0]?.format;
+        const badge=make('span',format==='strength'?'Fuerza':['amrap','emom','for_time'].includes(format)?'Metcon':known?.blocks?.some(block=>/^skill$/i.test(block.title))?'Skill':'Entrenamiento','weekly-workout-category');badge.dataset.category=format||'other';
+        const title=make('strong',item.result_text?(known?displayName(known):item.title):'Resultado sin registrar');title.title=title.textContent;
+        text.append(badge,title,make('small',shortDate(item.trained_on)));row.append(text);
         if(known)row.append(icon('m9 6 6 6-6 6'));entries.append(row);
       }
     };
@@ -207,7 +223,7 @@ window.setupTraining = async function (identifier) {
       if(busy)return;lock(true);selected=undefined;activeShares=[];renderShares();output.replaceChildren();message.textContent='Cargando semana…';shareTrigger.disabled=true;
       try{const suffix=day?'?day='+encodeURIComponent(day):'';render(await api('/api/training-week'+suffix));activeShares=(await api('/api/training-week/shares?day='+selected)).items;renderShares();message.textContent='';}
       catch(error){message.textContent=error.message;}
-      finally{lock(false);share.disabled=!selected;shareTrigger.disabled=!selected;revoke.disabled=!activeShares.length;}
+      finally{lock(false);share.disabled=!selected;createFromCard.disabled=!selected;shareTrigger.disabled=!selected;revoke.disabled=!activeShares.length;}
     }
     function move(days){if(!selected)return;const date=calendarDate(selected);date.setDate(date.getDate()+days);load(localISO(date));}
     previous.onclick=()=>move(-7);next.onclick=()=>move(7);current.onclick=()=>load();picker.onchange=()=>{if(picker.value){calendar.open=false;load(picker.value);}};
@@ -215,7 +231,7 @@ window.setupTraining = async function (identifier) {
       if(busy)return;lock(true);sheetStatus.textContent='Creando enlace…';
       try{
         const created=await api('/api/training-week/shares',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({day:selected})});activeShares.push(created);
-        const url=new URL(created.path,window.location.origin).href;localLinks.set(created.id,url);renderShares();
+        const url=new URL(created.path,window.location.origin).href;localLinks.set(created.id,url);localCreated.set(created.id,new Date().toISOString());renderShares();
         const label=make('label','Enlace para compartir');const field=make('input');field.readOnly=true;field.value=url;label.append(field);
         const open=link('Ver semana compartida',created.path);open.target='_blank';open.rel='noopener noreferrer';output.replaceChildren(label,open);sheetStatus.textContent='Enlace creado. Puedes copiarlo en Enlaces activos.';
       }catch(error){sheetStatus.textContent=error.message;}
@@ -255,9 +271,10 @@ window.setupTraining = async function (identifier) {
         const content = make('div', '', 'training-entry-content');
         const name = link(displayName(item), '/training/' + item.id);
         const format = item.blocks?.[0]?.format || (/^Fuerza\b/i.test(item.title) ? 'strength' : undefined);
-        const badge = make('span',format==='strength' ? 'Fuerza' : ['amrap','emom','for_time'].includes(format) ? `Metcon · ${formats[format]}` : /^Metcon\b/i.test(item.title) ? 'Metcon' : 'Entrenamiento','training-category');
+        const badge = make('span',format==='strength' ? 'Fuerza' : ['amrap','emom','for_time'].includes(format) ? `Metcon · ${formats[format]}` : item.blocks?.some(block=>/^skill$/i.test(block.title)) ? 'Skill' : /^Metcon\b/i.test(item.title) ? 'Metcon' : 'Entrenamiento','training-category');
         badge.dataset.category = format || 'other'; content.append(badge);
-        content.append(name, make('p', item.result_text || 'Resultado sin registrar', 'training-entry-result'));
+        if(item.result_text){content.append(name, make('p', item.result_text, 'training-entry-result'));}
+        else{name.textContent='Resultado sin registrar';content.append(name,make('p','Revisa la foto y completa tu resultado.','training-entry-result is-pending'));}
         if (item.adaptations) content.append(make('p', item.adaptations, 'training-entry-note'));
         if (item.rpe !== null && item.rpe !== undefined) content.append(make('p', `Esfuerzo ${item.rpe}/10`, 'training-entry-meta'));
         const metadata = make('div','','training-metadata');
@@ -274,7 +291,7 @@ window.setupTraining = async function (identifier) {
           svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('aria-hidden', 'true');
           const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
           path.setAttribute('d', 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM3 17l6-6 4 4 3-3 5 5M16 7h.01');
-          svg.append(path); placeholder.append(svg); row.append(placeholder);
+          svg.append(path); placeholder.append(window.fluxioIcon?.('Image') || svg); row.append(placeholder);
         }
         const media = make('div', '', 'training-entry-media');
         const date = make('time', new Intl.DateTimeFormat('es-CL', {day:'2-digit',month:'2-digit',year:'numeric'}).format(calendarDate(item.trained_on)), 'training-thumbnail-date');
@@ -286,18 +303,19 @@ window.setupTraining = async function (identifier) {
         optionIcon.setAttribute('viewBox', '0 0 24 24'); optionIcon.setAttribute('aria-hidden', 'true');
         for (const cy of [5,12,19]) {
           const dot = document.createElementNS(optionIcon.namespaceURI, 'circle');
-          dot.setAttribute('cx','12'); dot.setAttribute('cy',cy); dot.setAttribute('r','1.5'); optionIcon.append(dot);
+          dot.setAttribute('cx',String(cy)); dot.setAttribute('cy','12'); dot.setAttribute('r','1.5'); optionIcon.append(dot);
         }
-        trigger.append(optionIcon); options.append(trigger);
+        trigger.append(window.fluxioIcon?.('Ellipsis') || optionIcon); options.append(trigger);
         const actions = make('div', '', 'training-entry-actions');
         const edit = link('', '/training/' + item.id + '?edit=1'); edit.className = 'training-edit'; edit.setAttribute('aria-label', 'Editar entrenamiento');
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox','0 0 24 24'); svg.setAttribute('aria-hidden','true');
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path'); path.setAttribute('d','M15 5l4 4M4 20l4-1L20 7a2.8 2.8 0 0 0-4-4L4 15v5Z'); svg.append(path);
-        edit.append(svg, make('span', 'Editar')); actions.append(edit, deleteAction(item)); options.append(actions);
+        edit.append(window.fluxioIcon?.('Pencil') || svg, make('span', 'Editar')); actions.append(edit, deleteAction(item)); options.append(actions);
         options.addEventListener('toggle', () => {
           if (options.open) journal.querySelectorAll('.training-entry-options').forEach(other => { if (other !== options) other.open = false; });
         });
-        row.append(media, content, options);
+        const openEntry=link('','/training/'+item.id);openEntry.className='training-entry-open';openEntry.setAttribute('aria-label','Ver entrenamiento: '+displayName(item));openEntry.append(icon('m9 6 6 6-6 6'));
+        row.append(media, content, options,openEntry);
         group.append(row);
       }
       const closeOptions = event => {
@@ -398,7 +416,7 @@ window.setupTraining = async function (identifier) {
       button.replaceChildren(make('span', label, 'training-composer-label'));
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       svg.setAttribute('viewBox','0 0 24 24'); svg.setAttribute('aria-hidden','true');
-      const line = document.createElementNS('http://www.w3.org/2000/svg', 'path'); line.setAttribute('d',path); svg.append(line); button.append(svg);
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'path'); line.setAttribute('d',path); svg.append(line); button.append(window.fluxioIcon?.(path.startsWith('M9 5') ? 'Mic' : path.startsWith('M12 5') ? 'Plus' : 'Sparkles') || svg);
       button.classList.add('training-chat-icon'); button.title = label;
     }
     iconButton(choosePhoto, 'M12 5v14M5 12h14');
@@ -407,19 +425,27 @@ window.setupTraining = async function (identifier) {
     const form = make('form', '', 'training-form');
     const reviewHeading = make('h2', editing ? 'Información del entrenamiento' : 'Revisa tu entrenamiento'); reviewHeading.tabIndex = -1;
     form.append(messages, reviewHeading, make('p', 'Así quedará en tu bitácora. Revisa el WOD y añade cómo te fue.', 'training-intro'));
+    const reviewPhoto=make('section','','training-review-photo');
+    const reviewPhotoLabel=make('h3','Foto del entrenamiento');const reviewPhotoRow=make('div');const reviewImage=make('img');reviewImage.alt='Foto de la pizarra';
+    const changePhoto=make('button','Cambiar foto','secondary-button');changePhoto.type='button';changePhoto.prepend(window.fluxioIcon?.('Camera') || icon('M8 3h8v4H8ZM5 5H3v16h18V5h-2M7 12h10'));changePhoto.onclick=()=>photo.click();
+    const noPhoto=make('span','Sin foto','training-hint');reviewPhotoRow.append(reviewImage,noPhoto,changePhoto);reviewPhoto.append(reviewPhotoLabel,reviewPhotoRow);form.append(reviewPhoto);
+    reviewImage.onerror=()=>{reviewImage.hidden=true;noPhoto.hidden=false;noPhoto.textContent='Imagen no disponible';};
+    function syncReviewPhoto(){reviewImage.hidden=!imageId;noPhoto.hidden=Boolean(imageId);if(imageId)reviewImage.src='/api/training-sessions/images/'+imageId;else reviewImage.removeAttribute('src');changePhoto.lastChild.textContent=imageId?'Cambiar foto':'Añadir foto';}
     const editSource = make('button', 'Volver a mi descripción', 'secondary-button'); editSource.type = 'button';
     function showReview(focus = true) {
       header.querySelector('h1').textContent = editing ? 'Editar entrenamiento' : 'Registrar entrenamiento';
       note.hidden = true;
       conversation.hidden = true; form.hidden = false; form.append(status);
+      syncReviewPhoto();
+      if(!messages.childElementCount)messages.append(make('h3','Por confirmar'),make('p','Revisa y confirma la información antes de guardar.'));
       if (focus) reviewHeading.focus();
     }
     editSource.onclick = () => { form.hidden = true; conversation.hidden = false; captureActions.after(status); source.focus(); };
-    form.append(editSource);
+    const sourceActions=make('div','','training-source-actions');sourceActions.append(editSource);
     if (editing) {
       const backToNote = make('button', 'Volver al resumen', 'secondary-button'); backToNote.type = 'button';
       backToNote.onclick = () => { showNote(); noteHeading.focus(); };
-      form.insertBefore(backToNote, editSource);
+      sourceActions.prepend(backToNote);
       viewDetail.onclick = () => showReview();
     }
     function showNote() {
@@ -466,7 +492,7 @@ window.setupTraining = async function (identifier) {
       summary.append(icon(title.startsWith('Videos') ? 'M15 8l6-3v14l-6-3M4 5h11v14H4Z' : title.startsWith('Cargas') ? 'M3 8v8M7 6v12M17 6v12M21 8v8M7 12h10' : 'M8 3h8v4H8ZM5 5H3v16h18V5h-2M7 12h10M7 16h7'),make('span',title),icon('m9 6 6 6-6 6'));
       section.append(summary, ...nodes); form.append(section); return section;
     }
-    const contextDetails = disclosure('Cargas, adaptaciones y esfuerzo · opcional', [controls.adaptations.parentElement, rpe.parentElement], Boolean(data.adaptations || data.rpe));
+    const contextDetails = disclosure('Cargas, adaptaciones y esfuerzo · opcional', [controls.adaptations.parentElement, rpe.parentElement]);
     const workoutDetails = disclosure('Ver o editar el WOD como texto', [make('p', 'Editar este texto reemplaza los bloques por tu descripción libre.', 'training-hint'), controls.workout.parentElement]);
     // Native validation must reveal required inputs even inside closed disclosures.
     form.addEventListener('invalid', event => {
@@ -518,7 +544,7 @@ window.setupTraining = async function (identifier) {
         disclosure.append(group); blockArea.append(disclosure);
       });
       const addBlock=make('button','Agregar bloque');addBlock.type='button';
-      addBlock.onclick=()=>{if(blocks.length>=12)return;openBlock=blocks.length;blocks.push({title:'',format:'other',prescription:'',movements:[]});updateBlocks();renderBlocks()};blockArea.append(addBlock);
+      addBlock.onclick=()=>{if(blocks.length>=12)return;openBlock=blocks.length;blocks.push({title:'',format:'other',prescription:'',movements:[]});updateBlocks();renderBlocks()};workoutDetails.querySelector('.training-add-block')?.remove();addBlock.className='training-add-block';workoutDetails.append(addBlock);
       workoutDetails.open = !blocks.length;
     }
     form.insertBefore(workoutDetails, controls.result_text.parentElement);
@@ -547,7 +573,7 @@ window.setupTraining = async function (identifier) {
       try {
         const body = new FormData(); body.append('file',file);
         const uploaded=await api('/api/training-sessions/images',{method:'POST',body});
-        imageId=uploaded.id; preview.src=uploaded.url; preview.hidden=false; removePhoto.hidden=false; dirty=true; notify('Foto lista. Puedes añadir tu resultado e interpretar el WOD.');
+        imageId=uploaded.id; preview.src=uploaded.url; preview.hidden=false; removePhoto.hidden=false; dirty=true; syncReviewPhoto(); notify('Foto lista. Puedes añadir tu resultado e interpretar el WOD.');
       } catch(error) { notify(error.message, true); photo.value=''; }
       finally { processing(false); }
     };
@@ -559,12 +585,13 @@ window.setupTraining = async function (identifier) {
         const draft=await api('/api/training-sessions/interpret',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:source.value,image_id:imageId})});
         for (const key of (editing ? ['title','workout','result_text','adaptations','rpe'] : ['workout','result_text','adaptations','rpe'])) controls[key].value=draft[key] ?? '';
         blocks=draft.blocks;renderBlocks();dirty=true;
-        contextDetails.open = Boolean(draft.adaptations || draft.rpe);
+        contextDetails.open = false;
         messages.replaceChildren();
         if (draft.questions.length) {
           messages.append(make('h3','Por confirmar'));
           const list=make('ul'); draft.questions.forEach(question=>list.append(make('li',question)));messages.append(list,make('p','Añade tus aclaraciones al texto y vuelve a interpretar, o corrige la ficha directamente.'));
         }
+        else messages.append(make('h3','IA detectó un WOD'),make('p','Revisa y confirma la información.'));
         notify('Ficha lista para revisar. Todavía no se ha guardado la sesión.');
         showReview();
       } catch(error) { notify(error.message + ' Puedes reintentar o completar manualmente.', true); }
@@ -603,6 +630,7 @@ window.setupTraining = async function (identifier) {
       } catch (error) { status.textContent = error.message; choose.disabled = false; }
     };
     disclosure('Videos · opcional', [videos], Boolean(videoLinks.length));
+    form.append(sourceActions);
     const actions = make('div', '', 'form-actions training-save-actions');
     const save = make('button', editing ? 'Guardar cambios' : 'Guardar entrenamiento'); save.type = 'submit'; actions.append(save); form.append(actions);
     form.onsubmit = async (event) => {

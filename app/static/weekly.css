@@ -96,3 +96,51 @@ body.weekly-public main.weekly-shared { max-width:1120px; margin:0 auto; padding
   .recap-highlight-grid article { padding:16px; }
   .recap-timeline { margin-top:32px; }
 }
+
+/* Editorial shared week: the image remains inside the authorized token scope. */
+body.weekly-public{--canvas:#f5f6f6;--text:#101819;--muted:#626b6f;--navy:#08251e;--brand:#07392b;--lime:#c9f274;background:var(--canvas)}
+body.weekly-public main.weekly-shared{position:relative;max-width:1000px;padding:24px 24px 40px}
+.recap-brand{position:absolute;z-index:2;top:52px;left:56px;color:var(--lime);font-size:20px;text-transform:uppercase;margin:0;line-height:1.1;letter-spacing:-.025em}
+.recap-brand span{color:white;font-size:12px;font-weight:600}
+.recap-opening{position:relative;background:var(--navy);border-radius:16px;overflow:hidden;grid-template-columns:1fr 1fr;gap:0;align-items:stretch;min-height:420px}
+.recap-hero{position:relative;z-index:1;padding:108px 32px 32px;color:white;display:flex;flex-direction:column;justify-content:center}
+.weekly-shared .recap-hero h1{text-transform:uppercase;font-size:clamp(32px,4.2vw,48px);max-width:11ch;line-height:1.02;letter-spacing:-.035em}
+.recap-dates{order:-1;color:#c6d5ce;font-size:13px;margin:0 0 14px}
+.recap-metrics{gap:18px;margin:26px 0 0;max-width:420px}
+.recap-metrics>div,.recap-metrics>div:first-child{padding:0;background:transparent;border:0;border-radius:0}
+.recap-metrics>div+div{border-left:1px solid #476057;padding-left:16px}
+.recap-metrics dd{font-size:28px;color:white}
+.recap-metrics dt{font-size:11px;color:#c6d5ce}
+.recap-metrics dd span{font-size:13px}
+.recap-sample{color:#c6d5ce;font-size:11px;margin-top:16px}
+.recap-feature{position:relative;background:#122d25;display:flex;flex-direction:column;justify-content:center;padding:24px 24px 24px 0}
+.recap-feature a{background:#162d25;border-radius:10px}
+.weekly-shared .recap-feature .weekly-photo{aspect-ratio:4/3;object-fit:contain;background:#162d25}
+.recap-feature figcaption{margin:12px 0 0;color:white;gap:5px}
+.recap-feature figcaption span{font-size:11px;color:#c6d5ce}
+.recap-feature figcaption strong{font-size:18px;color:white}
+.recap-opening:not(:has(.recap-feature)){min-height:360px}
+.recap-opening:not(:has(.recap-feature)) .recap-hero h1{max-width:16ch}
+.recap-highlights{margin-top:28px}
+.recap-highlights>h2,.recap-repeated>h2{font-size:20px;margin-bottom:12px}
+.recap-highlight-grid{gap:12px}
+.recap-highlight-grid article{border:0;padding:16px;border-radius:12px}
+.weekly-shared .recap-entry{border:0;box-shadow:0 2px 10px rgba(16,24,25,.03);border-radius:12px}
+.recap-highlight-grid h3{font-size:16px}
+.recap-footer{font-size:12px}
+@media(max-width:600px){
+ body.weekly-public main.weekly-shared{padding:12px max(12px,env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
+ .recap-brand{top:36px;left:36px;font-size:18px}
+ .recap-opening{display:grid;grid-template-columns:1fr;gap:0;min-height:0;border-radius:14px}
+ .recap-hero{padding:92px 24px 24px}
+ .weekly-shared .recap-hero h1{font-size:36px;max-width:11ch}
+ .recap-dates{font-size:11px;margin-bottom:12px}
+ .recap-metrics{gap:12px;margin-top:22px}
+ .recap-metrics>div,.recap-metrics>div:first-child{padding:0}
+ .recap-metrics>div+div{padding-left:12px}
+ .recap-metrics dd{font-size:24px}.recap-metrics dt{font-size:10px}
+ .recap-feature{padding:0 16px 20px;background:var(--navy)}
+ .weekly-shared .recap-feature .weekly-photo{aspect-ratio:16/10;object-fit:contain}
+ .recap-feature figcaption{margin-top:10px}.recap-feature figcaption strong{font-size:16px}
+ .recap-highlight-grid{grid-template-columns:1fr}
+}

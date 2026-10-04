@@ -50,6 +50,9 @@
     '/internal/usage':'M5 20V10M12 20V4M19 20v-7',
   };
   document.querySelectorAll('.functional-nav a').forEach(link => {
+    const names={'/analyses/new':'Plus','/analyses':'ClipboardList','/training':'NotebookText','/coach/reviews':'Inbox','/coach/analyses/new':'Upload','/coach/athletes/new':'UserPlus','/internal/usage':'ChartNoAxesColumnIncreasing','/admin':'Settings'};
+    const libraryIcon=window.fluxioIcon?.(names[link.getAttribute('href')],'mobile-nav-icon');
+    if(libraryIcon){link.prepend(libraryIcon);return;}
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('viewBox', '0 0 24 24');
     svg.setAttribute('aria-hidden', 'true');
@@ -59,6 +62,22 @@
     svg.append(path);
     link.prepend(svg);
   });
+
+  // Keep account/logout reachable when the rail becomes bottom navigation.
+  const navigation=document.querySelector('.functional-nav');
+  const account=document.querySelector('.functional-actions');
+  if(navigation && account){
+    const anchor=document.createComment('desktop-account-position');account.after(anchor);
+    const more=document.createElement('button');more.type='button';more.className='mobile-more-trigger';more.setAttribute('aria-controls','mobile-more-panel');more.setAttribute('aria-expanded','false');
+    const menuIcon=window.fluxioIcon?.('Menu','mobile-nav-icon');if(menuIcon)more.append(menuIcon);more.append(document.createTextNode('Más'));navigation.append(more);
+    const panel=document.createElement('dialog');panel.id='mobile-more-panel';panel.className='mobile-account-sheet';panel.setAttribute('aria-labelledby','mobile-more-title');
+    const title=document.createElement('h2');title.id='mobile-more-title';title.textContent='Tu cuenta';
+    const close=document.createElement('button');close.type='button';close.textContent='Cerrar';close.onclick=()=>panel.close();panel.append(title,close);document.body.append(panel);
+    more.onclick=()=>{panel.showModal();more.setAttribute('aria-expanded','true');};
+    panel.addEventListener('close',()=>{more.setAttribute('aria-expanded','false');more.focus();});
+    function positionAccount(){if(viewport.matches)panel.append(account);else{if(panel.open)panel.close();anchor.before(account);}}
+    viewport.addEventListener('change',positionAccount);positionAccount();
+  }
 
   // VisualViewport covers Safari's keyboard without guessing OS or blocking zoom.
   const visual = window.visualViewport;
