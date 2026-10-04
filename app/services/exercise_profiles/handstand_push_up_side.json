@@ -1,0 +1,130 @@
+{
+  "id": "handstand-push-up-side",
+  "aliases": [
+    "Flexión invertida (en pino)",
+    "Flexión invertida",
+    "flexion invertida",
+    "flexiones en pino",
+    "handstand push-up",
+    "handstand push up",
+    "hspu"
+  ],
+  "views": [
+    "side"
+  ],
+  "required_landmarks": [
+    "shoulder",
+    "elbow",
+    "wrist",
+    "hip",
+    "ankle"
+  ],
+  "primary_signal": "elbow_angle",
+  "states": [
+    "lockout",
+    "descent",
+    "bottom",
+    "ascent"
+  ],
+  "initial_state": "lockout",
+  "bottom_state": "bottom",
+  "transitions": [
+    {
+      "from": "lockout",
+      "to": "descent",
+      "signal": "elbow_angle",
+      "operator": "<=",
+      "threshold": "descent_elbow_max",
+      "conditions": [
+        {
+          "signal": "elbow_angle",
+          "operator": "<=",
+          "threshold": "descent_elbow_max"
+        },
+        {
+          "signal": "inverted_body_ratio",
+          "operator": ">=",
+          "threshold": "inverted_body_min"
+        }
+      ]
+    },
+    {
+      "from": "descent",
+      "to": "bottom",
+      "signal": "elbow_angle",
+      "operator": "<=",
+      "threshold": "bottom_elbow_max",
+      "conditions": [
+        {
+          "signal": "elbow_angle",
+          "operator": "<=",
+          "threshold": "bottom_elbow_max"
+        },
+        {
+          "signal": "inverted_body_ratio",
+          "operator": ">=",
+          "threshold": "inverted_body_min"
+        }
+      ]
+    },
+    {
+      "from": "bottom",
+      "to": "ascent",
+      "signal": "elbow_angle",
+      "operator": ">=",
+      "threshold": "ascent_elbow_min",
+      "conditions": [
+        {
+          "signal": "elbow_angle",
+          "operator": ">=",
+          "threshold": "ascent_elbow_min"
+        },
+        {
+          "signal": "inverted_body_ratio",
+          "operator": ">=",
+          "threshold": "inverted_body_min"
+        }
+      ]
+    },
+    {
+      "from": "ascent",
+      "to": "lockout",
+      "signal": "elbow_angle",
+      "operator": ">=",
+      "threshold": "lockout_elbow_min",
+      "completes_rep": true,
+      "conditions": [
+        {
+          "signal": "elbow_angle",
+          "operator": ">=",
+          "threshold": "lockout_elbow_min"
+        },
+        {
+          "signal": "inverted_body_ratio",
+          "operator": ">=",
+          "threshold": "inverted_body_min"
+        }
+      ]
+    }
+  ],
+  "thresholds": {
+    "descent_elbow_max": 145,
+    "bottom_elbow_max": 100,
+    "ascent_elbow_min": 130,
+    "lockout_elbow_min": 160,
+    "inverted_body_min": 0.5
+  },
+  "metrics": [
+    "elbow_angle",
+    "inverted_body_ratio"
+  ],
+  "noise": {
+    "min_confirm_frames": 2,
+    "max_gap_s": 0.5,
+    "min_rep_duration_s": 0.35,
+    "max_rep_duration_s": 12.0,
+    "cooldown_s": 0.25,
+    "min_pose_confidence": 0.6
+  },
+  "version": "1.0"
+}

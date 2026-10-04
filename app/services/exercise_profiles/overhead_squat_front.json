@@ -1,0 +1,152 @@
+{
+  "id": "overhead-squat-front",
+  "aliases": [
+    "Overhead squat",
+    "overhead scuatch",
+    "sentadilla overhead",
+    "sentadilla sobre la cabeza"
+  ],
+  "views": [
+    "front"
+  ],
+  "required_landmarks": [
+    "shoulder",
+    "hip",
+    "knee",
+    "ankle",
+    "elbow",
+    "wrist"
+  ],
+  "primary_signal": "knee_angle",
+  "states": [
+    "lockout",
+    "descent",
+    "bottom",
+    "ascent"
+  ],
+  "initial_state": "lockout",
+  "bottom_state": "bottom",
+  "transitions": [
+    {
+      "from": "lockout",
+      "to": "descent",
+      "signal": "knee_angle",
+      "operator": "<=",
+      "threshold": "descent_knee_max",
+      "conditions": [
+        {
+          "signal": "knee_angle",
+          "operator": "<=",
+          "threshold": "descent_knee_max"
+        },
+        {
+          "signal": "wrist_lift",
+          "operator": ">=",
+          "threshold": "overhead_wrist_min"
+        },
+        {
+          "signal": "elbow_angle",
+          "operator": ">=",
+          "threshold": "overhead_elbow_min"
+        }
+      ]
+    },
+    {
+      "from": "descent",
+      "to": "bottom",
+      "signal": "knee_angle",
+      "operator": "<=",
+      "threshold": "bottom_knee_max",
+      "conditions": [
+        {
+          "signal": "knee_angle",
+          "operator": "<=",
+          "threshold": "bottom_knee_max"
+        },
+        {
+          "signal": "wrist_lift",
+          "operator": ">=",
+          "threshold": "overhead_wrist_min"
+        },
+        {
+          "signal": "elbow_angle",
+          "operator": ">=",
+          "threshold": "overhead_elbow_min"
+        }
+      ]
+    },
+    {
+      "from": "bottom",
+      "to": "ascent",
+      "signal": "knee_angle",
+      "operator": ">=",
+      "threshold": "ascent_knee_min",
+      "conditions": [
+        {
+          "signal": "knee_angle",
+          "operator": ">=",
+          "threshold": "ascent_knee_min"
+        },
+        {
+          "signal": "wrist_lift",
+          "operator": ">=",
+          "threshold": "overhead_wrist_min"
+        },
+        {
+          "signal": "elbow_angle",
+          "operator": ">=",
+          "threshold": "overhead_elbow_min"
+        }
+      ]
+    },
+    {
+      "from": "ascent",
+      "to": "lockout",
+      "signal": "knee_angle",
+      "operator": ">=",
+      "threshold": "lockout_knee_min",
+      "completes_rep": true,
+      "conditions": [
+        {
+          "signal": "knee_angle",
+          "operator": ">=",
+          "threshold": "lockout_knee_min"
+        },
+        {
+          "signal": "wrist_lift",
+          "operator": ">=",
+          "threshold": "overhead_wrist_min"
+        },
+        {
+          "signal": "elbow_angle",
+          "operator": ">=",
+          "threshold": "overhead_elbow_min"
+        }
+      ]
+    }
+  ],
+  "thresholds": {
+    "descent_knee_max": 145.0,
+    "bottom_knee_max": 120.0,
+    "ascent_knee_min": 135.0,
+    "lockout_knee_min": 155.0,
+    "overhead_wrist_min": 0.08,
+    "overhead_elbow_min": 155
+  },
+  "metrics": [
+    "knee_angle",
+    "hip_angle",
+    "trunk_from_vertical",
+    "wrist_lift",
+    "elbow_angle"
+  ],
+  "noise": {
+    "min_confirm_frames": 2,
+    "max_gap_s": 0.5,
+    "min_rep_duration_s": 0.35,
+    "max_rep_duration_s": 12.0,
+    "cooldown_s": 0.25,
+    "min_pose_confidence": 0.6
+  },
+  "version": "1.0"
+}
