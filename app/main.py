@@ -33,6 +33,7 @@ from .services.auth import hash_password, verify_password
 from .training import router as training_router
 from .services.training_usage import extend_usage
 from .whatsapp.routes import router as whatsapp_router
+from .exercises import router as exercises_router
 
 ROOT = Path(__file__).resolve().parents[1]
 STORAGE_PATH = Path(os.environ.get('STORAGE_PATH', '/data/storage'))
@@ -110,6 +111,7 @@ def require_internal(request: Request, session: Session = Depends(get_session)) 
 
 app.include_router(training_router(require_athlete))
 app.include_router(whatsapp_router(require_athlete))
+app.include_router(exercises_router)
 
 
 @app.middleware('http')

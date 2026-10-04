@@ -1,0 +1,1142 @@
+[
+  {
+    "category": "squat",
+    "metrics": [],
+    "required_landmarks": [
+      "shoulder",
+      "hip",
+      "knee",
+      "ankle",
+      "wrist",
+      "elbow"
+    ],
+    "priority": "P1",
+    "name": "Air Squat",
+    "reference_videos": [
+      {
+        "url": "https://www.youtube.com/watch?v=rMvwVtlqjTE",
+        "segments": [],
+        "video_id": "rMvwVtlqjTE",
+        "source_type": "official",
+        "organization": "CrossFit",
+        "provider": "youtube"
+      }
+    ],
+    "analysis_status": "supported",
+    "faults": [
+      {
+        "name": "Insufficient Depth",
+        "description": "Hip crease remains above knee",
+        "id": "insufficient_depth",
+        "detectable": false
+      }
+    ],
+    "id": "air_squat",
+    "detector_profiles": [
+      "squat-side",
+      "squat-front"
+    ],
+    "coaching_cues": [
+      "Keep the whole foot grounded"
+    ],
+    "metadata": {
+      "analysis_scope": "Existing repetition detector; fault detection is not implemented",
+      "video_status": "official_page_link_verified",
+      "segments_status": "pending_review",
+      "reference_index": "https://www.crossfit.com/crossfit-movements"
+    },
+    "supported_views": [
+      "lateral",
+      "front"
+    ],
+    "phases": [
+      "setup",
+      "descent",
+      "bottom",
+      "ascent",
+      "stand"
+    ]
+  },
+  {
+    "category": "squat",
+    "metrics": [],
+    "required_landmarks": [
+      "shoulder",
+      "hip",
+      "knee",
+      "ankle",
+      "wrist",
+      "elbow"
+    ],
+    "priority": "P1",
+    "name": "Front Squat",
+    "reference_videos": [
+      {
+        "url": "https://www.youtube.com/watch?v=uYumuL_G_V0",
+        "segments": [],
+        "video_id": "uYumuL_G_V0",
+        "source_type": "official",
+        "organization": "CrossFit",
+        "provider": "youtube"
+      }
+    ],
+    "analysis_status": "reference_only",
+    "faults": [
+      {
+        "name": "Low Elbows",
+        "description": "Elbows drop in the front rack",
+        "id": "low_elbows",
+        "detectable": false
+      }
+    ],
+    "id": "front_squat",
+    "detector_profiles": [],
+    "coaching_cues": [
+      "Keep elbows high"
+    ],
+    "metadata": {
+      "analysis_scope": "Reference only; camera views are planned",
+      "video_status": "official_page_link_verified",
+      "segments_status": "pending_review",
+      "reference_index": "https://www.crossfit.com/crossfit-movements"
+    },
+    "supported_views": [
+      "lateral",
+      "front"
+    ],
+    "phases": [
+      "setup",
+      "descent",
+      "bottom",
+      "ascent",
+      "stand"
+    ]
+  },
+  {
+    "category": "squat",
+    "metrics": [],
+    "required_landmarks": [
+      "shoulder",
+      "hip",
+      "knee",
+      "ankle",
+      "wrist",
+      "elbow"
+    ],
+    "priority": "P1",
+    "name": "Overhead Squat",
+    "reference_videos": [
+      {
+        "url": "https://www.youtube.com/watch?v=pn8mqlG0nkE",
+        "segments": [],
+        "video_id": "pn8mqlG0nkE",
+        "source_type": "official",
+        "organization": "CrossFit",
+        "provider": "youtube"
+      }
+    ],
+    "analysis_status": "supported",
+    "faults": [
+      {
+        "name": "Unstable Overhead",
+        "description": "Arms lose overhead alignment",
+        "id": "unstable_overhead",
+        "detectable": false
+      }
+    ],
+    "id": "overhead_squat",
+    "detector_profiles": [
+      "overhead-squat-side",
+      "overhead-squat-front"
+    ],
+    "coaching_cues": [
+      "Maintain an active overhead position"
+    ],
+    "metadata": {
+      "analysis_scope": "Existing repetition detector; fault detection is not implemented",
+      "video_status": "official_page_link_verified",
+      "segments_status": "pending_review",
+      "reference_index": "https://www.crossfit.com/crossfit-movements"
+    },
+    "supported_views": [
+      "lateral",
+      "front"
+    ],
+    "phases": [
+      "setup",
+      "descent",
+      "bottom",
+      "ascent",
+      "stand"
+    ]
+  },
+  {
+    "category": "hinge",
+    "metrics": [],
+    "required_landmarks": [
+      "shoulder",
+      "hip",
+      "knee",
+      "ankle",
+      "wrist",
+      "elbow"
+    ],
+    "priority": "P1",
+    "name": "Deadlift",
+    "reference_videos": [
+      {
+        "url": "https://www.youtube.com/watch?v=1ZXobu7JvvE",
+        "segments": [],
+        "video_id": "1ZXobu7JvvE",
+        "source_type": "official",
+        "organization": "CrossFit",
+        "provider": "youtube"
+      }
+    ],
+    "analysis_status": "supported",
+    "faults": [
+      {
+        "name": "Rounded Back",
+        "description": "Spine loses neutral alignment",
+        "id": "rounded_back",
+        "detectable": false
+      }
+    ],
+    "id": "deadlift",
+    "detector_profiles": [
+      "deadlift-side",
+      "deadlift-front"
+    ],
+    "coaching_cues": [
+      "Brace before lifting"
+    ],
+    "metadata": {
+      "analysis_scope": "Existing repetition detector; fault detection is not implemented",
+      "video_status": "official_page_link_verified",
+      "segments_status": "pending_review",
+      "reference_index": "https://www.crossfit.com/crossfit-movements"
+    },
+    "supported_views": [
+      "lateral",
+      "front"
+    ],
+    "phases": [
+      "setup",
+      "pull",
+      "lockout",
+      "return"
+    ]
+  },
+  {
+    "category": "weightlifting",
+    "metrics": [],
+    "required_landmarks": [
+      "shoulder",
+      "hip",
+      "knee",
+      "ankle",
+      "wrist",
+      "elbow"
+    ],
+    "priority": "P1",
+    "name": "Clean",
+    "reference_videos": [
+      {
+        "url": "https://www.youtube.com/watch?v=Ty14ogq_Vok",
+        "segments": [],
+        "video_id": "Ty14ogq_Vok",
+        "source_type": "official",
+        "organization": "CrossFit",
+        "provider": "youtube"
+      }
+    ],
+    "analysis_status": "supported",
+    "faults": [
+      {
+        "name": "Early Arm Bend",
+        "description": "Arms bend before hip and knee extension",
+        "id": "early_arm_bend",
+        "detectable": false
+      }
+    ],
+    "id": "clean",
+    "detector_profiles": [
+      "clean-side",
+      "clean-front"
+    ],
+    "coaching_cues": [
+      "Extend before pulling under"
+    ],
+    "metadata": {
+      "analysis_scope": "Existing repetition detector; fault detection is not implemented",
+      "video_status": "official_page_link_verified",
+      "segments_status": "pending_review",
+      "reference_index": "https://www.crossfit.com/crossfit-movements"
+    },
+    "supported_views": [
+      "lateral",
+      "front"
+    ],
+    "phases": [
+      "setup",
+      "first_pull",
+      "second_pull",
+      "extension",
+      "third_pull",
+      "catch",
+      "stand"
+    ]
+  },
+  {
+    "category": "weightlifting",
+    "metrics": [],
+    "required_landmarks": [
+      "shoulder",
+      "hip",
+      "knee",
+      "ankle",
+      "wrist",
+      "elbow"
+    ],
+    "priority": "P1",
+    "name": "Power Clean",
+    "reference_videos": [
+      {
+        "url": "https://www.youtube.com/watch?v=KwYJTpQ_x5A",
+        "segments": [],
+        "provider": "youtube",
+        "organization": "CrossFit",
+        "video_id": "KwYJTpQ_x5A",
+        "source_type": "official"
+      }
+    ],
+    "analysis_status": "reference_only",
+    "faults": [
+      {
+        "name": "Low Elbows",
+        "description": "Elbows remain low during the catch",
+        "id": "low_elbows",
+        "detectable": false
+      }
+    ],
+    "id": "power_clean",
+    "detector_profiles": [],
+    "coaching_cues": [
+      "Meet the bar with high elbows"
+    ],
+    "metadata": {
+      "analysis_scope": "Reference only; camera views are planned",
+      "video_status": "official_channel_verified",
+      "segments_status": "pending_review",
+      "reference_index": "https://www.crossfit.com/crossfit-movements"
+    },
+    "supported_views": [
+      "lateral",
+      "front"
+    ],
+    "phases": [
+      "setup",
+      "first_pull",
+      "second_pull",
+      "extension",
+      "third_pull",
+      "catch",
+      "stand"
+    ]
+  },
+  {
+    "category": "weightlifting",
+    "metrics": [],
+    "required_landmarks": [
+      "shoulder",
+      "hip",
+      "knee",
+      "ankle",
+      "wrist",
+      "elbow"
+    ],
+    "priority": "P1",
+    "name": "Snatch",
+    "reference_videos": [
+      {
+        "url": "https://www.youtube.com/watch?v=GhxhiehJcQY",
+        "segments": [],
+        "provider": "youtube",
+        "organization": "CrossFit",
+        "video_id": "GhxhiehJcQY",
+        "source_type": "official"
+      }
+    ],
+    "analysis_status": "supported",
+    "faults": [
+      {
+        "name": "Unstable Catch",
+        "description": "Bar is not stable overhead",
+        "id": "unstable_catch",
+        "detectable": false
+      }
+    ],
+    "id": "snatch",
+    "detector_profiles": [
+      "snatch-side",
+      "snatch-front"
+    ],
+    "coaching_cues": [
+      "Stay active through the catch"
+    ],
+    "metadata": {
+      "analysis_scope": "Existing repetition detector; fault detection is not implemented",
+      "video_status": "official_channel_verified",
+      "segments_status": "pending_review",
+      "reference_index": "https://www.crossfit.com/crossfit-movements"
+    },
+    "supported_views": [
+      "lateral",
+      "front"
+    ],
+    "phases": [
+      "setup",
+      "first_pull",
+      "second_pull",
+      "extension",
+      "third_pull",
+      "catch",
+      "stand"
+    ]
+  },
+  {
+    "category": "weightlifting",
+    "metrics": [],
+    "required_landmarks": [
+      "shoulder",
+      "hip",
+      "knee",
+      "ankle",
+      "wrist",
+      "elbow"
+    ],
+    "priority": "P1",
+    "name": "Power Snatch",
+    "reference_videos": [
+      {
+        "url": "https://www.youtube.com/watch?v=TL8SMp7RdXQ",
+        "segments": [],
+        "video_id": "TL8SMp7RdXQ",
+        "source_type": "official",
+        "organization": "CrossFit",
+        "provider": "youtube"
+      }
+    ],
+    "analysis_status": "reference_only",
+    "faults": [
+      {
+        "name": "Unstable Catch",
+        "description": "Bar is not stable overhead",
+        "id": "unstable_catch",
+        "detectable": false
+      }
+    ],
+    "id": "power_snatch",
+    "detector_profiles": [],
+    "coaching_cues": [
+      "Stabilize before standing"
+    ],
+    "metadata": {
+      "analysis_scope": "Reference only; camera views are planned",
+      "video_status": "official_page_link_verified",
+      "segments_status": "pending_review",
+      "reference_index": "https://www.crossfit.com/crossfit-movements"
+    },
+    "supported_views": [
+      "lateral",
+      "front"
+    ],
+    "phases": [
+      "setup",
+      "first_pull",
+      "second_pull",
+      "extension",
+      "third_pull",
+      "catch",
+      "stand"
+    ]
+  },
+  {
+    "category": "press",
+    "metrics": [],
+    "required_landmarks": [
+      "shoulder",
+      "hip",
+      "knee",
+      "ankle",
+      "wrist",
+      "elbow"
+    ],
+    "priority": "P1",
+    "name": "Push Press",
+    "reference_videos": [
+      {
+        "url": "https://www.youtube.com/watch?v=iaBVSJm78ko",
+        "segments": [],
+        "video_id": "iaBVSJm78ko",
+        "source_type": "official",
+        "organization": "CrossFit",
+        "provider": "youtube"
+      }
+    ],
+    "analysis_status": "reference_only",
+    "faults": [
+      {
+        "name": "Forward Dip",
+        "description": "Torso moves forward in the dip",
+        "id": "forward_dip",
+        "detectable": false
+      }
+    ],
+    "id": "push_press",
+    "detector_profiles": [],
+    "coaching_cues": [
+      "Dip vertically"
+    ],
+    "metadata": {
+      "analysis_scope": "Reference only; camera views are planned",
+      "video_status": "official_page_link_verified",
+      "segments_status": "pending_review",
+      "reference_index": "https://www.crossfit.com/crossfit-movements"
+    },
+    "supported_views": [
+      "lateral",
+      "front"
+    ],
+    "phases": [
+      "setup",
+      "dip",
+      "drive",
+      "press",
+      "lockout",
+      "return"
+    ]
+  },
+  {
+    "category": "press",
+    "metrics": [],
+    "required_landmarks": [
+      "shoulder",
+      "hip",
+      "knee",
+      "ankle",
+      "wrist",
+      "elbow"
+    ],
+    "priority": "P1",
+    "name": "Push Jerk",
+    "reference_videos": [
+      {
+        "url": "https://www.youtube.com/watch?v=VrHNJXoSyXw",
+        "segments": [],
+        "video_id": "VrHNJXoSyXw",
+        "source_type": "official",
+        "organization": "CrossFit",
+        "provider": "youtube"
+      }
+    ],
+    "analysis_status": "reference_only",
+    "faults": [
+      {
+        "name": "Incomplete Lockout",
+        "description": "Elbows remain bent at reception",
+        "id": "incomplete_lockout",
+        "detectable": false
+      }
+    ],
+    "id": "push_jerk",
+    "detector_profiles": [],
+    "coaching_cues": [
+      "Receive with locked arms"
+    ],
+    "metadata": {
+      "analysis_scope": "Reference only; camera views are planned",
+      "video_status": "official_page_link_verified",
+      "segments_status": "pending_review",
+      "reference_index": "https://www.crossfit.com/crossfit-movements"
+    },
+    "supported_views": [
+      "lateral",
+      "front"
+    ],
+    "phases": [
+      "setup",
+      "dip",
+      "drive",
+      "receive",
+      "stand",
+      "return"
+    ]
+  },
+  {
+    "category": "compound",
+    "metrics": [],
+    "required_landmarks": [
+      "shoulder",
+      "hip",
+      "knee",
+      "ankle",
+      "wrist",
+      "elbow"
+    ],
+    "priority": "P1",
+    "name": "Thruster",
+    "reference_videos": [
+      {
+        "url": "https://www.youtube.com/watch?v=L219ltL15zk",
+        "segments": [],
+        "video_id": "L219ltL15zk",
+        "source_type": "official",
+        "organization": "CrossFit",
+        "provider": "youtube"
+      }
+    ],
+    "analysis_status": "supported",
+    "faults": [
+      {
+        "name": "Early Press",
+        "description": "Press starts before the leg drive",
+        "id": "early_press",
+        "detectable": false
+      }
+    ],
+    "id": "thruster",
+    "detector_profiles": [
+      "thruster-side",
+      "thruster-front"
+    ],
+    "coaching_cues": [
+      "Drive through the legs first"
+    ],
+    "metadata": {
+      "analysis_scope": "Existing repetition detector; fault detection is not implemented",
+      "video_status": "official_page_link_verified",
+      "segments_status": "pending_review",
+      "reference_index": "https://www.crossfit.com/crossfit-movements"
+    },
+    "supported_views": [
+      "lateral",
+      "front"
+    ],
+    "phases": [
+      "setup",
+      "descent",
+      "bottom",
+      "drive",
+      "press",
+      "lockout",
+      "return"
+    ]
+  },
+  {
+    "category": "compound",
+    "metrics": [],
+    "required_landmarks": [
+      "shoulder",
+      "hip",
+      "knee",
+      "ankle",
+      "wrist",
+      "elbow"
+    ],
+    "priority": "P1",
+    "name": "Wall Ball",
+    "reference_videos": [
+      {
+        "url": "https://www.youtube.com/watch?v=EqjGKsiIMCE",
+        "segments": [],
+        "video_id": "EqjGKsiIMCE",
+        "source_type": "official",
+        "organization": "CrossFit",
+        "provider": "youtube"
+      }
+    ],
+    "analysis_status": "reference_only",
+    "faults": [
+      {
+        "name": "Insufficient Depth",
+        "description": "Squat does not reach the intended depth",
+        "id": "insufficient_depth",
+        "detectable": false
+      }
+    ],
+    "id": "wall_ball",
+    "detector_profiles": [],
+    "coaching_cues": [
+      "Squat fully before throwing"
+    ],
+    "metadata": {
+      "analysis_scope": "Reference only; camera views are planned",
+      "video_status": "official_page_link_verified",
+      "segments_status": "pending_review",
+      "reference_index": "https://www.crossfit.com/crossfit-movements"
+    },
+    "supported_views": [
+      "lateral",
+      "front"
+    ],
+    "phases": [
+      "setup",
+      "descent",
+      "bottom",
+      "drive",
+      "throw",
+      "catch"
+    ]
+  },
+  {
+    "category": "jump",
+    "metrics": [],
+    "required_landmarks": [
+      "shoulder",
+      "hip",
+      "knee",
+      "ankle",
+      "wrist",
+      "elbow"
+    ],
+    "priority": "P1",
+    "name": "Box Jump",
+    "reference_videos": [
+      {
+        "url": "https://www.youtube.com/watch?v=NBY9-kTuHEk",
+        "segments": [],
+        "video_id": "NBY9-kTuHEk",
+        "source_type": "official",
+        "organization": "CrossFit",
+        "provider": "youtube"
+      }
+    ],
+    "analysis_status": "reference_only",
+    "faults": [
+      {
+        "name": "Unstable Landing",
+        "description": "Landing lacks balance",
+        "id": "unstable_landing",
+        "detectable": false
+      }
+    ],
+    "id": "box_jump",
+    "detector_profiles": [],
+    "coaching_cues": [
+      "Land softly and stabilize"
+    ],
+    "metadata": {
+      "analysis_scope": "Reference only; camera views are planned",
+      "video_status": "official_page_link_verified",
+      "segments_status": "pending_review",
+      "reference_index": "https://www.crossfit.com/crossfit-movements"
+    },
+    "supported_views": [
+      "lateral",
+      "front"
+    ],
+    "phases": [
+      "setup",
+      "countermovement",
+      "takeoff",
+      "landing",
+      "stand",
+      "step_down"
+    ]
+  },
+  {
+    "category": "gymnastics",
+    "metrics": [],
+    "required_landmarks": [
+      "shoulder",
+      "hip",
+      "knee",
+      "ankle",
+      "wrist",
+      "elbow"
+    ],
+    "priority": "P1",
+    "name": "Kipping Pull Up",
+    "reference_videos": [
+      {
+        "url": "https://www.youtube.com/watch?v=lzRo-4pq_AY",
+        "segments": [],
+        "video_id": "lzRo-4pq_AY",
+        "source_type": "official",
+        "organization": "CrossFit",
+        "provider": "youtube"
+      }
+    ],
+    "analysis_status": "reference_only",
+    "faults": [
+      {
+        "name": "Disconnected Kip",
+        "description": "Swing and pull are not coordinated",
+        "id": "disconnected_kip",
+        "detectable": false
+      }
+    ],
+    "id": "kipping_pull_up",
+    "detector_profiles": [],
+    "coaching_cues": [
+      "Maintain a controlled arch and hollow"
+    ],
+    "metadata": {
+      "analysis_scope": "Reference only; camera views are planned",
+      "video_status": "official_page_link_verified",
+      "segments_status": "pending_review",
+      "reference_index": "https://www.crossfit.com/crossfit-movements"
+    },
+    "supported_views": [
+      "lateral",
+      "front"
+    ],
+    "phases": [
+      "hang",
+      "arch",
+      "hollow",
+      "pull",
+      "chin_over_bar",
+      "return"
+    ]
+  },
+  {
+    "category": "gymnastics",
+    "metrics": [],
+    "required_landmarks": [
+      "shoulder",
+      "hip",
+      "knee",
+      "ankle",
+      "wrist",
+      "elbow"
+    ],
+    "priority": "P1",
+    "name": "Chest To Bar",
+    "reference_videos": [
+      {
+        "url": "https://www.youtube.com/watch?v=AyPTCEXTjOo",
+        "segments": [],
+        "video_id": "AyPTCEXTjOo",
+        "source_type": "official",
+        "organization": "CrossFit",
+        "provider": "youtube"
+      }
+    ],
+    "analysis_status": "reference_only",
+    "faults": [
+      {
+        "name": "Missing Contact",
+        "description": "Chest does not contact the bar",
+        "id": "missing_contact",
+        "detectable": false
+      }
+    ],
+    "id": "chest_to_bar",
+    "detector_profiles": [],
+    "coaching_cues": [
+      "Pull the chest toward the bar"
+    ],
+    "metadata": {
+      "analysis_scope": "Reference only; camera views are planned",
+      "video_status": "official_page_link_verified",
+      "segments_status": "pending_review",
+      "reference_index": "https://www.crossfit.com/crossfit-movements"
+    },
+    "supported_views": [
+      "lateral",
+      "front"
+    ],
+    "phases": [
+      "hang",
+      "arch",
+      "hollow",
+      "pull",
+      "contact",
+      "return"
+    ]
+  },
+  {
+    "category": "gymnastics",
+    "metrics": [],
+    "required_landmarks": [
+      "shoulder",
+      "hip",
+      "knee",
+      "ankle",
+      "wrist",
+      "elbow"
+    ],
+    "priority": "P1",
+    "name": "Toes To Bar",
+    "reference_videos": [
+      {
+        "url": "https://www.youtube.com/watch?v=6dHvTlsMvNY",
+        "segments": [],
+        "video_id": "6dHvTlsMvNY",
+        "source_type": "official",
+        "organization": "CrossFit",
+        "provider": "youtube"
+      }
+    ],
+    "analysis_status": "reference_only",
+    "faults": [
+      {
+        "name": "Missing Contact",
+        "description": "Toes do not reach the bar",
+        "id": "missing_contact",
+        "detectable": false
+      }
+    ],
+    "id": "toes_to_bar",
+    "detector_profiles": [],
+    "coaching_cues": [
+      "Compress through the trunk"
+    ],
+    "metadata": {
+      "analysis_scope": "Reference only; camera views are planned",
+      "video_status": "official_page_link_verified",
+      "segments_status": "pending_review",
+      "reference_index": "https://www.crossfit.com/crossfit-movements"
+    },
+    "supported_views": [
+      "lateral",
+      "front"
+    ],
+    "phases": [
+      "hang",
+      "arch",
+      "hollow",
+      "raise",
+      "contact",
+      "return"
+    ]
+  },
+  {
+    "category": "gymnastics",
+    "metrics": [],
+    "required_landmarks": [
+      "shoulder",
+      "hip",
+      "knee",
+      "ankle",
+      "wrist",
+      "elbow"
+    ],
+    "priority": "P1",
+    "name": "Bar Muscle Up",
+    "reference_videos": [
+      {
+        "url": "https://www.youtube.com/watch?v=OCg3UXgzftc",
+        "segments": [],
+        "video_id": "OCg3UXgzftc",
+        "source_type": "official",
+        "organization": "CrossFit",
+        "provider": "youtube"
+      }
+    ],
+    "analysis_status": "reference_only",
+    "faults": [
+      {
+        "name": "Uneven Transition",
+        "description": "Arms transition at different times",
+        "id": "uneven_transition",
+        "detectable": false
+      }
+    ],
+    "id": "bar_muscle_up",
+    "detector_profiles": [],
+    "coaching_cues": [
+      "Turn over both shoulders together"
+    ],
+    "metadata": {
+      "analysis_scope": "Reference only; camera views are planned",
+      "video_status": "official_page_link_verified",
+      "segments_status": "pending_review",
+      "reference_index": "https://www.crossfit.com/crossfit-movements"
+    },
+    "supported_views": [
+      "lateral",
+      "front"
+    ],
+    "phases": [
+      "hang",
+      "kip",
+      "pull",
+      "transition",
+      "press",
+      "support",
+      "return"
+    ]
+  },
+  {
+    "category": "gymnastics",
+    "metrics": [],
+    "required_landmarks": [
+      "shoulder",
+      "hip",
+      "knee",
+      "ankle",
+      "wrist",
+      "elbow"
+    ],
+    "priority": "P1",
+    "name": "Handstand Push Up",
+    "reference_videos": [
+      {
+        "url": "https://www.youtube.com/watch?v=0wDEO6shVjc",
+        "segments": [],
+        "provider": "youtube",
+        "organization": "CrossFit",
+        "video_id": "0wDEO6shVjc",
+        "source_type": "official"
+      }
+    ],
+    "analysis_status": "supported",
+    "faults": [
+      {
+        "name": "Incomplete Lockout",
+        "description": "Elbows do not fully extend",
+        "id": "incomplete_lockout",
+        "detectable": false
+      }
+    ],
+    "id": "handstand_push_up",
+    "detector_profiles": [
+      "handstand-push-up-side",
+      "handstand-push-up-front"
+    ],
+    "coaching_cues": [
+      "Press to full extension"
+    ],
+    "metadata": {
+      "analysis_scope": "Existing repetition detector; fault detection is not implemented",
+      "video_status": "official_channel_verified",
+      "segments_status": "pending_review",
+      "reference_index": "https://www.crossfit.com/crossfit-movements"
+    },
+    "supported_views": [
+      "lateral",
+      "front"
+    ],
+    "phases": [
+      "setup",
+      "descent",
+      "bottom",
+      "press",
+      "lockout"
+    ]
+  },
+  {
+    "category": "gymnastics",
+    "metrics": [],
+    "required_landmarks": [
+      "shoulder",
+      "hip",
+      "knee",
+      "ankle",
+      "wrist",
+      "elbow"
+    ],
+    "priority": "P1",
+    "name": "Wall Walk",
+    "reference_videos": [
+      {
+        "url": "https://www.youtube.com/watch?v=NK_OcHEm8yM",
+        "segments": [],
+        "video_id": "NK_OcHEm8yM",
+        "source_type": "official",
+        "organization": "CrossFit",
+        "provider": "youtube"
+      }
+    ],
+    "analysis_status": "reference_only",
+    "faults": [
+      {
+        "name": "Lost Midline",
+        "description": "Trunk loses alignment",
+        "id": "lost_midline",
+        "detectable": false
+      }
+    ],
+    "id": "wall_walk",
+    "detector_profiles": [],
+    "coaching_cues": [
+      "Keep the trunk braced"
+    ],
+    "metadata": {
+      "analysis_scope": "Reference only; camera views are planned",
+      "video_status": "official_page_link_verified",
+      "segments_status": "pending_review",
+      "reference_index": "https://www.crossfit.com/crossfit-movements"
+    },
+    "supported_views": [
+      "lateral",
+      "front"
+    ],
+    "phases": [
+      "prone",
+      "plank",
+      "walk_up",
+      "top",
+      "walk_down",
+      "prone"
+    ]
+  },
+  {
+    "category": "squat",
+    "metrics": [],
+    "required_landmarks": [
+      "shoulder",
+      "hip",
+      "knee",
+      "ankle",
+      "wrist",
+      "elbow"
+    ],
+    "priority": "P1",
+    "name": "Pistol Squat",
+    "reference_videos": [
+      {
+        "url": "https://www.youtube.com/watch?v=keSzg7MaoVQ",
+        "segments": [],
+        "provider": "youtube",
+        "organization": "CrossFit",
+        "video_id": "keSzg7MaoVQ",
+        "source_type": "official"
+      }
+    ],
+    "analysis_status": "reference_only",
+    "faults": [
+      {
+        "name": "Heel Lift",
+        "description": "Supporting heel rises",
+        "id": "heel_lift",
+        "detectable": false
+      }
+    ],
+    "id": "pistol_squat",
+    "detector_profiles": [],
+    "coaching_cues": [
+      "Keep the supporting foot grounded"
+    ],
+    "metadata": {
+      "analysis_scope": "Reference only; camera views are planned",
+      "video_status": "official_channel_verified",
+      "segments_status": "pending_review",
+      "reference_index": "https://www.crossfit.com/crossfit-movements"
+    },
+    "supported_views": [
+      "lateral",
+      "front"
+    ],
+    "phases": [
+      "setup",
+      "descent",
+      "bottom",
+      "ascent",
+      "stand"
+    ]
+  }
+]

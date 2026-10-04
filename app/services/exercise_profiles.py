@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import json
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+from .exercise_library import ProfileMetadata
 
 
 class UnknownExerciseProfileError(ValueError):
@@ -34,6 +35,7 @@ class ExerciseProfile:
     thresholds: dict[str, float]
     metrics: tuple[str, ...]
     noise: dict[str, float]
+    library: ProfileMetadata = field(default_factory=ProfileMetadata)
 
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> "ExerciseProfile":
@@ -70,6 +72,7 @@ class ExerciseProfile:
             thresholds={key: float(threshold) for key, threshold in value["thresholds"].items()},
             metrics=tuple(value["metrics"]),
             noise={key: float(noise) for key, noise in value["noise"].items()},
+            library=ProfileMetadata.model_validate(value),
         )
 
 
