@@ -564,3 +564,15 @@ html { -webkit-text-size-adjust: 100%; }
 @media (max-width: 900px) and (pointer: coarse) and (prefers-reduced-motion: reduce) {
   button:not(:disabled), a, summary, [role="button"] { transition-property: opacity; }
 }
+.weekly-actions, .weekly-output { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin-block: 16px; }
+.weekly-actions label, .weekly-output label { display: grid; gap: 6px; }
+.weekly-output label { flex: 1 1 280px; min-width: 0; }
+.weekly-output input { width: 100%; min-width: 0; }
+body.weekly-public main.weekly-shared { max-width: 760px; margin: 32px auto; padding: 24px; min-height: auto; }
+.weekly-shared h1 { font-size: clamp(28px, 5vw, 40px); line-height: 1.2; }
+.weekly-shared p, .training-week p { overflow-wrap: anywhere; }
+.weekly-shared p, .training-week-count { font-variant-numeric: tabular-nums; }
+.weekly-shared article { border-top: 1px solid var(--border); padding-block: 20px; }
+.weekly-copy { white-space: pre-wrap; overflow-wrap: anywhere; }
+.weekly-photo { display: block; max-width: 100%; max-height: 480px; object-fit: contain; margin-block: 16px; }
+.training-week > button { margin: 4px 8px 4px 0; }

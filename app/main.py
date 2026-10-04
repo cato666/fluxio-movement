@@ -31,6 +31,7 @@ from .services.exercise_validation import validate_video_exercise
 from .services.review_moments import rank_review_moments
 from .services.auth import hash_password, verify_password
 from .training import router as training_router
+from .weekly import router as weekly_router
 from .services.training_usage import extend_usage
 from .whatsapp.routes import router as whatsapp_router
 from .exercises import router as exercises_router
@@ -110,6 +111,7 @@ def require_internal(request: Request, session: Session = Depends(get_session)) 
 
 
 app.include_router(training_router(require_athlete))
+app.include_router(weekly_router(require_athlete))
 app.include_router(whatsapp_router(require_athlete))
 app.include_router(exercises_router)
 
@@ -123,7 +125,7 @@ async def protect_application_routes(request: Request, call_next):
     """
     path = request.url.path
     public = {'/', '/demo', '/login', '/para-atletas', '/para-coaches', '/health', '/api/health', '/api/auth/login', '/webhooks/whatsapp/kapso'}
-    if path in public or path.startswith('/static') or path.startswith('/docs') or path.startswith('/openapi'):
+    if path in public or path.startswith('/shared/week/') or path.startswith('/static') or path.startswith('/docs') or path.startswith('/openapi'):
         return await call_next(request)
     with SessionLocal() as session:
         try:

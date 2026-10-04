@@ -56,6 +56,18 @@ class TrainingSession(Base):
     __table_args__ = (CheckConstraint("rpe IS NULL OR rpe BETWEEN 1 AND 10", name="ck_training_sessions_rpe"),)
 
 
+class WeeklyShare(Base):
+    __tablename__ = 'weekly_shares'
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    athlete_id: Mapped[UUID] = mapped_column(ForeignKey('athletes.user_id'), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    week_start: Mapped[date] = mapped_column(Date)
+    snapshot: Mapped[dict] = mapped_column(JSONB)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class TrainingImage(Base):
     __tablename__ = 'training_images'
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)

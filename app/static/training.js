@@ -85,6 +85,82 @@ window.setupTraining = async function (identifier) {
     };
     return button;
   }
+  async function mountWeek(section) {
+    const heading = make('h2', 'Resumen semanal');
+    const controls = make('div', '', 'weekly-actions');
+    const previous = make('button', 'Semana anterior', 'secondary-button');
+    const next = make('button', 'Semana siguiente', 'secondary-button');
+    const current = make('button', 'Esta semana', 'secondary-button');
+    const label = make('label', 'Ver semana del');
+    const picker = make('input'); picker.type = 'date'; label.append(picker);
+    const details = make('div');
+    const share = make('button', 'Crear enlace para compartir', 'secondary-button');
+    const revoke = make('button', 'Revocar enlaces de esta semana', 'secondary-button');
+    const output = make('div', '', 'weekly-output');
+    const message = make('p', '', 'training-status'); message.setAttribute('role', 'status');
+    const hint = make('p', 'El enlace incluye entrenamientos, resultados, notas/adaptaciones, esfuerzo y fotos. Quien lo tenga puede verlos. Es una copia que vence en 7 días como máximo.', 'training-hint');
+    controls.append(previous, next, current, label);
+    section.append(heading, controls, details, hint, share, revoke, output, message);
+    const buttons = [previous, next, current, share, revoke];
+    for (const button of buttons) button.type = 'button';
+    let selected, activeShares = [], busy = false;
+    const lock = value => { busy = value; buttons.forEach(button => button.disabled = value); picker.disabled = value; };
+    const render = data => {
+      selected = data.week_start; picker.value = selected;
+      details.replaceChildren(make('p', `${dateLabel(data.week_start)} — ${dateLabel(data.week_end)}`, 'training-hint'),
+        make('p', `${data.session_count} ${data.session_count === 1 ? 'entrenamiento registrado' : 'entrenamientos registrados'} · ${data.active_days} ${data.active_days === 1 ? 'día activo' : 'días activos'}`, 'training-week-count'));
+      if (data.average_rpe !== null) details.append(make('p', `Esfuerzo promedio ${data.average_rpe}/10 · ${data.rpe_count} registros con esfuerzo`));
+      if (!data.items.length) details.append(make('p', 'No hay entrenamientos registrados en esta semana.', 'training-hint'));
+      for (const item of data.items) details.append(make('p', `${dateLabel(item.trained_on)} · ${item.title}${item.result_text ? ' · ' + item.result_text : ''}`));
+    };
+    async function load(day) {
+      if (busy) return;
+      lock(true); selected = undefined; activeShares = []; output.replaceChildren(); message.textContent = 'Cargando semana…';
+      try {
+        const suffix = day ? '?day=' + encodeURIComponent(day) : '';
+        const data = await api('/api/training-week' + suffix);
+        render(data);
+        activeShares = (await api('/api/training-week/shares?day=' + selected)).items;
+        message.textContent = activeShares.length ? `${activeShares.length} enlaces activos para esta semana.` : '';
+      } catch (error) { message.textContent = error.message; }
+      finally { lock(false); share.disabled = !selected; revoke.disabled = !activeShares.length; }
+    }
+    function move(days) {
+      if (!selected) return;
+      const date = calendarDate(selected); date.setDate(date.getDate() + days); load(localISO(date));
+    }
+    previous.onclick = () => move(-7); next.onclick = () => move(7); current.onclick = () => load();
+    picker.onchange = () => { if (picker.value) load(picker.value); };
+    share.onclick = async () => {
+      if (busy) return;
+      lock(true); message.textContent = 'Creando enlace…';
+      try {
+        const created = await api('/api/training-week/shares', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({day:selected})});
+        activeShares.push(created);
+        const fieldLabel = make('label', 'Enlace para compartir');
+        const field = make('input'); field.readOnly = true; field.value = new URL(created.path, window.location.origin).href; fieldLabel.append(field);
+        const copy = make('button', 'Copiar enlace', 'secondary-button'); copy.type = 'button';
+        copy.onclick = async () => {
+          try { await navigator.clipboard.writeText(field.value); message.textContent = 'Enlace copiado.'; }
+          catch { field.focus(); field.select(); message.textContent = 'Selecciona y copia el enlace del campo.'; }
+        };
+        const open = link('Ver semana compartida', created.path); open.target = '_blank'; open.rel = 'noopener noreferrer';
+        output.replaceChildren(fieldLabel, copy, open);
+        message.textContent = 'Enlace creado. Vence el ' + new Intl.DateTimeFormat('es-CL', {dateStyle:'long',timeStyle:'short',timeZone:'America/Santiago'}).format(new Date(created.expires_at)) + ' (Santiago).';
+      } catch (error) { message.textContent = error.message; }
+      finally { lock(false); revoke.disabled = !activeShares.length; }
+    };
+    revoke.onclick = async () => {
+      if (busy) return;
+      lock(true); message.textContent = 'Revocando enlaces…';
+      try {
+        await api('/api/training-week/shares?day=' + selected, {method:'DELETE'});
+        activeShares = []; output.replaceChildren(); message.textContent = 'Los enlaces de esta semana ya no permiten acceder.';
+      } catch (error) { message.textContent = error.message + ' Puedes reintentar la revocación.'; }
+      finally { lock(false); revoke.disabled = !activeShares.length; }
+    };
+    await load();
+  }
   try {
     if (!identifier) {
       if (window.mountWhatsAppLink) root.trainingCleanup = window.mountWhatsAppLink(root);
@@ -96,15 +172,8 @@ window.setupTraining = async function (identifier) {
         empty.append(make('h2', 'Guarda cómo te fue hoy'), make('p', 'Una foto de la pizarra, unas palabras o tu voz. Después revisas el WOD y tu resultado.'), start); root.append(empty);
       }
       const journal = make('div', '', 'training-journal');
-      const monday = new Date(); monday.setHours(12,0,0,0); monday.setDate(monday.getDate() - (monday.getDay()+6)%7);
-      const sunday = new Date(monday); sunday.setDate(sunday.getDate()+6);
-      const week = items.filter(item => item.trained_on >= localISO(monday) && item.trained_on <= localISO(sunday));
       const weekly = make('section', '', 'training-week');
-      weekly.append(make('h2', 'Esta semana'), make('p', `${dateLabel(localISO(monday))} — ${dateLabel(localISO(sunday))}`, 'training-hint'));
-      const days = new Set(week.map(item => item.trained_on)).size;
-      weekly.append(make('p', `${week.length} ${week.length === 1 ? 'entrenamiento registrado' : 'entrenamientos registrados'} · ${days} ${days === 1 ? 'día activo' : 'días activos'}`, 'training-week-count'));
-      if (!week.length) weekly.append(make('p', 'Tu próximo registro aparecerá aquí.', 'training-hint'));
-      if (items.length >= 200) weekly.append(make('p', 'Resumen de los registros cargados; puede haber registros anteriores fuera de esta lista.', 'training-hint'));
+      await mountWeek(weekly);
       journal.append(weekly); root.insertBefore(journal, root.querySelector('.training-empty'));
       let group, previousDate;
       for (const item of [...items].sort((a,b) => b.trained_on.localeCompare(a.trained_on))) {

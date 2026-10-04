@@ -6,7 +6,7 @@ from .identity import IdentityResolver, now
 from .models import ConversationState, WhatsAppOutbox, WhatsAppPeer
 from .queue import reply, usage
 
-HELP = 'Puedes registrar un entrenamiento, agregar una nota y consultar tu bitácora en Fluxio. La consulta semanal por WhatsApp estará disponible en una fase posterior.'
+HELP = 'Puedes registrar un entrenamiento, agregar una nota y consultar tu bitácora en Fluxio. Escribe «resumen semana» o «compartir semana».'
 
 
 def handle(session, inbox, message, vault, provider):

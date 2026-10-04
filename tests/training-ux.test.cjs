@@ -250,6 +250,8 @@ test('chronology, weekly counts and read-only blocks use stored data; reading an
   const today=await page.evaluate(()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`});
   const title=await page.evaluate(date=>new Intl.DateTimeFormat('es-CL',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(new Date(date+'T12:00:00')),today);
   const session={...draft,id:'chronology',trained_on:today,title,video_links:[{analysis_id:'linked',movement:'Thrusters',context:'Ronda 1'}],source_image_id:null};
+  await page.route('**/api/training-week',r=>r.fulfill({json:{week_start:today,week_end:today,session_count:2,active_days:1,average_rpe:8,rpe_count:2,items:[session,session]}}));
+  await page.route('**/api/training-week/shares?*',r=>r.fulfill({json:{items:[]}}));
   await page.route('**/api/training-sessions',r=>r.fulfill({json:{items:[session,{...session,id:'second'}, {...session,id:'old',trained_on:'2000-01-01',title:'Fuerza'}]}}));
   await page.evaluate(()=>window.setupTraining());
   assert.equal(await page.locator('.training-day').count(),2);

@@ -1,7 +1,9 @@
 """Bounded workout/note state machine. Only TrainingService changes Bitácora."""
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 import re
 import secrets
+import os
+from urllib.parse import urlsplit
 from uuid import UUID
 from zoneinfo import ZoneInfo
 from sqlalchemy import select
@@ -205,10 +207,33 @@ def handle_capture(session, inbox, message, athlete_id, vault, provider):
         respond(session, inbox, message, athlete_id, vault, 'Guarda, corrige o cancela la propuesta pendiente.', actions(state))
         return
     if lowered in {'ayuda','help','hola','menu','menú'}:
-        respond(session, inbox, message, athlete_id, vault, 'Puedes registrar un entrenamiento por texto, foto o audio, agregar una nota y abrir tu bitácora en Fluxio.')
+        respond(session, inbox, message, athlete_id, vault, 'Puedes registrar un entrenamiento por texto, foto o audio, agregar una nota y abrir tu bitácora en Fluxio. Escribe «resumen semana», «resumen semana pasada», «compartir semana» o «revocar semana».')
         return
-    if 'semana' in lowered and ('cómo' in lowered or 'resumen' in lowered):
-        respond(session, inbox, message, athlete_id, vault, 'Consulta tu semana en la app Fluxio. Esta función por WhatsApp todavía no está habilitada.')
+    if lowered == 'resumen semanal':
+        lowered = 'resumen semana'
+    if re.fullmatch(r'(?:resumen(?: de)?|ver|cómo va(?: mi)?|como va(?: mi)?|compartir|revocar)(?: la| mi)? semana(?: pasada| anterior)?', lowered):
+        from ..services.weekly_summary import WeeklySummaryService, week_start, summary_text
+        weekly = WeeklySummaryService(session, athlete_id, commit=False)
+        day = week_start()
+        if lowered.endswith(('pasada', 'anterior')):
+            day -= timedelta(days=7)
+        if lowered.startswith('compartir'):
+            base = os.getenv('PUBLIC_BASE_URL', '').rstrip('/')
+            parsed = urlsplit(base)
+            if parsed.scheme != 'https' or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment:
+                respond(session, inbox, message, athlete_id, vault, 'No se pudo crear el enlace por WhatsApp. Puedes compartir tu semana desde la Bitácora web.')
+                return
+            share = weekly.create_share(day)
+            expires = datetime.fromisoformat(share['expires_at']).astimezone(ZoneInfo('America/Santiago')).strftime('%d/%m/%Y %H:%M')
+            respond(session, inbox, message, athlete_id, vault,
+                'Semana compartida: ' + base + share['path'] + '\nVence: ' + expires + ' (Santiago)' +
+                '\nQuien tenga el enlace puede ver entrenamientos, resultados, notas, esfuerzo y fotos. Es una copia de esta semana. Escribe «revocar semana»' +
+                (' pasada' if day < week_start() else '') + ' para desactivar sus enlaces.')
+        elif lowered.startswith('revocar'):
+            weekly.revoke_week(day)
+            respond(session, inbox, message, athlete_id, vault, 'Enlaces de esa semana revocados.')
+        else:
+            respond(session, inbox, message, athlete_id, vault, summary_text(weekly.summary(day)))
         return
     if state.state == 'SELECT_NOTE':
         respond(session, inbox, message, athlete_id, vault, 'Selecciona un entrenamiento o escribe cancelar.')
