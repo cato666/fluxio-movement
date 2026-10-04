@@ -5,6 +5,12 @@ def test_demo_login_sets_session_and_returns_role(client):
     assert client.get('/api/auth/me').json()['name'] == 'Gastón Demo'
 
 
+def test_athlete_login_defaults_to_training(client):
+    response = client.post('/api/auth/login', json={'username': 'gaston', 'password': 'demo1234'})
+    assert response.status_code == 200
+    assert response.json()['next'] == '/training'
+
+
 def test_login_rejects_invalid_password(client):
     assert client.post('/api/auth/login', json={'username': 'carlos', 'password': 'incorrecta'}).status_code == 401
 

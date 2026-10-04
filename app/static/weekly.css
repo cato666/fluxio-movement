@@ -1,0 +1,98 @@
+/* Authorized weekly snapshot. Colors and type retain DESIGN.md. */
+body.weekly-public { background:var(--canvas); -webkit-text-size-adjust:100%; }
+body.weekly-public main.weekly-shared { max-width:1120px; margin:0 auto; padding:32px 32px calc(32px + env(safe-area-inset-bottom,0px)); }
+.recap-brand { font-size:24px; font-weight:600; color:var(--brand); letter-spacing:-.025em; margin-bottom:40px; }
+.recap-brand span { font-size:14px; font-weight:400; margin-left:6px; }
+.recap-opening { display:grid; grid-template-columns:1fr 1.1fr; gap:40px; align-items:center; }
+.recap-opening:not(:has(.recap-feature)) { display:block; }
+.weekly-shared ::selection { background:var(--lime); color:var(--navy); }
+.recap-hero { color:var(--text); padding:0; }
+.weekly-shared .recap-hero h1 { max-width:18ch; margin:0; font-size:clamp(32px,4vw,48px); line-height:1.08; letter-spacing:-.035em; text-wrap:balance; }
+.recap-dates { margin:20px 0 0; color:var(--muted); }
+.recap-metrics { display:flex; gap:24px; margin:28px 0 0; }
+.recap-metrics > div { flex:1; min-width:0; padding:16px; display:flex; flex-direction:column; gap:6px; background:var(--surface); border:1px solid var(--border); border-radius:12px; }
+.recap-metrics > div:first-child { padding:16px; border:1px solid var(--border); }
+.recap-metrics dt { order:2; color:var(--muted); font-size:13px; overflow-wrap:anywhere; }
+.recap-metrics dd { order:1; margin:0; font-size:28px; font-weight:600; line-height:1.15; font-variant-numeric:tabular-nums; letter-spacing:-.025em; }
+.recap-metrics dd span { font-size:16px; margin-left:4px; font-weight:400; }
+.recap-sample { color:var(--muted); font-size:12px; margin:12px 0 0; }
+.recap-feature { margin:0; min-width:0; }
+.recap-feature a { display:block; background:var(--soft); border-radius:14px; overflow:hidden; }
+.weekly-shared .weekly-photo { width:100%; max-height:none; margin:0; aspect-ratio:16/10; object-fit:contain; background:var(--soft); display:block; }
+.recap-feature figcaption { display:grid; gap:8px; margin-top:16px; }
+.recap-feature figcaption span { font-size:13px; color:var(--muted); }
+.recap-feature figcaption strong { font-size:18px; font-weight:600; letter-spacing:-.01em; overflow-wrap:anywhere; }
+.recap-highlights { margin-top:36px; }
+.recap-highlights > h2,.recap-repeated > h2 { font-size:24px; letter-spacing:-.02em; margin-bottom:16px; }
+.recap-highlight-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; }
+.recap-highlight-grid article { padding:20px; background:var(--surface); border:1px solid var(--border); border-radius:12px; }
+.recap-highlight-grid h3 { font-size:18px; margin:6px 0 10px; letter-spacing:-.01em; overflow-wrap:anywhere; }
+.recap-highlight-grid p { font-size:14px; color:var(--muted); margin:0; line-height:1.5; overflow-wrap:anywhere; }
+.recap-highlight-grid .recap-highlight-label { color:var(--brand); font-size:12px; font-weight:600; }
+.recap-timeline { max-width:none; margin:32px auto 0; }
+.recap-timeline-title { font-size:24px; margin:0 0 24px; letter-spacing:-.02em; }
+.weekly-shared .recap-entry { position:relative; display:grid; grid-template-columns:112px minmax(0,1fr) minmax(0,1fr); column-gap:20px; row-gap:8px; border:0; background:var(--surface); padding:16px; margin:0 0 12px 76px; border-radius:12px; box-shadow:0 2px 8px rgba(13,31,26,.035); }
+.recap-entry::before { content:''; position:absolute; left:-32px; top:0; bottom:-12px; width:1px; background:var(--border); }
+.recap-entry::after { content:''; position:absolute; left:-37px; top:26px; width:10px; height:10px; background:var(--lime); border:3px solid var(--canvas); border-radius:50%; }
+.recap-entry:last-child::before { bottom:0; }
+.recap-entry > .recap-date { position:absolute; left:-76px; top:20px; display:grid; gap:4px; font-size:12px; }
+.recap-date strong { color:var(--text); font-size:13px; }
+.recap-entry > header { grid-column:2; grid-row:1; }
+.recap-entry > .recap-photo-link { grid-column:1; grid-row:1 / 4; }
+.recap-entry > .recap-result_text { grid-column:2; grid-row:2; }
+.recap-entry > .recap-adaptations { grid-column:3; grid-row:1 / 4; border-left:1px solid var(--border); padding-left:20px; align-content:center; }
+.recap-entry > .recap-effort { grid-column:2; grid-row:3; }
+.recap-entry > .recap-workout { grid-column:2 / -1; margin-top:4px; color:var(--muted); font-size:13px; }
+.recap-workout summary { min-height:32px; cursor:pointer; width:fit-content; }
+.recap-workout[open] p { color:var(--text); margin-top:12px; white-space:pre-wrap; }
+.recap-entry time { color:var(--muted); font-size:14px; }
+.recap-entry h2 { font-size:17px; line-height:1.25; letter-spacing:-.02em; margin:0; overflow-wrap:anywhere; }
+.recap-entry section { margin-top:0; }
+.recap-entry h3 { color:var(--muted); font-size:13px; font-weight:400; margin:0 0 8px; }
+.recap-entry p { margin:0; max-width:72ch; }
+.recap-result_text .weekly-copy { font-size:18px; font-weight:600; letter-spacing:-.025em; line-height:1.35; }
+.recap-result_text h3 { display:none; }
+.recap-photo-link { display:block; border-radius:12px; overflow:hidden; background:var(--soft); }
+.recap-entry .weekly-photo { aspect-ratio:1; max-height:112px; }
+.recap-entry .recap-effort { font-size:12px; color:var(--muted); margin-top:0; }
+.recap-entry .recap-adaptations p { font-size:14px; color:var(--muted); line-height:1.5; }
+.recap-repeated { margin-top:28px; }
+.recap-repeated > div { display:flex; gap:16px; flex-wrap:wrap; }
+.recap-repeated article { flex:1; min-width:180px; display:flex; justify-content:space-between; gap:12px; padding:20px; background:var(--surface); border:1px solid var(--border); border-radius:12px; font-size:14px; }
+.recap-repeated span { color:var(--muted); font-size:12px; }
+.recap-footer { max-width:740px; margin:40px auto 0; padding-top:24px; border-top:1px solid var(--border); text-align:center; }
+.recap-footer strong { color:var(--brand); font-size:16px; }
+.recap-footer p { max-width:55ch; font-size:12px; color:var(--muted); margin:12px auto 0; }
+.recap-empty { padding-block:24px; color:var(--muted); }
+.weekly-shared a { touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+.weekly-shared a:focus-visible { outline:3px solid var(--brand); outline-offset:4px; }
+@media(max-width:900px) {
+  .recap-opening { grid-template-columns:1fr; gap:24px; }
+  .recap-metrics { max-width:540px; gap:12px; }
+}
+@media(max-width:600px) {
+  body.weekly-public main.weekly-shared { padding-top:calc(24px + env(safe-area-inset-top,0px)); padding-inline:max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-right,0px)); }
+  .recap-opening { grid-template-columns:1fr; gap:24px; }
+  .recap-brand { margin-bottom:28px; }
+  .recap-hero { padding:0; }
+  .recap-dates { font-size:14px; margin-top:20px; }
+  .recap-metrics { gap:8px; margin-top:24px; }
+  .recap-metrics > div,.recap-metrics > div:first-child { padding:12px 8px; }
+  .recap-metrics dd { font-size:28px; }
+  .recap-metrics dt { font-size:12px; }
+  .recap-feature { margin:0; }
+  .weekly-shared .weekly-photo { aspect-ratio:4/3; }
+  .recap-feature figcaption strong { font-size:20px; }
+  .weekly-shared .recap-entry { grid-template-columns:64px minmax(0,1fr); margin-left:44px; gap:8px 12px; padding:12px; }
+  .recap-entry > .recap-date { left:-44px; font-size:11px; }
+  .recap-entry::before { left:-12px; }
+  .recap-entry::after { left:-17px; width:8px; height:8px; }
+  .recap-entry > .recap-adaptations { grid-column:1 / -1; grid-row:auto; border-left:0; border-top:1px solid var(--border); padding:12px 0 0; }
+  .recap-entry > .recap-workout { grid-column:1 / -1; }
+  .recap-entry h2 { font-size:15px; }
+  .recap-result_text .weekly-copy { font-size:16px; }
+  .recap-entry .weekly-photo { aspect-ratio:3/4; max-height:88px; }
+  .recap-highlight-grid { grid-template-columns:1fr; }
+  .recap-highlight-grid article { padding:16px; }
+  .recap-timeline { margin-top:32px; }
+}

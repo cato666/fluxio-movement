@@ -227,7 +227,7 @@ def handle_capture(session, inbox, message, athlete_id, vault, provider):
             expires = datetime.fromisoformat(share['expires_at']).astimezone(ZoneInfo('America/Santiago')).strftime('%d/%m/%Y %H:%M')
             respond(session, inbox, message, athlete_id, vault,
                 'Semana compartida: ' + base + share['path'] + '\nVence: ' + expires + ' (Santiago)' +
-                '\nQuien tenga el enlace puede ver entrenamientos, resultados, notas, esfuerzo y fotos. Es una copia de esta semana. Escribe «revocar semana»' +
+                '\nQuien tenga el enlace puede ver entrenamientos, resultados, notas, esfuerzo y fotos. Se actualiza con los cambios de esta semana, incluidas las nuevas fotos. Escribe «revocar semana»' +
                 (' pasada' if day < week_start() else '') + ' para desactivar sus enlaces.')
         elif lowered.startswith('revocar'):
             weekly.revoke_week(day)

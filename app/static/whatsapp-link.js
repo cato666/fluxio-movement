@@ -5,7 +5,17 @@ window.mountWhatsAppLink = function(root) {
     if (className) node.className = className; return node;
   };
   const panel = make('details', '', 'training-whatsapp');
-  const summary = make('summary', 'Registrar por WhatsApp');
+  const summary = make('summary');
+  function summaryLabel(title) {
+    summary.replaceChildren();
+    const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('viewBox','0 0 24 24'); svg.setAttribute('aria-hidden','true'); svg.classList.add('whatsapp-action-icon');
+    svg.innerHTML = '<path fill="currentColor" stroke="none" fill-rule="evenodd" d="M12 2a10 10 0 0 0-8.66 15L2 22l5.13-1.35A10 10 0 1 0 12 2Zm0 1.8a8.2 8.2 0 1 1-4.2 15.25l-.32-.19-2.93.77.78-2.85-.21-.34A8.2 8.2 0 0 1 12 3.8Z"/><path fill="currentColor" stroke="none" d="M8.08 6.7c-.22 0-.45.08-.65.3-.24.26-.91.89-.91 2.17s.93 2.51 1.06 2.69c.13.17 1.85 2.82 4.48 3.95.63.27 1.12.43 1.5.55.63.2 1.2.17 1.65.1.5-.07 1.53-.63 1.75-1.23.22-.61.22-1.13.15-1.24-.06-.11-.24-.17-.5-.3l-1.72-.82c-.22-.08-.37-.13-.52.13-.16.26-.6.83-.74 1-.14.17-.27.2-.53.07-.26-.13-1.1-.4-2.1-1.3-.78-.7-1.3-1.56-1.46-1.82-.15-.26-.02-.4.12-.53l.39-.46c.13-.15.17-.26.26-.43.09-.17.04-.33-.02-.46L9.6 7.09c-.2-.46-.4-.39-.55-.4Z"/>';
+    const copy = make('span','','whatsapp-action-copy'); copy.append(make('strong',title),make('span','Registra tus entrenamientos desde WhatsApp cuando estés en el box.'));
+    const chevron = document.createElementNS(svg.namespaceURI,'svg'); chevron.setAttribute('viewBox','0 0 24 24'); chevron.setAttribute('aria-hidden','true'); chevron.classList.add('whatsapp-chevron'); chevron.innerHTML='<path d="m9 6 6 6-6 6"/>';
+    summary.append(svg,copy,chevron);
+  }
+  summaryLabel('Registrar por WhatsApp');
   const content = make('div', '', 'training-whatsapp-content');
   const status = make('p', 'Vincula tu WhatsApp para enviar fotos, audio o texto. Solo necesitas hacerlo una vez.');
   status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
@@ -96,14 +106,14 @@ window.mountWhatsAppLink = function(root) {
       clearQR(); actions.replaceChildren(); status.classList.remove('is-error');
       if (identity.linked) {
         challenge = null; clearTimeout(expiryTimer); content.querySelector('label')?.remove();
-        summary.textContent = 'WhatsApp vinculado';
+        summaryLabel('WhatsApp vinculado');
         status.textContent = 'WhatsApp vinculado. Envía una foto de tu WOD y cuéntanos tu resultado.';
         button('Desvincular WhatsApp', async () => {
           if (!window.confirm('¿Desvincular WhatsApp? Los nuevos mensajes dejarán de asociarse a tu cuenta. Tus entrenamientos se conservan.')) return;
           await request('DELETE'); await check();
         }, true);
       } else {
-        summary.textContent = 'Registrar por WhatsApp';
+        summaryLabel('Registrar por WhatsApp');
         if (challenge) pending();
         else {
           status.textContent = 'Vincula tu WhatsApp para registrar entrenamientos con fotos, audio o texto. Solo necesitas hacerlo una vez.';

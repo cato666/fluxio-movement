@@ -1,4 +1,4 @@
-"""Calendar summaries and revocable snapshots shared across web and WhatsApp."""
+"""Calendar summaries and revocable live weeks shared across web and WhatsApp."""
 import hashlib
 import os
 import re
@@ -97,7 +97,8 @@ def share_record(session, token):
 
 
 def read_share(session, token):
-    return share_record(session, token).snapshot
+    row = share_record(session, token)
+    return WeeklySummaryService(session, row.athlete_id).summary(row.week_start)
 
 
 def summary_text(summary):

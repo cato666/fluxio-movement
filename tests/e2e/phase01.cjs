@@ -22,9 +22,9 @@ if (!base || !/^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(base)) {
     await page.locator('#login-form [name=username]').fill(username);
     await page.locator('#login-form [name=password]').fill('demo1234');
     await page.locator('#login-form button').click();
-    await page.waitForURL(url => url.pathname === (username === 'gaston' ? '/analyses' : '/coach/reviews'));
+    await page.waitForURL(url => url.pathname === (username === 'gaston' ? '/training' : '/coach/reviews'));
   }
-  async function save(label = 'Guardar sesión') {
+  async function save(label = 'Guardar entrenamiento') {
     await page.getByRole('button',{name:label,exact:true}).click();
     await page.waitForURL(url => url.pathname === '/training');
     await page.locator('.training-entry').first().waitFor();
@@ -38,6 +38,28 @@ if (!base || !/^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(base)) {
     await page.getByRole('heading',{name:'Revisa tu entrenamiento'}).waitFor();
     assert.equal((await (await context.request.get(base + '/api/training-sessions')).json()).items.length, 0);
     await page.locator('[name=result_text]').fill('5 rondas');
+    if (process.env.VISUAL_CAPTURE_DIR) {
+      fs.mkdirSync(process.env.VISUAL_CAPTURE_DIR,{recursive:true});
+      const detectedBlock = page.locator('.training-blocks details').first();
+      await detectedBlock.locator('summary').click();
+      await detectedBlock.getByRole('button',{name:'Agregar ejercicio',exact:true}).click();
+      await detectedBlock.getByLabel('Ejercicio',{exact:true}).nth(1).fill('Pull-ups');
+      await detectedBlock.getByLabel('Series, repeticiones y carga programada',{exact:true}).nth(1).fill('15 repeticiones');
+      await detectedBlock.getByRole('button',{name:'Agregar ejercicio',exact:true}).click();
+      await detectedBlock.getByLabel('Ejercicio',{exact:true}).nth(2).fill('Air Squats');
+      await detectedBlock.getByLabel('Series, repeticiones y carga programada',{exact:true}).nth(2).fill('20 repeticiones');
+      await detectedBlock.locator('summary').click();
+      for (const width of [1440,768,430,390,320]) {
+        await page.setViewportSize({width,height:844});
+        await page.getByRole('heading',{name:'Revisa tu entrenamiento'}).click();
+        await page.evaluate(()=>window.scrollTo(0,0));
+        await page.waitForTimeout(180);
+        assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+        assert.equal(await detectedBlock.locator('.training-block-preview').evaluate(el=>el.scrollHeight<=el.clientHeight+1),true,'La prescripción completa debe verse sin abrir el editor');
+        await page.screenshot({path:`${process.env.VISUAL_CAPTURE_DIR}/register-${width}.png`,fullPage:true});
+      }
+      await page.setViewportSize({width:390,height:844});
+    }
     await save();
     let sessions = (await (await context.request.get(base + '/api/training-sessions')).json()).items;
     assert.equal(sessions.length,1);

@@ -48,7 +48,7 @@ def test_empty_week_and_santiago_boundary(athlete_client, monkeypatch):
     assert athlete_client.get('/api/training-week?day=bad').status_code == 422
 
 
-def test_snapshot_public_escape_no_private_metadata_and_revocation(athlete_client, session):
+def test_live_public_escape_no_private_metadata_and_revocation(athlete_client, session):
     item = create(athlete_client, title='<script>alert(1)</script>', source_text='SECRET_SOURCE')
     response = athlete_client.post('/api/training-week/shares', json={'day': '2026-10-02'})
     assert response.status_code == 201
@@ -56,12 +56,12 @@ def test_snapshot_public_escape_no_private_metadata_and_revocation(athlete_clien
     row = session.get(WeeklyShare, share['id'])
     assert row.token_hash != token and len(row.token_hash) == 64
     athlete_client.put('/api/training-sessions/' + item['id'], json={
-        'trained_on':'2026-10-02', 'title':'Changed', 'workout':'Changed'})
+        'trained_on':'2026-10-02', 'title':'Changed <script>alert(1)</script>', 'workout':'Changed'})
     athlete_client.post('/api/auth/logout')
     public = athlete_client.get(share['path'])
     assert public.status_code == 200
     assert '&lt;script&gt;' in public.text and '<script>' not in public.text
-    assert 'SECRET_SOURCE' not in public.text and 'Changed' not in public.text
+    assert 'SECRET_SOURCE' not in public.text and 'Changed' in public.text
     for key, value in [('cache-control','no-store'), ('referrer-policy','no-referrer'), ('x-robots-tag','noindex, nofollow')]:
         assert public.headers[key] == value
     assert athlete_client.get('/api/training-week').status_code == 401
@@ -84,7 +84,7 @@ def test_expiry_and_share_ownership(athlete_client, session):
     assert athlete_client.delete('/api/training-week/shares/' + share['id']).status_code == 404
 
 
-def test_shared_photos_scoped_to_snapshot_and_revocable(athlete_client, monkeypatch, tmp_path):
+def test_shared_photos_scoped_to_week_and_revocable(athlete_client, monkeypatch, tmp_path):
     monkeypatch.setenv('STORAGE_PATH', str(tmp_path))
     raw = BytesIO(); Image.new('RGB', (100, 100)).save(raw, format='PNG')
     image = athlete_client.post('/api/training-sessions/images', files={'file':('board.png',raw.getvalue(),'image/png')}).json()
@@ -104,6 +104,76 @@ def test_shared_photos_scoped_to_snapshot_and_revocable(athlete_client, monkeypa
 def test_coach_cannot_operate_week(coach_client):
     assert coach_client.get('/api/training-week').status_code == 403
     assert coach_client.post('/api/training-week/shares', json={}).status_code == 403
+
+
+def test_editorial_recap_uses_only_factual_authorized_content():
+    from app.weekly import recap
+    data = {'week_start':'2026-09-28','week_end':'2026-10-04', 'session_count':2,
+        'active_days':2,'average_rpe':8,'rpe_count':2,'items':[
+            {'trained_on':'2026-10-01','title':'First','workout':'10 thrusters y 12 burpees',
+             'result_text':'5 rondas','adaptations':'Carga adaptada','rpe':9,'source_image_id':None},
+            {'trained_on':'2026-10-02','title':'Latest <script>','workout':'15 thrusters',
+             'result_text':'6 rondas','adaptations':'','rpe':7,'source_image_id':None}]}
+    html = recap(data,'a'*43)
+    assert 'Tu semana en movimiento' in html and 'Mayor esfuerzo registrado' in html
+    assert 'Latest &lt;script&gt;' in html and '<script>' not in html
+    assert 'Thruster' in html and 'En 2 entrenamientos' in html
+    assert 'Técnica sólida' not in html and 'Mejor sesión' not in html
+    assert 'weekly-photo' not in html
+
+
+def test_empty_editorial_recap_has_no_invented_highlights_or_movements():
+    from app.weekly import recap
+    html = recap({'week_start':'2026-09-28','week_end':'2026-10-04','session_count':0,
+        'active_days':0,'average_rpe':None,'rpe_count':0,'items':[]},'a'*43)
+    assert 'No hay entrenamientos' in html
+    assert 'recap-highlights' not in html and 'recap-repeated' not in html
+
+
+def test_existing_link_tracks_add_edit_move_delete_and_photo_access(athlete_client, session, monkeypatch, tmp_path):
+    monkeypatch.setenv('STORAGE_PATH', str(tmp_path))
+    # An existing link, including one created with an empty snapshot, follows its
+    # original week only. Reading it never extends its expiry or stored identity.
+    share = athlete_client.post('/api/training-week/shares', json={'day':'2026-10-02'}).json()
+    row = session.get(WeeklyShare, share['id'])
+    expiry, digest = row.expires_at, row.token_hash
+    raw = BytesIO(); Image.new('RGB', (100, 100)).save(raw, format='PNG')
+    image = athlete_client.post('/api/training-sessions/images', files={'file':('board.png',raw.getvalue(),'image/png')}).json()
+    item = create(athlete_client, title='New session', source_image_id=image['id'])
+    create(athlete_client, trained_on='2026-10-05', title='Other week')
+    photo = share['path'] + '/images/' + image['id']
+
+    def public_page():
+        athlete_client.post('/api/auth/logout')
+        response = athlete_client.get(share['path'])
+        assert response.status_code == 200
+        return response.text
+
+    text = public_page()
+    assert 'New session' in text and 'Other week' not in text
+    assert athlete_client.get(photo).status_code == 200
+    athlete_client.post('/api/auth/login', json={'username':'gaston','password':'demo1234'})
+    payload = {'trained_on':'2026-10-02','title':'Edited session','workout':'Updated WOD',
+        'result_text':'Updated result','adaptations':'Updated note','rpe':9,'source_image_id':image['id']}
+    assert athlete_client.put('/api/training-sessions/'+item['id'], json=payload).status_code == 200
+    text = public_page()
+    assert all(value in text for value in ['Edited session','Updated WOD','Updated result','Updated note'])
+    assert 'New session' not in text
+    athlete_client.post('/api/auth/login', json={'username':'gaston','password':'demo1234'})
+    payload['trained_on'] = '2026-10-05'
+    assert athlete_client.put('/api/training-sessions/'+item['id'], json=payload).status_code == 200
+    assert 'Edited session' not in public_page()
+    assert athlete_client.get(photo).status_code == 404
+    athlete_client.post('/api/auth/login', json={'username':'gaston','password':'demo1234'})
+    payload['trained_on'] = '2026-10-02'
+    athlete_client.put('/api/training-sessions/'+item['id'], json=payload)
+    assert athlete_client.get(photo).status_code == 200
+    assert athlete_client.delete('/api/training-sessions/'+item['id']).status_code in (200,204)
+    assert 'Edited session' not in public_page()
+    assert athlete_client.get(photo).status_code == 404
+    session.expire_all()
+    row = session.get(WeeklyShare, share['id'])
+    assert row.expires_at == expiry and row.token_hash == digest
 
 
 def test_revoke_week_includes_every_link_but_preserves_other_weeks(athlete_client):

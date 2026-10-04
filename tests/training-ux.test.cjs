@@ -13,7 +13,7 @@ async function harness(run, options = {}) {
     const errors=[];page.on('pageerror',error=>errors.push(error.message));
     await page.route('http://localhost:18767/**', route => route.fulfill({contentType:'text/html',body:'<main><section id="training-view"></section></main>'}));
     await page.goto('http://localhost:18767');
-    await page.addStyleTag({content:read('styles.css')+read('training.css')});
+    await page.addStyleTag({content:read('styles.css')+read('training.css')+read('visual-v2.css')+read('weekly-expanded.css')});
     await page.addScriptTag({content:'function takeFlash(){return sessionStorage.getItem("flash")} function setFlash(v){sessionStorage.setItem("flash",v)}'});
     await page.addScriptTag({content:read('training-voice.js')});
     await page.addScriptTag({content:read('training.js')});
@@ -73,7 +73,7 @@ test('AI draft reveals review, keeps text collapsed and opens incomplete require
   await page.locator('.training-blocks summary').click();
   await page.getByLabel('Nombre del bloque').fill('');
   await page.locator('.training-blocks summary').click();
-  await page.getByRole('button',{name:'Guardar sesión',exact:true}).click();
+  await page.getByRole('button',{name:'Guardar entrenamiento',exact:true}).click();
   assert.equal(await page.getByLabel('Nombre del bloque').isVisible(),true);
   assert.equal(await page.evaluate(()=>document.activeElement.validity.valid),false);
 }));
@@ -86,11 +86,11 @@ test('failed save preserves source and payload; retry succeeds with feedback',()
   await page.getByLabel('Descripción del entrenamiento').fill('5x5 sentadillas');
   await page.getByRole('button',{name:'Completar manualmente'}).click();
   await page.locator('[name=title]').fill('Fuerza');
-  await page.getByRole('button',{name:'Guardar sesión',exact:true}).click();
+  await page.getByRole('button',{name:'Guardar entrenamiento',exact:true}).click();
   await page.getByText('Tu borrador se conserva',{exact:false}).waitFor();
   assert.equal(await page.locator('[name=title]').inputValue(),'Fuerza');
   assert.equal(bodies[0].source_text,'5x5 sentadillas');assert.equal(bodies[0].rpe,null);
-  fail=false;await page.getByRole('button',{name:'Guardar sesión',exact:true}).click();
+  fail=false;await page.getByRole('button',{name:'Guardar entrenamiento',exact:true}).click();
   await page.waitForURL('**/training');
   assert.deepEqual(bodies[0],bodies[1]);
   assert.match(await page.evaluate(()=>sessionStorage.getItem('flash')),/Entrenamiento guardado/);
@@ -109,14 +109,14 @@ test('320–430px and desktop: no overflow; accessible controls; keyboard and re
     await page.setViewportSize({width,height:900});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
     assert.ok(await page.locator('[name=title]').evaluate(el=>parseFloat(getComputedStyle(el).fontSize)>=16));
-    assert.ok(await page.getByRole('button',{name:'Guardar sesión',exact:true}).evaluate(el=>el.getBoundingClientRect().height>=44));
+    assert.ok(await page.getByRole('button',{name:'Guardar entrenamiento',exact:true}).evaluate(el=>el.getBoundingClientRect().height>=44));
   }
   await page.setViewportSize({width:390,height:844});
   assert.equal(await page.locator('.training-save-actions').evaluate(el=>getComputedStyle(el).position),'sticky');
   await page.evaluate(()=>document.body.classList.add('mobile-keyboard-open'));
   assert.equal(await page.locator('.training-save-actions').evaluate(el=>getComputedStyle(el).position),'static');
   await page.emulateMedia({reducedMotion:'reduce'});
-  assert.equal(await page.getByRole('button',{name:'Guardar sesión',exact:true}).evaluate(el=>getComputedStyle(el).transitionDuration),'0s');
+  assert.equal(await page.getByRole('button',{name:'Guardar entrenamiento',exact:true}).evaluate(el=>getComputedStyle(el).transitionDuration),'0s');
 }));
 test('list has actionable empty and recoverable error states',()=>harness(async page=>{
   await page.route('**/api/training-sessions',route=>route.fulfill({json:{items:[]}}));
@@ -180,7 +180,7 @@ test('photo capture uses the existing upload and preserves its reference in the 
   await page.getByRole('button',{name:'Interpretar WOD',exact:true}).click();
   await page.getByRole('heading',{name:'Revisa tu entrenamiento'}).waitFor();
   await page.route('**/api/training-sessions',route=>{payload=route.request().postDataJSON();return route.fulfill({json:{id:'saved'}})});
-  await page.getByRole('button',{name:'Guardar sesión',exact:true}).click();await page.waitForURL('**/training');
+  await page.getByRole('button',{name:'Guardar entrenamiento',exact:true}).click();await page.waitForURL('**/training');
   assert.equal(payload.source_image_id,'photo-id');assert.deepEqual(payload.blocks,draft.blocks);
 }));
 test('existing session opens as a note, preserves edits between views and uses the unchanged PUT route',()=>harness(async page=>{
@@ -255,10 +255,20 @@ test('chronology, weekly counts and read-only blocks use stored data; reading an
   await page.route('**/api/training-sessions',r=>r.fulfill({json:{items:[session,{...session,id:'second'}, {...session,id:'old',trained_on:'2000-01-01',title:'Fuerza'}]}}));
   await page.evaluate(()=>window.setupTraining());
   assert.equal(await page.locator('.training-day').count(),2);
-  assert.equal(await page.locator('.training-entry-actions').first().getByRole('link',{name:'Editar entrenamiento'}).getAttribute('href'),'/training/chronology?edit=1');
   assert.equal(await page.locator('.training-day').first().locator('article').count(),2);
-  assert.match(await page.locator('.training-week-count').textContent(),/2 entrenamientos registrados · 1 día activo/);
+  assert.deepEqual(await page.locator('.weekly-compact-metrics dd').allTextContents(),['2','1','8/10']);
   assert.equal(await page.locator('.training-entry-content > a').first().textContent(),'Metcon');
+  const options = page.getByLabel('Opciones del entrenamiento',{exact:true}).first();
+  assert.equal(await page.locator('.training-entry-actions').first().isVisible(),false);
+  await options.press('Enter');
+  assert.equal(await page.locator('.training-entry-actions').first().isVisible(),true);
+  assert.equal(await page.locator('.training-entry-actions').first().getByRole('link',{name:'Editar entrenamiento'}).getAttribute('href'),'/training/chronology?edit=1');
+  await options.press('Escape');
+  assert.equal(await page.locator('.training-entry-actions').first().isVisible(),false);
+  assert.equal(await options.evaluate(node=>node===document.activeElement),true);
+  await options.click();
+  await page.getByRole('heading',{name:'Mi bitácora',exact:true}).click();
+  assert.equal(await page.locator('.training-entry-actions').first().isVisible(),false);
   for(const width of [320,390,430,768,1440]) {
     await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   }
@@ -285,6 +295,7 @@ test('delete confirms, preserves a failed session and prevents duplicate request
   await page.route('**/api/training-sessions/delete-session',r=>{calls++;return r.fulfill({status:fail?503:200,json:fail?{detail:'No disponible'}:{deleted:true}})});
   page.on('dialog',dialog=>accept?dialog.accept():dialog.dismiss());
   await page.evaluate(()=>window.setupTraining());
+  await page.getByLabel('Opciones del entrenamiento',{exact:true}).click();
   await page.getByRole('button',{name:'Eliminar entrenamiento',exact:true}).click();assert.equal(calls,0);
   accept=true;await page.getByRole('button',{name:'Eliminar entrenamiento',exact:true}).click();
   await page.getByText('El entrenamiento sigue en esta pantalla',{exact:false}).waitFor();assert.equal(calls,1);assert.equal(await page.locator('.training-entry').count(),1);
@@ -298,8 +309,52 @@ test('saving confirmed session removes the separate audio leave warning; failed 
  await page.getByRole('button',{name:'Terminar grabación'}).click();await page.getByText('Grabación lista.',{exact:false}).waitFor();
  await page.getByRole('button',{name:'Completar manualmente'}).click();
  let fail=true;await page.route('**/api/training-sessions',r=>r.fulfill({status:fail?503:200,json:fail?{detail:'No disponible'}:{id:'saved'}}));
- await page.getByRole('button',{name:'Guardar sesión',exact:true}).click();await page.getByText('Tu borrador se conserva',{exact:false}).waitFor();
+ await page.getByRole('button',{name:'Guardar entrenamiento',exact:true}).click();await page.getByText('Tu borrador se conserva',{exact:false}).waitFor();
  assert.equal(await page.evaluate(()=>{const e=new Event('beforeunload',{cancelable:true});window.dispatchEvent(e);return e.defaultPrevented}),true);
  const dialogs=[];page.on('dialog',async dialog=>{dialogs.push(dialog.type());await dialog.dismiss()});
- fail=false;await page.getByRole('button',{name:'Guardar sesión',exact:true}).click();await page.waitForURL('**/training');assert.deepEqual(dialogs,[]);
+ fail=false;await page.getByRole('button',{name:'Guardar entrenamiento',exact:true}).click();await page.waitForURL('**/training');assert.deepEqual(dialogs,[]);
+}));
+
+test('weekly expanded summary keeps navigation compact and share metadata persists across remount',()=>harness(async page=>{
+ const item={...draft,id:'weekly-item',trained_on:'2026-10-02',source_image_id:null,video_links:[]};
+ let shares=[{id:'persisted-one',expires_at:'2099-10-11T12:00:00Z'},{id:'persisted-two',expires_at:'2099-10-10T12:00:00Z'}];
+ await page.route(/\/api\/training-week(?:\?|$)/,r=>r.fulfill({json:{week_start:'2026-09-28',week_end:'2026-10-04',session_count:1,active_days:1,average_rpe:8,rpe_count:1,items:[item]}}));
+ await page.route('**/api/training-sessions',r=>r.fulfill({json:{items:[item]}}));
+ await page.route('**/api/training-week/shares?*',r=>r.fulfill({json:{items:shares}}));
+ await page.route('**/api/training-week/shares/persisted-one',r=>{shares=shares.filter(row=>row.id!=='persisted-one');return r.fulfill({json:{ok:true}})});
+ await page.evaluate(()=>window.setupTraining());
+ const summary=page.locator('.weekly-disclosure > summary');await summary.press('Enter');
+ assert.equal(await page.locator('.weekly-session-row').getAttribute('href'),'/training/weekly-item');
+ assert.equal(await page.getByRole('button',{name:'Crear enlace para compartir',exact:true}).isVisible(),false);
+ const trigger=page.locator('.weekly-share-trigger');await trigger.press('Enter');
+ const sheet=page.getByRole('dialog',{name:'Compartir esta semana'});assert.equal(await sheet.isVisible(),true);
+ assert.equal(await sheet.locator('.weekly-link-row').count(),2);
+ assert.equal(await sheet.getByRole('button',{name:'Copiar enlace',exact:true}).count(),0);
+ await page.keyboard.press('Escape');assert.equal(await sheet.isVisible(),false);assert.equal(await trigger.evaluate(el=>el===document.activeElement),true);
+ await page.evaluate(()=>window.setupTraining());await page.locator('.weekly-disclosure > summary').press('Enter');
+ await page.locator('.weekly-share-trigger').press('Enter');assert.equal(await sheet.locator('.weekly-link-row').count(),2);
+ await sheet.getByRole('button',{name:'Revocar enlace',exact:true}).first().click();await sheet.getByText('Enlace revocado. Ya no permite acceder.',{exact:true}).waitFor();assert.equal(await sheet.locator('.weekly-link-row').count(),1);
+ await sheet.getByRole('button',{name:'Cerrar compartir semana'}).click();
+ for(const width of [1440,768,430,390,320]){
+  await page.setViewportSize({width,height:844});
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  const tops=await page.locator('.weekly-navigation > .weekly-icon-button').evaluateAll(nodes=>nodes.map(el=>el.getBoundingClientRect().top));assert.ok(Math.max(...tops)-Math.min(...tops)<3);
+  for(const size of await page.locator('.weekly-navigation').locator('button,summary').evaluateAll(nodes=>nodes.map(el=>el.getBoundingClientRect().height)))assert.ok(size>=44);
+  await page.locator('.weekly-share-trigger').click();assert.equal(await sheet.evaluate(el=>el.scrollWidth<=el.clientWidth),true);await page.keyboard.press('Escape');
+ }
+}));
+
+test('weekly sheet preserves failed revocation and copying falls back to the correct new URL',()=>harness(async page=>{
+ let active=[{id:'old-share',expires_at:'2099-10-11T12:00:00Z'}],fail=true;
+ await page.route(/\/api\/training-week(?:\?|$)/,r=>r.fulfill({json:{week_start:'2026-09-28',week_end:'2026-10-04',session_count:0,active_days:0,average_rpe:null,rpe_count:0,items:[]}}));
+ await page.route('**/api/training-sessions',r=>r.fulfill({json:{items:[]}}));
+ await page.route('**/api/training-week/shares?*',r=>r.fulfill({json:{items:active}}));
+ await page.route('**/api/training-week/shares/old-share',r=>fail?r.fulfill({status:503,json:{detail:'Temporalmente no disponible'}}):r.fulfill({json:{ok:true}}));
+ await page.route('**/api/training-week/shares',r=>r.fulfill({status:201,json:{id:'new-share',path:'/shared/week/'+'a'.repeat(43),expires_at:'2099-10-11T12:00:00Z'}}));
+ await page.evaluate(()=>window.setupTraining());await page.locator('.weekly-disclosure > summary').press('Enter');await page.locator('.weekly-share-trigger').press('Enter');
+ const sheet=page.getByRole('dialog');await sheet.getByRole('button',{name:'Revocar enlace',exact:true}).click();await sheet.getByText('Puedes reintentar la revocación.',{exact:false}).waitFor();assert.equal(await sheet.locator('.weekly-link-row').count(),1);
+ await sheet.getByRole('button',{name:'Crear enlace para compartir',exact:true}).click();await sheet.getByRole('button',{name:'Copiar enlace',exact:true}).waitFor();
+ await page.evaluate(()=>Object.defineProperty(navigator,'clipboard',{value:{writeText:async()=>{throw Error('Denied')}}}));
+ await sheet.getByRole('button',{name:'Copiar enlace',exact:true}).click();assert.equal(await sheet.getByLabel('Enlace para compartir',{exact:true}).inputValue(),'http://localhost:18767/shared/week/'+'a'.repeat(43));
+ await page.keyboard.press('Escape');
 }));

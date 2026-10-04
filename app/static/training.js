@@ -8,6 +8,11 @@ window.setupTraining = async function (identifier) {
     return node;
   };
   const link = (text, href) => { const node = make('a', text); node.href = href; return node; };
+  const icon = path => {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('viewBox','0 0 24 24'); svg.setAttribute('aria-hidden','true'); svg.classList.add('fluxio-icon');
+    const line = document.createElementNS(svg.namespaceURI,'path'); line.setAttribute('d',path); svg.append(line); return svg;
+  };
   const formats = {strength:'Fuerza',for_time:'Por tiempo',amrap:'AMRAP',emom:'EMOM',other:'Otro'};
   const calendarDate = value => new Date(value + 'T12:00:00');
   const dateLabel = value => new Intl.DateTimeFormat('es-CL', {dateStyle:'long'}).format(calendarDate(value));
@@ -45,9 +50,15 @@ window.setupTraining = async function (identifier) {
     return data;
   };
   root.replaceChildren();
+  root.classList.toggle('training-overview', !identifier);
   const header = make('header', '', 'training-header');
   header.append(make('h1', identifier === 'new' ? 'Registrar entrenamiento' : identifier ? 'Tu entrenamiento' : 'Mi bitácora'));
   header.append(link(identifier ? 'Volver a la bitácora' : 'Registrar entrenamiento', identifier ? '/training' : '/training/new'));
+  if (!identifier) header.lastElementChild.className = 'button-link training-register';
+  const headingGroup = make('div','','training-heading-group');
+  headingGroup.append(header.firstElementChild, make('p', !identifier ? 'Tus entrenamientos, en un solo lugar.' : 'Guarda tu entrenamiento y sigue construyendo tu progreso.', 'training-subtitle'));
+  header.prepend(headingGroup);
+  if (!identifier) header.lastElementChild.prepend(icon('M12 5v14M5 12h14'));
   root.append(header);
   const status = make('p', 'Cargando…', 'training-status'); status.setAttribute('role', 'status'); root.append(status);
   status.setAttribute('aria-atomic', 'true');
@@ -85,82 +96,140 @@ window.setupTraining = async function (identifier) {
     };
     return button;
   }
-  async function mountWeek(section) {
+  async function mountWeek(section, knownSessions) {
+    section.classList.add('weekly-dense');
     const heading = make('h2', 'Resumen semanal');
-    const controls = make('div', '', 'weekly-actions');
-    const previous = make('button', 'Semana anterior', 'secondary-button');
-    const next = make('button', 'Semana siguiente', 'secondary-button');
-    const current = make('button', 'Esta semana', 'secondary-button');
-    const label = make('label', 'Ver semana del');
-    const picker = make('input'); picker.type = 'date'; label.append(picker);
-    const details = make('div');
-    const share = make('button', 'Crear enlace para compartir', 'secondary-button');
-    const revoke = make('button', 'Revocar enlaces de esta semana', 'secondary-button');
-    const output = make('div', '', 'weekly-output');
-    const message = make('p', '', 'training-status'); message.setAttribute('role', 'status');
-    const hint = make('p', 'El enlace incluye entrenamientos, resultados, notas/adaptaciones, esfuerzo y fotos. Quien lo tenga puede verlos. Es una copia que vence en 7 días como máximo.', 'training-hint');
-    controls.append(previous, next, current, label);
-    section.append(heading, controls, details, hint, share, revoke, output, message);
-    const buttons = [previous, next, current, share, revoke];
-    for (const button of buttons) button.type = 'button';
-    let selected, activeShares = [], busy = false;
-    const lock = value => { busy = value; buttons.forEach(button => button.disabled = value); picker.disabled = value; };
-    const render = data => {
-      selected = data.week_start; picker.value = selected;
-      details.replaceChildren(make('p', `${dateLabel(data.week_start)} — ${dateLabel(data.week_end)}`, 'training-hint'),
-        make('p', `${data.session_count} ${data.session_count === 1 ? 'entrenamiento registrado' : 'entrenamientos registrados'} · ${data.active_days} ${data.active_days === 1 ? 'día activo' : 'días activos'}`, 'training-week-count'));
-      if (data.average_rpe !== null) details.append(make('p', `Esfuerzo promedio ${data.average_rpe}/10 · ${data.rpe_count} registros con esfuerzo`));
-      if (!data.items.length) details.append(make('p', 'No hay entrenamientos registrados en esta semana.', 'training-hint'));
-      for (const item of data.items) details.append(make('p', `${dateLabel(item.trained_on)} · ${item.title}${item.result_text ? ' · ' + item.result_text : ''}`));
+    const details = make('div', '', 'weekly-snapshot');
+    const activity = make('div', '', 'weekly-activity'); activity.setAttribute('role','img');
+    const disclosure = make('details', '', 'weekly-disclosure');
+    const disclosureLabel = make('summary', 'Ver resumen'); disclosureLabel.append(icon('m9 6 6 6-6 6'));
+    const controls = make('div', '', 'weekly-navigation');
+    const compactButton = (label, path, className = 'weekly-icon-button') => {
+      const button = make('button', '', className); button.type='button'; button.setAttribute('aria-label',label); button.title=label; button.append(icon(path)); return button;
     };
-    async function load(day) {
-      if (busy) return;
-      lock(true); selected = undefined; activeShares = []; output.replaceChildren(); message.textContent = 'Cargando semana…';
-      try {
-        const suffix = day ? '?day=' + encodeURIComponent(day) : '';
-        const data = await api('/api/training-week' + suffix);
-        render(data);
-        activeShares = (await api('/api/training-week/shares?day=' + selected)).items;
-        message.textContent = activeShares.length ? `${activeShares.length} enlaces activos para esta semana.` : '';
-      } catch (error) { message.textContent = error.message; }
-      finally { lock(false); share.disabled = !selected; revoke.disabled = !activeShares.length; }
-    }
-    function move(days) {
-      if (!selected) return;
-      const date = calendarDate(selected); date.setDate(date.getDate() + days); load(localISO(date));
-    }
-    previous.onclick = () => move(-7); next.onclick = () => move(7); current.onclick = () => load();
-    picker.onchange = () => { if (picker.value) load(picker.value); };
-    share.onclick = async () => {
-      if (busy) return;
-      lock(true); message.textContent = 'Creando enlace…';
-      try {
-        const created = await api('/api/training-week/shares', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({day:selected})});
-        activeShares.push(created);
-        const fieldLabel = make('label', 'Enlace para compartir');
-        const field = make('input'); field.readOnly = true; field.value = new URL(created.path, window.location.origin).href; fieldLabel.append(field);
-        const copy = make('button', 'Copiar enlace', 'secondary-button'); copy.type = 'button';
-        copy.onclick = async () => {
-          try { await navigator.clipboard.writeText(field.value); message.textContent = 'Enlace copiado.'; }
-          catch { field.focus(); field.select(); message.textContent = 'Selecciona y copia el enlace del campo.'; }
-        };
-        const open = link('Ver semana compartida', created.path); open.target = '_blank'; open.rel = 'noopener noreferrer';
-        output.replaceChildren(fieldLabel, copy, open);
-        message.textContent = 'Enlace creado. Vence el ' + new Intl.DateTimeFormat('es-CL', {dateStyle:'long',timeStyle:'short',timeZone:'America/Santiago'}).format(new Date(created.expires_at)) + ' (Santiago).';
-      } catch (error) { message.textContent = error.message; }
-      finally { lock(false); revoke.disabled = !activeShares.length; }
+    const previous = compactButton('Semana anterior','m14 6-6 6 6 6');
+    const next = compactButton('Semana siguiente','m10 6 6 6-6 6');
+    const range = make('span','','weekly-navigation-range');
+    const current = make('button','Esta semana','weekly-ghost-button'); current.type='button';
+    const calendar = make('details','','weekly-date-control');
+    const calendarTrigger = make('summary'); calendarTrigger.setAttribute('aria-label','Elegir fecha de la semana'); calendarTrigger.title='Elegir fecha de la semana'; calendarTrigger.append(icon('M7 3v4M17 3v4M4 10h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1'));
+    const dateLabelNode = make('label','Ver semana del'); const picker=make('input'); picker.type='date'; dateLabelNode.append(picker); calendar.append(calendarTrigger,dateLabelNode);
+    controls.append(previous,range,next,current,calendar);
+    const entries = make('div','','weekly-session-preview');
+    const shareTrigger = make('button','','weekly-share-trigger'); shareTrigger.type='button';
+    const shareCopy = make('span'); const shareCount=make('span','','weekly-share-count');
+    shareCopy.append(make('strong','Compartir semana'),shareCount); shareTrigger.append(icon('M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2'),shareCopy,icon('m9 6 6 6-6 6'));
+    const message = make('p','','weekly-message'); message.setAttribute('role','status');
+    const expanded=make('div','','weekly-expanded-content');expanded.append(controls,entries,shareTrigger,message);disclosure.append(disclosureLabel,expanded);
+    section.append(heading,details,activity,disclosure);
+
+    const sheet=make('dialog','','weekly-share-sheet'); sheet.setAttribute('aria-labelledby','weekly-share-title');
+    const sheetHeader=make('header','','weekly-sheet-header'); const sheetTitle=make('h2','Compartir esta semana'); sheetTitle.id='weekly-share-title';
+    const close=compactButton('Cerrar compartir semana','M6 6l12 12M6 18 18 6'); sheetHeader.append(sheetTitle,close);
+    const sheetWeek=make('p','','weekly-sheet-week');
+    const hint=make('p','Incluye entrenamientos, resultados, notas, esfuerzo y fotos. Se actualiza con los cambios de esta semana. Vence en 7 días como máximo. Quien tenga el enlace puede verlos.','weekly-sheet-hint');
+    const share=make('button','Crear nuevo enlace','weekly-create-link'); share.type='button'; share.setAttribute('aria-label','Crear enlace para compartir'); share.prepend(icon('M12 5v14M5 12h14'));
+    const listTitle=make('h3','Enlaces activos');
+    const shareList=make('div','','weekly-share-list');
+    const output=make('div','','weekly-output');
+    const sheetStatus=make('p','','weekly-message'); sheetStatus.setAttribute('role','status'); sheetStatus.setAttribute('aria-live','polite');
+    const revoke=make('button','Revocar enlaces de esta semana','weekly-revoke-all'); revoke.type='button'; revoke.prepend(icon('M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6'));
+    sheet.append(sheetHeader,sheetWeek,hint,share,listTitle,shareList,output,sheetStatus,revoke); section.append(sheet);
+    let selected, activeShares=[], busy=false, panelAnimation, summaryAnimation;
+    disclosureLabel.onclick=event=>{
+      if(!event.detail||!window.matchMedia('(prefers-reduced-motion: no-preference)').matches)return;
+      event.preventDefault();summaryAnimation?.cancel();
+      if(disclosure.open){summaryAnimation=expanded.animate([{opacity:1},{opacity:0}],{duration:100,easing:'cubic-bezier(.16,1,.3,1)'});summaryAnimation.finished.then(()=>{disclosure.open=false;},()=>{});}
+      else{disclosure.open=true;summaryAnimation=expanded.animate([{opacity:.6,transform:'translateY(-4px)'},{opacity:1,transform:'translateY(0)'}],{duration:160,easing:'cubic-bezier(.16,1,.3,1)'});}
     };
-    revoke.onclick = async () => {
-      if (busy) return;
-      lock(true); message.textContent = 'Revocando enlaces…';
-      try {
-        await api('/api/training-week/shares?day=' + selected, {method:'DELETE'});
-        activeShares = []; output.replaceChildren(); message.textContent = 'Los enlaces de esta semana ya no permiten acceder.';
-      } catch (error) { message.textContent = error.message + ' Puedes reintentar la revocación.'; }
-      finally { lock(false); revoke.disabled = !activeShares.length; }
+    const localLinks=new Map();
+    const shortDate=value=>new Intl.DateTimeFormat('es-CL',{day:'numeric',month:'short'}).format(calendarDate(value)).replaceAll('.','');
+    const closeSheet=()=>sheet.close(); close.onclick=closeSheet;
+    sheet.addEventListener('click',event=>{if(event.target===sheet){const box=sheet.getBoundingClientRect();if(event.clientX<box.left||event.clientX>box.right||event.clientY<box.top||event.clientY>box.bottom)closeSheet();}});
+    sheet.addEventListener('close',()=>{panelAnimation?.cancel(); shareTrigger.focus();});
+    shareTrigger.onclick=event=>{
+      if(!selected)return;
+      root.querySelectorAll('.training-entry-options').forEach(other=>other.open=false);
+      sheet.showModal();
+      if(event.detail && window.matchMedia('(prefers-reduced-motion: no-preference)').matches) { panelAnimation?.cancel(); panelAnimation=sheet.animate([{opacity:.7,transform:'translateY(12px)'},{opacity:1,transform:'translateY(0)'}],{duration:200,easing:'cubic-bezier(.16,1,.3,1)'}); }
+    };
+    const previousCleanup=root.trainingCleanup;
+    root.trainingCleanup=()=>{panelAnimation?.cancel();summaryAnimation?.cancel();if(sheet.open)sheet.close();previousCleanup?.();};
+    const lock=value=>{busy=value;[previous,next,current,share,revoke].forEach(button=>button.disabled=value);picker.disabled=value;shareList.querySelectorAll('button').forEach(button=>button.disabled=value);};
+    const copyLink=async(url,button)=>{
+      try{await navigator.clipboard.writeText(url);sheetStatus.textContent='Enlace copiado.';}
+      catch{const label=make('label','Enlace para compartir');const field=make('input');field.readOnly=true;field.value=url;label.append(field);output.replaceChildren(label);field.focus();field.select();sheetStatus.textContent='Selecciona y copia el enlace del campo.';}
+    };
+    const renderShares=()=>{
+      shareCount.textContent=`${activeShares.length} ${activeShares.length===1?'enlace activo':'enlaces activos'}`;
+      shareList.replaceChildren();
+      if(!activeShares.length)shareList.append(make('p','No hay enlaces activos para esta semana.','weekly-sheet-hint'));
+      for(const item of activeShares){
+        const row=make('article','','weekly-link-row'); const text=make('div');
+        const expires=new Intl.DateTimeFormat('es-CL',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'America/Santiago'}).format(new Date(item.expires_at));
+        text.append(make('strong','Enlace activo'),make('span',`Vence ${expires} · Santiago`));
+        row.append(icon('M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2'),text);
+        const actions=make('div','','weekly-link-actions'); const url=localLinks.get(item.id);
+        if(url){const copy=compactButton('Copiar enlace','M9 9h12v12H9ZM15 9V3H3v12h6');copy.onclick=()=>copyLink(url,copy);actions.append(copy);}
+        else text.append(make('small','URL original no disponible en este dispositivo.'));
+        const remove=compactButton('Revocar enlace','M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6');remove.onclick=async()=>{
+          if(busy)return;lock(true);sheetStatus.textContent='Revocando enlace…';
+          try{await api('/api/training-week/shares/'+encodeURIComponent(item.id),{method:'DELETE'});activeShares=activeShares.filter(row=>row.id!==item.id);localLinks.delete(item.id);output.replaceChildren();renderShares();sheetStatus.textContent='Enlace revocado. Ya no permite acceder.';}
+          catch(error){sheetStatus.textContent=error.message+' Puedes reintentar la revocación.';}
+          finally{lock(false);revoke.disabled=!activeShares.length;}
+        };actions.append(remove);row.append(actions);shareList.append(row);
+      }
+      revoke.disabled=!activeShares.length;
+    };
+    const render=data=>{
+      selected=data.week_start;picker.value=selected;range.textContent=`${shortDate(data.week_start)} — ${shortDate(data.week_end)}`;sheetWeek.textContent=range.textContent;
+      details.replaceChildren(make('p',range.textContent,'weekly-date-range'));
+      const metrics=make('dl','','weekly-compact-metrics');
+      for(const [value,label,path] of [[data.session_count,'Entrenamientos','M3 8v8M7 6v12M17 6v12M21 8v8M7 12h10'],[data.active_days,data.active_days===1?'Día activo':'Días activos','M7 3v4M17 3v4M4 10h16M4 5h16v15H4Z'],[data.average_rpe===null?'—':`${data.average_rpe}/10`,'Esfuerzo promedio','M5 16v4M12 10v10M19 4v16']]){const metric=make('div');const number=make('dd',String(value));number.prepend(icon(path));metric.append(number,make('dt',label));metrics.append(metric);}
+      details.append(metrics);
+      const counts=Array.from({length:7},(_,index)=>{const day=calendarDate(data.week_start);day.setDate(day.getDate()+index);return data.items.filter(item=>item.trained_on===localISO(day)).length;});
+      activity.replaceChildren();activity.setAttribute('aria-label',counts.map((count,index)=>`${['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'][index]}: ${count} entrenamientos`).join('; '));
+      counts.forEach((count,index)=>{const day=make('span','','weekly-activity-day');const bar=make('i');bar.style.setProperty('--activity-height',`${count?8+16*count/Math.max(...counts,1):4}px`);bar.classList.toggle('is-active',count>0);day.append(bar,make('span',['L','M','X','J','V','S','D'][index]));activity.append(day);});
+      entries.replaceChildren();const used=new Set();
+      if(!data.items.length)entries.append(make('p','No hay entrenamientos registrados en esta semana.','weekly-empty'));
+      for(const item of [...data.items].reverse()){
+        const known=knownSessions.find(row=>!used.has(row.id)&&['trained_on','title','workout','result_text','adaptations','rpe','source_image_id'].every(key=>String(row[key]??'')===String(item[key]??'')));
+        if(known)used.add(known.id);
+        const row=known?link('','/training/'+known.id):make('div');row.className='weekly-session-row';
+        if(item.source_image_id){const image=make('img');image.src='/api/training-sessions/images/'+item.source_image_id;image.alt='Foto del entrenamiento';image.loading='lazy';image.onerror=()=>image.remove();row.append(image);}
+        else row.append(icon('M3 8v8M7 6v12M17 6v12M21 8v8M7 12h10'));
+        const text=make('div','','weekly-session-copy');text.append(make('span',known?displayName(known):item.title),make('strong',item.result_text||'Resultado sin registrar'));
+        if(item.rpe!==null)text.append(make('small',`Esfuerzo ${item.rpe}/10`));row.append(text);
+        if(known)row.append(icon('m9 6 6 6-6 6'));entries.append(row);
+      }
+    };
+    async function load(day){
+      if(busy)return;lock(true);selected=undefined;activeShares=[];renderShares();output.replaceChildren();message.textContent='Cargando semana…';shareTrigger.disabled=true;
+      try{const suffix=day?'?day='+encodeURIComponent(day):'';render(await api('/api/training-week'+suffix));activeShares=(await api('/api/training-week/shares?day='+selected)).items;renderShares();message.textContent='';}
+      catch(error){message.textContent=error.message;}
+      finally{lock(false);share.disabled=!selected;shareTrigger.disabled=!selected;revoke.disabled=!activeShares.length;}
+    }
+    function move(days){if(!selected)return;const date=calendarDate(selected);date.setDate(date.getDate()+days);load(localISO(date));}
+    previous.onclick=()=>move(-7);next.onclick=()=>move(7);current.onclick=()=>load();picker.onchange=()=>{if(picker.value){calendar.open=false;load(picker.value);}};
+    share.onclick=async()=>{
+      if(busy)return;lock(true);sheetStatus.textContent='Creando enlace…';
+      try{
+        const created=await api('/api/training-week/shares',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({day:selected})});activeShares.push(created);
+        const url=new URL(created.path,window.location.origin).href;localLinks.set(created.id,url);renderShares();
+        const label=make('label','Enlace para compartir');const field=make('input');field.readOnly=true;field.value=url;label.append(field);
+        const open=link('Ver semana compartida',created.path);open.target='_blank';open.rel='noopener noreferrer';output.replaceChildren(label,open);sheetStatus.textContent='Enlace creado. Puedes copiarlo en Enlaces activos.';
+      }catch(error){sheetStatus.textContent=error.message;}
+      finally{lock(false);revoke.disabled=!activeShares.length;}
+    };
+    revoke.onclick=async()=>{
+      if(busy)return;lock(true);sheetStatus.textContent='Revocando enlaces…';
+      try{await api('/api/training-week/shares?day='+selected,{method:'DELETE'});activeShares=[];localLinks.clear();output.replaceChildren();renderShares();sheetStatus.textContent='Los enlaces de esta semana ya no permiten acceder.';}
+      catch(error){sheetStatus.textContent=error.message+' Puedes reintentar la revocación.';}
+      finally{lock(false);revoke.disabled=!activeShares.length;}
     };
     await load();
   }
+
   try {
     if (!identifier) {
       if (window.mountWhatsAppLink) root.trainingCleanup = window.mountWhatsAppLink(root);
@@ -173,7 +242,7 @@ window.setupTraining = async function (identifier) {
       }
       const journal = make('div', '', 'training-journal');
       const weekly = make('section', '', 'training-week');
-      await mountWeek(weekly);
+      await mountWeek(weekly, items);
       journal.append(weekly); root.insertBefore(journal, root.querySelector('.training-empty'));
       let group, previousDate;
       for (const item of [...items].sort((a,b) => b.trained_on.localeCompare(a.trained_on))) {
@@ -185,9 +254,17 @@ window.setupTraining = async function (identifier) {
         const row = make('article', '', 'training-entry');
         const content = make('div', '', 'training-entry-content');
         const name = link(displayName(item), '/training/' + item.id);
+        const format = item.blocks?.[0]?.format || (/^Fuerza\b/i.test(item.title) ? 'strength' : undefined);
+        const badge = make('span',format==='strength' ? 'Fuerza' : ['amrap','emom','for_time'].includes(format) ? `Metcon · ${formats[format]}` : /^Metcon\b/i.test(item.title) ? 'Metcon' : 'Entrenamiento','training-category');
+        badge.dataset.category = format || 'other'; content.append(badge);
         content.append(name, make('p', item.result_text || 'Resultado sin registrar', 'training-entry-result'));
         if (item.adaptations) content.append(make('p', item.adaptations, 'training-entry-note'));
         if (item.rpe !== null && item.rpe !== undefined) content.append(make('p', `Esfuerzo ${item.rpe}/10`, 'training-entry-meta'));
+        const metadata = make('div','','training-metadata');
+        const dated = make('span',dateLabel(item.trained_on)); dated.prepend(icon('M7 3v4M17 3v4M4 10h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1')); metadata.append(dated);
+        const effort = content.querySelector('.training-entry-meta');
+        if (effort) { effort.prepend(icon('M5 16v4M12 10v10M19 4v16')); metadata.append(effort); }
+        content.append(metadata);
         if (item.video_links?.length) content.append(link(`${item.video_links.length} ${item.video_links.length === 1 ? 'video vinculado' : 'videos vinculados'}`, '/training/' + item.id));
         if (item.source_image_id) row.append(thumbnail(item.source_image_id, item.id));
         else {
@@ -203,14 +280,38 @@ window.setupTraining = async function (identifier) {
         const date = make('time', new Intl.DateTimeFormat('es-CL', {day:'2-digit',month:'2-digit',year:'numeric'}).format(calendarDate(item.trained_on)), 'training-thumbnail-date');
         date.dateTime = item.trained_on;
         media.append(row.firstElementChild, date);
+        const options = make('details', '', 'training-entry-options');
+        const trigger = make('summary'); trigger.setAttribute('aria-label', 'Opciones del entrenamiento');
+        const optionIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        optionIcon.setAttribute('viewBox', '0 0 24 24'); optionIcon.setAttribute('aria-hidden', 'true');
+        for (const cy of [5,12,19]) {
+          const dot = document.createElementNS(optionIcon.namespaceURI, 'circle');
+          dot.setAttribute('cx','12'); dot.setAttribute('cy',cy); dot.setAttribute('r','1.5'); optionIcon.append(dot);
+        }
+        trigger.append(optionIcon); options.append(trigger);
         const actions = make('div', '', 'training-entry-actions');
         const edit = link('', '/training/' + item.id + '?edit=1'); edit.className = 'training-edit'; edit.setAttribute('aria-label', 'Editar entrenamiento');
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox','0 0 24 24'); svg.setAttribute('aria-hidden','true');
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path'); path.setAttribute('d','M15 5l4 4M4 20l4-1L20 7a2.8 2.8 0 0 0-4-4L4 15v5Z'); svg.append(path);
-        edit.append(svg, make('span', 'Editar')); actions.append(edit, deleteAction(item)); content.append(actions);
-        row.append(media, content);
+        edit.append(svg, make('span', 'Editar')); actions.append(edit, deleteAction(item)); options.append(actions);
+        options.addEventListener('toggle', () => {
+          if (options.open) journal.querySelectorAll('.training-entry-options').forEach(other => { if (other !== options) other.open = false; });
+        });
+        row.append(media, content, options);
         group.append(row);
       }
+      const closeOptions = event => {
+        const open = journal.querySelector('.training-entry-options[open]');
+        if (!open) return;
+        if (event.type === 'keydown' && event.key === 'Escape') {
+          open.open = false; open.querySelector('summary').focus(); event.preventDefault();
+        } else if (event.type === 'pointerdown' && !open.contains(event.target)) open.open = false;
+      };
+      document.addEventListener('keydown', closeOptions); document.addEventListener('pointerdown', closeOptions);
+      const previousCleanup = root.trainingCleanup;
+      root.trainingCleanup = () => {
+        previousCleanup?.(); document.removeEventListener('keydown', closeOptions); document.removeEventListener('pointerdown', closeOptions);
+      };
       return;
     }
     const editing = identifier !== 'new';
@@ -305,7 +406,7 @@ window.setupTraining = async function (identifier) {
     conversation.append(composer, manual, make('p', 'Al interpretar, el texto y la foto se procesan con IA. Siempre revisas antes de guardar.', 'training-hint'));
     const form = make('form', '', 'training-form');
     const reviewHeading = make('h2', editing ? 'Información del entrenamiento' : 'Revisa tu entrenamiento'); reviewHeading.tabIndex = -1;
-    form.append(reviewHeading, make('p', 'Así quedará en tu bitácora. Revisa el WOD y añade cómo te fue.', 'training-intro'), messages);
+    form.append(messages, reviewHeading, make('p', 'Así quedará en tu bitácora. Revisa el WOD y añade cómo te fue.', 'training-intro'));
     const editSource = make('button', 'Volver a mi descripción', 'secondary-button'); editSource.type = 'button';
     function showReview(focus = true) {
       header.querySelector('h1').textContent = editing ? 'Editar entrenamiento' : 'Registrar entrenamiento';
@@ -344,6 +445,9 @@ window.setupTraining = async function (identifier) {
     };
     let defaultTitle = dateName(controls.trained_on.value);
     field('title', 'Nombre del entrenamiento', 'text', editing ? data.title : defaultTitle, true, 160);
+    const mainFields = make('div', '', 'training-main-fields');
+    controls.trained_on.parentElement.before(mainFields);
+    mainFields.append(controls.trained_on.parentElement, controls.title.parentElement);
     controls.trained_on.addEventListener('change', () => {
       if (!editing && controls.title.value === defaultTitle && controls.trained_on.value) {
         defaultTitle = dateName(controls.trained_on.value); controls.title.value = defaultTitle;
@@ -351,13 +455,16 @@ window.setupTraining = async function (identifier) {
     });
     field('workout', 'Entrenamiento programado · ejercicios, series, repeticiones y cargas', 'textarea', data.workout, true, 12000);
     field('result_text', 'Tu resultado · tiempo, rondas o series realizadas', 'textarea', data.result_text);
+    controls.result_text.parentElement.classList.add('training-result-field');
     field('adaptations', 'Cargas utilizadas y adaptaciones · opcional', 'textarea', data.adaptations);
     const rpe = field('rpe', 'Esfuerzo percibido · opcional (1 mínimo, 10 máximo)', 'number', data.rpe);
     rpe.min = 1; rpe.max = 10; rpe.step = 1;
     rpe.inputMode = 'numeric';
     function disclosure(title, nodes, open = false) {
       const section = make('details', '', 'training-disclosure'); section.open = open;
-      section.append(make('summary', title), ...nodes); form.append(section); return section;
+      const summary = make('summary');
+      summary.append(icon(title.startsWith('Videos') ? 'M15 8l6-3v14l-6-3M4 5h11v14H4Z' : title.startsWith('Cargas') ? 'M3 8v8M7 6v12M17 6v12M21 8v8M7 12h10' : 'M8 3h8v4H8ZM5 5H3v16h18V5h-2M7 12h10M7 16h7'),make('span',title),icon('m9 6 6 6-6 6'));
+      section.append(summary, ...nodes); form.append(section); return section;
     }
     const contextDetails = disclosure('Cargas, adaptaciones y esfuerzo · opcional', [controls.adaptations.parentElement, rpe.parentElement], Boolean(data.adaptations || data.rpe));
     const workoutDetails = disclosure('Ver o editar el WOD como texto', [make('p', 'Editar este texto reemplaza los bloques por tu descripción libre.', 'training-hint'), controls.workout.parentElement]);
@@ -497,7 +604,7 @@ window.setupTraining = async function (identifier) {
     };
     disclosure('Videos · opcional', [videos], Boolean(videoLinks.length));
     const actions = make('div', '', 'form-actions training-save-actions');
-    const save = make('button', editing ? 'Guardar cambios' : 'Guardar sesión'); save.type = 'submit'; actions.append(save); form.append(actions);
+    const save = make('button', editing ? 'Guardar cambios' : 'Guardar entrenamiento'); save.type = 'submit'; actions.append(save); form.append(actions);
     form.onsubmit = async (event) => {
       event.preventDefault(); if (busy) return;
       processing(true); save.textContent = 'Guardando…'; notify('Guardando tu entrenamiento…'); form.setAttribute('aria-busy','true');
@@ -507,7 +614,7 @@ window.setupTraining = async function (identifier) {
       try {
         await api('/api/training-sessions' + (editing ? '/' + identifier : ''), {method: editing ? 'PUT' : 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)});
         dirty = false; root.trainingCleanup?.(); setFlash(editing ? 'Cambios guardados en tu bitácora.' : 'Entrenamiento guardado en tu bitácora.'); window.location.assign('/training');
-      } catch (error) { notify(`${error.message} Tu borrador se conserva en esta pantalla.`, true); save.disabled = false; save.textContent = editing ? 'Guardar cambios' : 'Guardar sesión'; }
+      } catch (error) { notify(`${error.message} Tu borrador se conserva en esta pantalla.`, true); save.disabled = false; save.textContent = editing ? 'Guardar cambios' : 'Guardar entrenamiento'; }
       finally { processing(false); form.setAttribute('aria-busy','false'); }
     };
     layout.append(note, conversation, form); root.append(layout); status.textContent = '';

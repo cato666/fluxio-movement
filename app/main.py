@@ -227,7 +227,7 @@ def login(payload: LoginPayload, request: Request, session: Session = Depends(ge
     if user is None or not verify_password(payload.password, user.password_hash):
         raise HTTPException(401, 'Credenciales inválidas')
     request.session['user_id'] = str(user.id)
-    next_path = '/analyses' if user.role == 'ATHLETE' else '/coach/reviews' if user.role == 'COACH' else '/internal/usage'
+    next_path = '/training' if user.role == 'ATHLETE' else '/coach/reviews' if user.role == 'COACH' else '/internal/usage'
     return {'id': user.id, 'name': user.name, 'role': user.role, 'is_internal': user.is_internal, 'next': next_path}
 
 

@@ -40,21 +40,22 @@
   viewport.addEventListener('change', update);
 
   // Labels, destinations and role visibility stay owned by the existing router.
-  const paths = [
-    'M12 5v14M5 12h14',
-    'M6 4h12v16H6zM9 8h6M9 12h6M9 16h4',
-    'M4 5h16v14H4zM4 13h5l2 3h2l2-3h5',
-    'M12 16V4M7 9l5-5 5 5M4 15v5h16v-5',
-    'M9 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8M2 20v-2a5 5 0 0 1 10 0v2M18 12v8M14 16h8',
-    'M5 20V10M12 20V4M19 20v-7',
-  ];
-  document.querySelectorAll('.functional-nav a').forEach((link, index) => {
+  const paths = {
+    '/analyses/new':'M12 5v14M5 12h14',
+    '/analyses':'M6 4h12v16H6zM9 8h6M9 12h6M9 16h4',
+    '/training':'M6 3h13v18H6zM3 7h5M3 12h5M3 17h5M11 7h4M11 11h4',
+    '/coach/reviews':'M4 5h16v14H4zM4 13h5l2 3h2l2-3h5',
+    '/coach/analyses/new':'M12 16V4M7 9l5-5 5 5M4 15v5h16v-5',
+    '/coach/athletes/new':'M9 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8M2 20v-2a5 5 0 0 1 10 0v2M18 12v8M14 16h8',
+    '/internal/usage':'M5 20V10M12 20V4M19 20v-7',
+  };
+  document.querySelectorAll('.functional-nav a').forEach(link => {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('viewBox', '0 0 24 24');
     svg.setAttribute('aria-hidden', 'true');
     svg.setAttribute('class', 'mobile-nav-icon');
     const path = document.createElementNS(svg.namespaceURI, 'path');
-    path.setAttribute('d', paths[index]);
+    path.setAttribute('d', paths[link.getAttribute('href')]);
     svg.append(path);
     link.prepend(svg);
   });
