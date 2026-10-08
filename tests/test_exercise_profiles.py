@@ -21,6 +21,32 @@ def detect(exercise, signal, values):
     return RepDetector(profile).detect(samples(signal, signal, values))
 
 
+@pytest.mark.parametrize("view", ["front", "side"])
+def test_stoh_counts_overhead_cycles_with_leg_drive(view):
+    profile = ExerciseProfileLoader().load("STOH", view)
+    sequence = samples("wrist_lift", "wrist_lift", [0.0, 0.0, 0.05, 0.05, 0.10, 0.10, 0.0, 0.0])
+    for sample in sequence:
+        sample["knee_angle"] = 120.0
+    reps = RepDetector(profile).detect(sequence)
+    assert len(reps) == 1
+    assert reps[0]["profile"] == f"stoh-{view}"
+
+
+@pytest.mark.parametrize("view", ["front", "side"])
+def test_stoh_counts_fast_overhead_cycles_at_analysis_sampling_rate(view):
+    profile = ExerciseProfileLoader().load("STOH", view)
+    sequence = samples("wrist_lift", "wrist_lift", [0.0, 0.0, 0.05, 0.05, 0.10, 0.10, 0.0, 0.0] * 3, step=1 / 15)
+    assert len(RepDetector(profile).detect(sequence)) == 3
+
+
+@pytest.mark.parametrize("view", ["front", "side"])
+def test_stoh_does_not_count_incomplete_lifts_or_single_frame_spikes(view):
+    profile = ExerciseProfileLoader().load("STOH", view)
+    for values in ([0.0, 0.0, 0.05, 0.05, 0.05, 0.0, 0.0], [0.0, 0.0, 0.10, 0.0, 0.0]):
+        sequence = samples("wrist_lift", "wrist_lift", values, step=1 / 15)
+        assert RepDetector(profile).detect(sequence) == []
+
+
 def test_squat_profile_detects_known_complete_repetitions():
     reps = detect("Sentadilla", "knee_angle", [165, 165, 140, 140, 95, 95, 140, 140, 165, 165])
     assert len(reps) == 1

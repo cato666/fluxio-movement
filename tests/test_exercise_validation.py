@@ -53,6 +53,17 @@ def test_squat_rejects_a_clear_press_pattern():
         ])
 
 
+@pytest.mark.parametrize("exercise", ["STOH", "Shoulder to Overhead", "STOH (Shoulder to Overhead)"])
+def test_stoh_does_not_block_leg_drive_as_thruster(exercise):
+    assessment = validate_samples(exercise, [
+        {"wrist_lift": 0.12, "knee_angle": 115.0},
+        {"wrist_lift": 0.15, "knee_angle": 118.0},
+        {"wrist_lift": 0.10, "knee_angle": 120.0},
+    ])
+    assert assessment["status"] == "INCONCLUSIVE"
+    assert assessment["selected_exercise"] == "stoh"
+
+
 def test_press_rejects_a_clear_thruster_pattern():
     with pytest.raises(ExerciseMismatchError, match="Thruster"):
         validate_samples("Press", [

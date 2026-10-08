@@ -1,0 +1,67 @@
+{
+  "id": "stoh-side",
+  "aliases": [
+    "stoh",
+    "shoulder to overhead",
+    "shoulder-to-overhead",
+    "stoh (shoulder to overhead)"
+  ],
+  "views": [
+    "side"
+  ],
+  "required_landmarks": [
+    "shoulder",
+    "elbow",
+    "wrist"
+  ],
+  "primary_signal": "wrist_lift",
+  "states": [
+    "ready",
+    "drive",
+    "lockout"
+  ],
+  "initial_state": "ready",
+  "bottom_state": "drive",
+  "transitions": [
+    {
+      "from": "ready",
+      "to": "drive",
+      "signal": "wrist_lift",
+      "operator": ">=",
+      "threshold": "drive_wrist_min"
+    },
+    {
+      "from": "drive",
+      "to": "lockout",
+      "signal": "wrist_lift",
+      "operator": ">=",
+      "threshold": "lockout_wrist_min",
+      "completes_rep": true
+    },
+    {
+      "from": "lockout",
+      "to": "ready",
+      "signal": "wrist_lift",
+      "operator": "<=",
+      "threshold": "reset_wrist_max"
+    }
+  ],
+  "thresholds": {
+    "drive_wrist_min": 0.04,
+    "lockout_wrist_min": 0.08,
+    "reset_wrist_max": 0.04
+  },
+  "metrics": [
+    "wrist_lift",
+    "elbow_angle"
+  ],
+  "noise": {
+    "min_confirm_frames": 2,
+    "max_gap_s": 0.5,
+    "min_rep_duration_s": 0.1,
+    "max_rep_duration_s": 8.0,
+    "cooldown_s": 0.2,
+    "min_pose_confidence": 0.6
+  },
+  "version": "1.1"
+}

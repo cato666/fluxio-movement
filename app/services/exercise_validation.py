@@ -22,6 +22,7 @@ _ALIASES = {
     "squat": {"squat", "sentadilla", "back squat", "front squat"},
     "deadlift": {"deadlift", "peso muerto", "peso-muerto"},
     "press": {"press", "press militar", "overhead press", "shoulder press"},
+    "stoh": {"stoh", "shoulder to overhead", "shoulder-to-overhead", "stoh (shoulder to overhead)"},
     "thruster": {"thruster", "thrusters"},
     "clean": {"clean", "power clean"},
     "clean_and_jerk": {"clean and jerk", "clean & jerk", "clean jerks"},
@@ -105,10 +106,10 @@ def exercise_assessment(exercise: str, samples: list[dict[str, Any]]) -> dict[st
         detected = "squat"
     # Body pose alone cannot safely distinguish Olympic lifts from their
     # visually similar overhead patterns. Keep those selections inconclusive.
-    if selected in {"clean", "clean_and_jerk", "snatch"} and detected is not None:
+    if selected in {"stoh", "clean", "clean_and_jerk", "snatch"} and detected is not None:
         return {"status": "INCONCLUSIVE", "selected_exercise": selected, "detected_pattern": detected,
                 "confidence": "low", "evidence": evidence,
-                "message": "La pose corporal no alcanza para validar este levantamiento olímpico; se analizará usando la selección indicada."}
+                "message": "La pose corporal no alcanza para distinguir este ejercicio de patrones similares; se analizará usando la selección indicada."}
     if detected is not None and selected not in {detected, "other"}:
         label = {"press": "Press", "thruster": "Thruster", "squat": "Sentadilla"}[detected]
         return {"status": "MISMATCH", "selected_exercise": selected, "detected_pattern": detected,

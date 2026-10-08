@@ -134,7 +134,7 @@
               <option>Clean</option>
               <option>Clean &amp; Jerk</option>
               <option>Snatch</option>
-              <option>Press</option>
+              <option>Press</option><option value="STOH">STOH (Shoulder to Overhead)</option>
               <option>Otro</option>
             </select>
           </label>
@@ -176,7 +176,7 @@
       <form id="coach-analysis-form" class="card" enctype="multipart/form-data">
         <div class="form-grid">
           <label>Atleta<select name="athlete_id" id="coach-athlete" required><option value="">Cargando atletas…</option></select></label>
-          <label>Ejercicio<select name="exercise" required><option value="">Selecciona un ejercicio</option><option>Sentadilla</option><option>Peso muerto</option><option>Thruster</option><option>Clean</option><option>Clean &amp; Jerk</option><option>Snatch</option><option>Press</option><option>Otro</option></select></label>
+          <label>Ejercicio<select name="exercise" required><option value="">Selecciona un ejercicio</option><option>Sentadilla</option><option>Peso muerto</option><option>Thruster</option><option>Clean</option><option>Clean &amp; Jerk</option><option>Snatch</option><option>Press</option><option value="STOH">STOH (Shoulder to Overhead)</option><option>Otro</option></select></label>
           <label>Carga (kg) <span class="muted">· opcional</span><input name="load_kg" type="number" min="0" step="0.1" inputmode="decimal"></label>
           <label>Vista<select name="view" required><option value="side">De costado</option><option value="front">De frente</option></select></label>
         </div>
@@ -239,7 +239,7 @@
         <p class="muted">Crea un nuevo análisis con el mismo video y conserva el historial anterior.</p>
         <div class="form-grid">
           <label>Ejercicio
-            <select id="reanalyze-exercise"><option>Sentadilla</option><option>Peso muerto</option><option>Thruster</option><option>Clean</option><option>Clean &amp; Jerk</option><option>Snatch</option><option>Press</option><option>Otro</option></select>
+            <select id="reanalyze-exercise"><option>Sentadilla</option><option>Peso muerto</option><option>Thruster</option><option>Clean</option><option>Clean &amp; Jerk</option><option>Snatch</option><option>Press</option><option value="STOH">STOH (Shoulder to Overhead)</option><option>Otro</option></select>
           </label>
           <label>Vista
             <select id="reanalyze-view"><option value="side">De costado</option><option value="front">De frente</option></select>
