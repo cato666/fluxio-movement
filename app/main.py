@@ -105,9 +105,15 @@ def require_coach(request: Request, session: Session = Depends(get_session)) -> 
     return user
 
 
+def authorized_coach_id(coach_id: UUID, coach: User = Depends(require_coach)) -> UUID:
+    if coach_id != coach.id:
+        raise HTTPException(403, 'No puedes operar como otro coach')
+    return coach.id
+
+
 def require_internal(request: Request, session: Session = Depends(get_session)) -> User:
     user = _authenticated_user(request, session)
-    if not user.is_internal:
+    if user.role != 'SYSTEM_ADMIN' or not user.is_internal:
         raise HTTPException(403, 'No tienes acceso a esta vista interna')
     return user
 
@@ -157,7 +163,7 @@ async def protect_application_routes(request: Request, call_next):
                     return RedirectResponse(url='/login', status_code=303)
                 return JSONResponse(status_code=403, content={'detail': 'Esta sección es solo para administradores'})
         elif path.startswith('/internal/') or path.startswith('/api/internal/'):
-            if not user.is_internal:
+            if user.role != 'SYSTEM_ADMIN' or not user.is_internal:
                 if not path.startswith('/api/'):
                     return RedirectResponse(url='/login', status_code=303)
                 return JSONResponse(status_code=403, content={'detail': 'No tienes acceso a esta vista interna'})
@@ -166,6 +172,8 @@ async def protect_application_routes(request: Request, call_next):
                 if not path.startswith('/api/'):
                     return RedirectResponse(url='/analyses', status_code=303)
                 return JSONResponse(status_code=403, content={'detail': 'Esta sección es solo para coaches'})
+            if request.method == 'POST' and path in {'/api/coach/athletes', '/api/coach/analyses'}:
+                return JSONResponse(status_code=403, content={'detail': 'Operación no habilitada para coaches; utiliza el alta administrativa y la solicitud de revisión del atleta'})
             requested_coach = request.query_params.get('coach_id')
             if requested_coach and requested_coach != str(user.id):
                 return JSONResponse(status_code=403, content={'detail': 'No puedes operar como otro coach'})
@@ -176,17 +184,23 @@ async def protect_application_routes(request: Request, call_next):
                 return JSONResponse(status_code=403, content={'detail': 'Esta sección es solo para atletas'})
         if path.startswith(('/uploads/', '/results/', '/analysis/')):
             relative = path.lstrip('/')
-            row = session.scalar(select(Analysis).where(
+            permitted = Analysis.athlete_id == user.id
+            if user.role == 'COACH':
+                assigned = select(CoachReview.analysis_id).join(User, User.id == CoachReview.athlete_id).where(
+                    CoachReview.coach_id == user.id, User.is_active.is_(True))
+                permitted = permitted | Analysis.id.in_(assigned)
+            # Reanalysis can share an original path: authorize against any permitted
+            # analysis referencing that file, never an arbitrary first matching row.
+            row = session.scalar(select(Analysis.id).where(
                 (Analysis.video_path == relative) | (Analysis.annotated_video_path == relative) |
-                (Analysis.analysis_json_path == relative) | (Analysis.thumbnail_path == relative)
-            ))
-            is_owner = row is not None and row.athlete_id == user.id
-            is_assigned_coach = row is not None and user.role == 'COACH' and session.scalar(
-                select(CoachReview.id).where(CoachReview.analysis_id == row.id, CoachReview.coach_id == user.id)
-            ) is not None
-            if not (is_owner or is_assigned_coach):
+                (Analysis.analysis_json_path == relative) | (Analysis.thumbnail_path == relative),
+                permitted).limit(1))
+            if row is None:
                 return JSONResponse(status_code=403, content={'detail': 'No tienes acceso a este archivo'})
-    return await call_next(request)
+    response = await call_next(request)
+    if path.startswith(('/uploads/', '/results/', '/analysis/')):
+        response.headers['Cache-Control'] = 'private, no-store'
+    return response
 
 
 # Added after the route guard so the session is available to it on each request.
@@ -798,34 +812,16 @@ def create_analysis(
 
 @app.get('/api/coach/athletes')
 def list_coach_athletes(_coach: User = Depends(require_coach), session: Session = Depends(get_session)):
-    rows = session.execute(select(Athlete, User).join(User, User.id == Athlete.user_id).order_by(User.name)).all()
+    # A review grants access only to its analysis, not future uploads or history.
+    rows = session.execute(select(Athlete, User).join(User, User.id == Athlete.user_id)
+        .where(User.is_active.is_(True), Athlete.user_id.in_(select(CoachReview.athlete_id)
+            .where(CoachReview.coach_id == _coach.id))).order_by(User.name)).all()
     return {'items': [{'id': athlete.user_id, 'name': user.name} for athlete, user in rows]}
 
 
 @app.post('/api/coach/athletes', status_code=201)
 def create_coach_athlete(payload: CoachAthleteCreate, _coach: User = Depends(require_coach), session: Session = Depends(get_session)):
-    name = payload.name.strip()
-    username = payload.username.strip().casefold()
-    if not name or len(name) > 160:
-        raise HTTPException(400, 'Indica el nombre del atleta')
-    if len(username) < 3 or len(username) > 40 or any(char not in 'abcdefghijklmnopqrstuvwxyz0123456789._-' for char in username):
-        raise HTTPException(400, 'El usuario debe tener entre 3 y 40 caracteres: letras, números, punto, guion o guion bajo')
-    if len(payload.password) < 8 or len(payload.password) > 200:
-        raise HTTPException(400, 'La contraseña debe tener entre 8 y 200 caracteres')
-    athlete_id = uuid4()
-    user = User(id=athlete_id, demo_key=username, name=name, role='ATHLETE', password_hash=hash_password(payload.password), is_internal=False)
-    try:
-        session.add(user)
-        session.flush()
-        session.add(Athlete(user_id=athlete_id))
-        session.commit()
-    except IntegrityError:
-        session.rollback()
-        raise HTTPException(409, 'Ese usuario ya está registrado')
-    except SQLAlchemyError:
-        session.rollback()
-        raise HTTPException(503, 'No se pudo registrar el atleta')
-    return {'id': athlete_id, 'name': name, 'username': username}
+    raise HTTPException(403, 'Operación no habilitada para coaches; utiliza el alta administrativa y la solicitud de revisión del atleta')
 
 
 @app.post('/api/coach/analyses', status_code=202)
@@ -834,17 +830,7 @@ def create_coach_analysis(
     exercise: str = Form(...), objective: str = Form(...), load_kg: float | None = Form(None), view: str = Form('side'),
     coach: User = Depends(require_coach), session: Session = Depends(get_session),
 ):
-    consume(session, athlete_id, 'ANALYZE')
-    row = _prepare_async_analysis(file, exercise, objective, load_kg, view, session, athlete_id)
-    review = CoachReview(analysis_id=row.id, athlete_id=athlete_id, coach_id=coach.id, status='PENDING')
-    try:
-        session.add(review)
-        session.commit()
-    except SQLAlchemyError:
-        session.rollback()
-        raise HTTPException(503, 'No se pudo asignar la revisión al coach')
-    background_tasks.add_task(_process_analysis, row.id, exercise, view)
-    return {'id': row.id, 'review_id': review.id, 'status': row.status, 'athlete_id': athlete_id}
+    raise HTTPException(403, 'Operación no habilitada para coaches; utiliza el alta administrativa y la solicitud de revisión del atleta')
 
 
 @app.post('/api/analyses/{analysis_id}/reanalyze', status_code=202)
@@ -954,6 +940,7 @@ def list_coaches(session: Session = Depends(get_session)):
     rows = session.execute(
         select(Coach, User)
         .join(User, User.id == Coach.user_id)
+        .where(User.is_active.is_(True))
         .order_by(User.name)
     ).all()
     return {'items': [
@@ -973,9 +960,9 @@ def request_review(
     if analysis.status != 'COMPLETED':
         raise HTTPException(409, 'Solo puedes solicitar revisión de un análisis completado')
     coach = session.get(Coach, payload.coach_id)
-    if coach is None:
-        raise HTTPException(404, 'Coach no encontrado')
     user = session.get(User, payload.coach_id)
+    if coach is None or user is None or not user.is_active:
+        raise HTTPException(404, 'Coach no encontrado')
     review = CoachReview(
         analysis_id=analysis.id, athlete_id=analysis.athlete_id,
         coach_id=coach.user_id, status='PENDING',
@@ -996,8 +983,11 @@ def request_review(
 @app.get('/api/coach/reviews')
 def list_coach_reviews(
     coach_id: UUID, status: str | None = None,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_session), coach: User = Depends(require_coach),
 ):
+    if coach_id != coach.id:
+        raise HTTPException(403, 'No puedes operar como otro coach')
+    coach_id = coach.id
     _coach_context(coach_id, session)
     valid_statuses = {'PENDING', 'IN_REVIEW', 'COMPLETED'}
     if status is not None and status not in valid_statuses:
@@ -1008,7 +998,7 @@ def list_coach_reviews(
         .join(Analysis, Analysis.id == CoachReview.analysis_id)
         .join(User, User.id == CoachReview.athlete_id)
         .outerjoin(counts, counts.c.analysis_id == Analysis.id)
-        .where(CoachReview.coach_id == coach_id)
+        .where(CoachReview.coach_id == coach_id, User.is_active.is_(True))
         .order_by(CoachReview.created_at.desc())
     )
     if status is not None:
@@ -1026,7 +1016,7 @@ def _get_coach_review(review_id: UUID, coach_id: UUID, session: Session):
         select(CoachReview, Analysis, User, count)
         .join(Analysis, Analysis.id == CoachReview.analysis_id)
         .join(User, User.id == CoachReview.athlete_id)
-        .where(CoachReview.id == review_id, CoachReview.coach_id == coach_id)
+        .where(CoachReview.id == review_id, CoachReview.coach_id == coach_id, User.is_active.is_(True))
     ).one_or_none()
     if row is None:
         raise HTTPException(404, 'Revisión no encontrada')
@@ -1036,7 +1026,7 @@ def _get_coach_review(review_id: UUID, coach_id: UUID, session: Session):
 
 @app.get('/api/coach/reviews/{review_id}')
 def get_coach_review(
-    review_id: UUID, coach_id: UUID, session: Session = Depends(get_session),
+    review_id: UUID, coach_id: UUID = Depends(authorized_coach_id), session: Session = Depends(get_session),
 ):
     review, payload = _get_coach_review(review_id, coach_id, session)
     reps = session.scalars(
@@ -1077,7 +1067,7 @@ def get_coach_review(
 
 @app.patch('/api/coach/reviews/{review_id}/start')
 def start_coach_review(
-    review_id: UUID, coach_id: UUID, session: Session = Depends(get_session),
+    review_id: UUID, coach_id: UUID = Depends(authorized_coach_id), session: Session = Depends(get_session),
 ):
     review, payload = _get_coach_review(review_id, coach_id, session)
     if review.status == 'PENDING':
@@ -1158,7 +1148,7 @@ def _validate_annotation(
 
 @app.get('/api/coach/reviews/{review_id}/annotations')
 def list_coach_annotations(
-    review_id: UUID, coach_id: UUID, session: Session = Depends(get_session),
+    review_id: UUID, coach_id: UUID = Depends(authorized_coach_id), session: Session = Depends(get_session),
 ):
     _get_coach_review(review_id, coach_id, session)
     items = session.scalars(
@@ -1171,7 +1161,7 @@ def list_coach_annotations(
 
 @app.post('/api/coach/reviews/{review_id}/annotations', status_code=201)
 def create_coach_annotation(
-    review_id: UUID, payload: CoachAnnotationCreate, coach_id: UUID,
+    review_id: UUID, payload: CoachAnnotationCreate, coach_id: UUID = Depends(authorized_coach_id),
     session: Session = Depends(get_session),
 ):
     review = _editable_review(review_id, coach_id, session)
@@ -1200,7 +1190,7 @@ def create_coach_annotation(
 @app.patch('/api/coach/reviews/{review_id}/annotations/{annotation_id}')
 def update_coach_annotation(
     review_id: UUID, annotation_id: UUID, payload: CoachAnnotationUpdate,
-    coach_id: UUID, session: Session = Depends(get_session),
+    coach_id: UUID = Depends(authorized_coach_id), session: Session = Depends(get_session),
 ):
     review = _editable_review(review_id, coach_id, session)
     annotation = session.scalar(select(CoachAnnotation).where(
@@ -1232,7 +1222,7 @@ def update_coach_annotation(
 
 @app.delete('/api/coach/reviews/{review_id}/annotations/{annotation_id}', status_code=204)
 def delete_coach_annotation(
-    review_id: UUID, annotation_id: UUID, coach_id: UUID,
+    review_id: UUID, annotation_id: UUID, coach_id: UUID = Depends(authorized_coach_id),
     session: Session = Depends(get_session),
 ):
     review = _editable_review(review_id, coach_id, session)
@@ -1254,7 +1244,7 @@ def delete_coach_annotation(
 
 @app.get('/api/coach/reviews/{review_id}/ai-observations')
 def list_ai_observations_for_coach(
-    review_id: UUID, coach_id: UUID, session: Session = Depends(get_session),
+    review_id: UUID, coach_id: UUID = Depends(authorized_coach_id), session: Session = Depends(get_session),
 ):
     review, _ = _get_coach_review(review_id, coach_id, session)
     decisions = {item.observation_id: item.decision for item in session.scalars(
@@ -1270,7 +1260,7 @@ def list_ai_observations_for_coach(
 @app.patch('/api/coach/reviews/{review_id}/ai-observations/{observation_id}')
 def decide_ai_observation(
     review_id: UUID, observation_id: UUID, payload: AIObservationDecisionUpdate,
-    coach_id: UUID, session: Session = Depends(get_session),
+    coach_id: UUID = Depends(authorized_coach_id), session: Session = Depends(get_session),
 ):
     review = _editable_review(review_id, coach_id, session)
     observation = session.scalar(select(AIObservation).where(
@@ -1314,7 +1304,7 @@ def decide_ai_observation(
 @app.patch('/api/coach/reviews/{review_id}/repetitions/{repetition_id}')
 def classify_review_repetition(
     review_id: UUID, repetition_id: UUID, payload: RepetitionClassificationUpdate,
-    coach_id: UUID, session: Session = Depends(get_session),
+    coach_id: UUID = Depends(authorized_coach_id), session: Session = Depends(get_session),
 ):
     review = _editable_review(review_id, coach_id, session)
     repetition = session.scalar(select(Repetition).where(
@@ -1374,7 +1364,7 @@ def classify_review_repetition(
 
 @app.post('/api/coach/reviews/{review_id}/repetitions', status_code=201)
 def create_manual_repetition(
-    review_id: UUID, payload: ManualRepetitionCreate, coach_id: UUID,
+    review_id: UUID, payload: ManualRepetitionCreate, coach_id: UUID = Depends(authorized_coach_id),
     session: Session = Depends(get_session),
 ):
     review = _editable_review(review_id, coach_id, session)
@@ -1407,7 +1397,7 @@ def create_manual_repetition(
 
 @app.patch('/api/coach/reviews/{review_id}/summary')
 def update_coach_review_summary(
-    review_id: UUID, payload: CoachReviewSummaryUpdate, coach_id: UUID,
+    review_id: UUID, payload: CoachReviewSummaryUpdate, coach_id: UUID = Depends(authorized_coach_id),
     session: Session = Depends(get_session),
 ):
     review = _editable_review(review_id, coach_id, session)
@@ -1433,7 +1423,7 @@ def update_coach_review_summary(
 
 @app.post('/api/coach/reviews/{review_id}/complete')
 def complete_coach_review(
-    review_id: UUID, coach_id: UUID, session: Session = Depends(get_session),
+    review_id: UUID, coach_id: UUID = Depends(authorized_coach_id), session: Session = Depends(get_session),
 ):
     review = _editable_review(review_id, coach_id, session)
     if review.status != 'IN_REVIEW':

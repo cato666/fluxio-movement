@@ -53,35 +53,30 @@ def test_system_admin_can_access_usage_but_not_athlete_api(client):
     assert client.get('/api/analyses').status_code == 403
 
 
-def test_coach_can_upload_for_an_athlete_and_gets_assigned_review(client, session, monkeypatch):
+def test_coach_cannot_self_assign_by_upload(client, session, monkeypatch):
     from app import main
-    from app.models import Analysis, CoachReview
+    from app.models import Analysis, CoachReview, PlanInteraction
+    from sqlalchemy import select, func
     client.post('/api/auth/login', json={'username': 'carlos', 'password': 'demo1234'})
-    monkeypatch.setattr(main, '_process_analysis', lambda *_: None)
-    athlete = client.get('/api/coach/athletes').json()['items'][0]
+    monkeypatch.setattr(main, '_process_analysis', lambda *_: __import__('pytest').fail('Unexpected analysis'))
+    assert client.get('/api/coach/athletes').json()['items'] == []
     response = client.post('/api/coach/analyses', data={
-        'athlete_id': athlete['id'], 'exercise': 'Sentadilla', 'objective': 'Revisar profundidad', 'view': 'side',
-    }, files={'file': ('alumno.mp4', b'video', 'video/mp4')})
-    assert response.status_code == 202, response.text
-    payload = response.json()
-    analysis = session.get(Analysis, payload['id'])
-    review = session.get(CoachReview, payload['review_id'])
-    assert analysis.athlete_id == __import__('uuid').UUID(athlete['id'])
-    assert review.coach_id == __import__('uuid').UUID('00000000-0000-4000-8000-000000000002')
+        'athlete_id': '00000000-0000-4000-8000-000000000001', 'exercise': 'Sentadilla', 'objective': 'Review', 'view': 'side',
+    }, files={'file': ('student.mp4', b'video', 'video/mp4')})
+    assert response.status_code == 403
+    for model in (Analysis, CoachReview, PlanInteraction):
+        assert session.scalar(select(func.count()).select_from(model)) == 0
 
 
-def test_coach_registers_athlete_who_can_log_in(client):
+def test_coach_registration_denied_and_admin_can_enable_athlete(client):
     client.post('/api/auth/login', json={'username': 'carlos', 'password': 'demo1234'})
-    created = client.post('/api/coach/athletes', json={
-        'name': 'María Pérez', 'username': 'maria.perez', 'password': 'movimiento123',
-    })
+    payload = {'name': 'Fixture athlete', 'username': 'fixture.athlete', 'password': 'movimiento123'}
+    assert client.post('/api/coach/athletes', json=payload).status_code == 403
+    client.post('/api/auth/login', json={'username': 'admin', 'password': 'demo1234'})
+    created = client.post('/api/admin/users', json=payload | {'role': 'ATHLETE'})
     assert created.status_code == 201, created.text
-    assert created.json()['name'] == 'María Pérez'
-    assert client.post('/api/coach/athletes', json={
-        'name': 'Otra María', 'username': 'maria.perez', 'password': 'movimiento123',
-    }).status_code == 409
     client.post('/api/auth/logout')
-    assert client.post('/api/auth/login', json={'username': 'maria.perez', 'password': 'movimiento123'}).json()['role'] == 'ATHLETE'
+    assert client.post('/api/auth/login', json={'username': payload['username'], 'password': payload['password']}).json()['role'] == 'ATHLETE'
 
 
 def test_athlete_can_only_list_and_read_own_analyses(client, session):
@@ -90,9 +85,9 @@ def test_athlete_can_only_list_and_read_own_analyses(client, session):
     from app.models import Analysis
     from app.seed import DEMO_ATHLETE_ID
 
-    client.post('/api/auth/login', json={'username': 'carlos', 'password': 'demo1234'})
-    registered = client.post('/api/coach/athletes', json={
-        'name': 'Max Aislamiento', 'username': 'max.isolation', 'password': 'movimiento123',
+    client.post('/api/auth/login', json={'username': 'admin', 'password': 'demo1234'})
+    registered = client.post('/api/admin/users', json={
+        'name': 'Max Aislamiento', 'username': 'max.isolation', 'password': 'movimiento123', 'role': 'ATHLETE',
     })
     assert registered.status_code == 201, registered.text
     max_id = UUID(registered.json()['id'])
