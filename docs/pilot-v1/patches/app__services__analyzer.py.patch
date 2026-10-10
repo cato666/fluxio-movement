@@ -1,0 +1,52 @@
+--- a/app/services/analyzer.py
++++ b/app/services/analyzer.py
+@@ -94,7 +94,7 @@
+         left_min_vis >= 0.55
+         and _valid_joint_angle(left["knee_angle"])
+         and _valid_joint_angle(left["hip_angle"], 15.0, 180.0)
+-        and 0.0 <= float(left["trunk_from_vertical"]) <= 90.0
++        and 0.0 <= float(left["trunk_from_vertical"]) <= 180.0
+     ):
+         candidates.append(("left", left, left_avg_vis))
+ 
+@@ -102,7 +102,7 @@
+         right_min_vis >= 0.55
+         and _valid_joint_angle(right["knee_angle"])
+         and _valid_joint_angle(right["hip_angle"], 15.0, 180.0)
+-        and 0.0 <= float(right["trunk_from_vertical"]) <= 90.0
++        and 0.0 <= float(right["trunk_from_vertical"]) <= 180.0
+     ):
+         candidates.append(("right", right, right_avg_vis))
+ 
+@@ -261,7 +261,19 @@
+     return {
+         "elbow_angle": round(sum(value[0] for value in sides) / len(sides), 1),
+         "wrist_lift": round(sum(value[1] for value in sides) / len(sides), 3),
++        **_inverted_metrics(lms, xy),
+     }
++
++
++def _inverted_metrics(lms, xy):
++    ratios = []
++    for shoulder, hip, ankle in ((11, 23, 27), (12, 24, 28)):
++        if min(float(lms[i].visibility or 0.0) for i in (shoulder, hip, ankle)) < .55:
++            continue
++        torso = float(np.linalg.norm(np.array(xy[hip][:2]) - np.array(xy[shoulder][:2])))
++        if torso > .03:
++            ratios.append(min(xy[shoulder][1] - xy[hip][1], xy[hip][1] - xy[ankle][1]) / torso)
++    return {"inverted_body_ratio": round(sum(ratios) / len(ratios), 3)} if ratios else {}
+ 
+ 
+ def _front_deadlift_metrics(lms, xy):
+@@ -461,10 +473,7 @@
+                                     "trunk_from_vertical": None,
+                                 }
+                             if press is not None:
+-                                last_metrics.update({
+-                                    "elbow_angle": press["elbow_angle"],
+-                                    "wrist_lift": press["wrist_lift"],
+-                                })
++                                last_metrics.update(press)
+                             if front_deadlift is not None:
+                                 last_metrics.update(front_deadlift)
+                             last_metrics["pose_confidence"] = pose_confidence

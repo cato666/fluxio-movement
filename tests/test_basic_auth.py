@@ -48,7 +48,7 @@ def test_role_boundaries_and_coach_identity_are_enforced(client):
 
 def test_system_admin_can_access_usage_but_not_athlete_api(client):
     response = client.post('/api/auth/login', json={'username': 'admin', 'password': 'demo1234'})
-    assert response.json()['next'] == '/internal/usage'
+    assert response.json()['next'] == '/admin'
     assert client.get('/api/internal/ai-usage').status_code == 200
     assert client.get('/api/analyses').status_code == 403
 

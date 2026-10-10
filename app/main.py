@@ -18,12 +18,12 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Redirect
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from itsdangerous import BadSignature, TimestampSigner
-from sqlalchemy import func, select, text
+from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from .database import SessionLocal, get_session
-from .models import AIObservation, AIObservationDecision, AIReasoningRun, AIReviewMoment, Analysis, Athlete, Coach, CoachAnnotation, CoachReview, Repetition, User
+from .models import AIObservation, AIObservationDecision, AIReasoningRun, AIReviewMoment, Analysis, Annotation, Athlete, Coach, CoachAnnotation, CoachReview, Repetition, User
 from .seed import DEMO_ATHLETE_ID
 from .services.analyzer import analyze_video
 from .services.ai_reasoning import run_reasoning
@@ -35,6 +35,7 @@ from .weekly import router as weekly_router
 from .services.training_usage import extend_usage
 from .whatsapp.routes import router as whatsapp_router
 from .exercises import router as exercises_router
+from .administration import router as admin_router, consume
 
 ROOT = Path(__file__).resolve().parents[1]
 STORAGE_PATH = Path(os.environ.get('STORAGE_PATH', '/data/storage'))
@@ -70,7 +71,7 @@ app.mount('/analysis', StaticFiles(directory=str(ANALYSIS_FILES)), name='analysi
 def _authenticated_user(request: Request, session: Session) -> User:
     user_id = request.session.get('user_id')
     user = session.get(User, user_id) if user_id else None
-    if user is None:
+    if user is None or not user.is_active:
         raise HTTPException(401, 'Inicia sesión para continuar')
     return user
 
@@ -86,7 +87,8 @@ def _guard_user(request: Request, session: Session) -> User | None:
         user_id = payload.get('user_id')
     except (BadSignature, ValueError, TypeError, json.JSONDecodeError):
         return None
-    return session.get(User, user_id) if user_id else None
+    user = session.get(User, user_id) if user_id else None
+    return user if user and user.is_active else None
 
 
 def require_athlete(request: Request, session: Session = Depends(get_session)) -> User:
@@ -115,6 +117,17 @@ app.include_router(weekly_router(require_athlete))
 app.include_router(whatsapp_router(require_athlete))
 app.include_router(exercises_router)
 
+def authenticated(request: Request, session: Session = Depends(get_session)):
+    return _authenticated_user(request, session)
+
+def require_admin(request: Request, session: Session = Depends(get_session)):
+    user = _authenticated_user(request, session)
+    if user.role != 'SYSTEM_ADMIN':
+        raise HTTPException(403, 'Esta sección es solo para administradores')
+    return user
+
+app.include_router(admin_router(require_admin, authenticated))
+
 
 @app.middleware('http')
 async def protect_application_routes(request: Request, call_next):
@@ -130,7 +143,7 @@ async def protect_application_routes(request: Request, call_next):
     with SessionLocal() as session:
         try:
             user = _guard_user(request, session)
-            if user is None:
+            if user is None or not user.is_active:
                 raise HTTPException(401)
         except HTTPException:
             if path.startswith('/api/') or path.startswith(('/uploads/', '/results/', '/analysis/')):
@@ -138,7 +151,12 @@ async def protect_application_routes(request: Request, call_next):
             return RedirectResponse(url=f'/login?next={path}', status_code=303)
         except SQLAlchemyError:
             return JSONResponse(status_code=503, content={'detail': 'Persistencia no disponible'})
-        if path.startswith('/internal/') or path.startswith('/api/internal/'):
+        if path == '/admin' or path.startswith('/api/admin/'):
+            if user.role != 'SYSTEM_ADMIN':
+                if path == '/admin':
+                    return RedirectResponse(url='/login', status_code=303)
+                return JSONResponse(status_code=403, content={'detail': 'Esta sección es solo para administradores'})
+        elif path.startswith('/internal/') or path.startswith('/api/internal/'):
             if not user.is_internal:
                 if not path.startswith('/api/'):
                     return RedirectResponse(url='/login', status_code=303)
@@ -204,6 +222,7 @@ def recover_interrupted_analyses():
 @app.get('/coach/analyses/new')
 @app.get('/coach/athletes/new')
 @app.get('/internal/usage')
+@app.get('/admin')
 def home():
     # Only a public destination number reaches the browser, never provider credentials.
     destination = os.getenv('WHATSAPP_PUBLIC_NUMBER', '').lstrip('+')
@@ -224,10 +243,12 @@ class LoginPayload(BaseModel):
 def login(payload: LoginPayload, request: Request, session: Session = Depends(get_session)):
     username = payload.username.strip().casefold()
     user = session.scalar(select(User).where((User.demo_key == username) | (func.lower(User.name) == username)))
-    if user is None or not verify_password(payload.password, user.password_hash):
+    if user is None or not user.is_active or not verify_password(payload.password, user.password_hash):
         raise HTTPException(401, 'Credenciales inválidas')
+    user.last_login_at = datetime.now(timezone.utc)
+    session.commit()
     request.session['user_id'] = str(user.id)
-    next_path = '/training' if user.role == 'ATHLETE' else '/coach/reviews' if user.role == 'COACH' else '/internal/usage'
+    next_path = '/training' if user.role == 'ATHLETE' else '/coach/reviews' if user.role == 'COACH' else '/admin'
     return {'id': user.id, 'name': user.name, 'role': user.role, 'is_internal': user.is_internal, 'next': next_path}
 
 
@@ -754,6 +775,7 @@ def analyze(
     session: Session = Depends(get_session),
 ):
     """Original API contract, retained for the F1.1 client."""
+    consume(session, athlete.id, 'ANALYZE')
     return _run_analysis(
         file, 'Sin especificar', 'Análisis técnico', None, session,
         legacy_response=True, athlete_id=athlete.id,
@@ -767,6 +789,7 @@ def create_analysis(
     objective: str = Form(...), load_kg: float | None = Form(None), view: str = Form('side'),
     athlete: User = Depends(require_athlete), session: Session = Depends(get_session),
 ):
+    consume(session, athlete.id, 'ANALYZE')
     row = _prepare_async_analysis(file, exercise, objective, load_kg, view, session, athlete.id)
     background_tasks.add_task(_process_analysis, row.id, exercise, view)
     session.expire_all()
@@ -811,6 +834,7 @@ def create_coach_analysis(
     exercise: str = Form(...), objective: str = Form(...), load_kg: float | None = Form(None), view: str = Form('side'),
     coach: User = Depends(require_coach), session: Session = Depends(get_session),
 ):
+    consume(session, athlete_id, 'ANALYZE')
     row = _prepare_async_analysis(file, exercise, objective, load_kg, view, session, athlete_id)
     review = CoachReview(analysis_id=row.id, athlete_id=athlete_id, coach_id=coach.id, status='PENDING')
     try:
@@ -838,6 +862,7 @@ def reanalyze_analysis(
         raise HTTPException(409, 'El video original ya no está disponible para reanalizar')
     exercise, objective = _validate_metadata(payload.exercise, source.objective or 'Reanálisis técnico', source.load_kg)
     view = _validate_view(payload.view)
+    consume(session, athlete.id, 'ANALYZE')
     job = uuid4().hex[:12]
     row = Analysis(
         id=job, athlete_id=athlete.id, status='PROCESSING', progress=5, stage='reanalyzing',
@@ -881,6 +906,47 @@ def list_analyses(athlete: User = Depends(require_athlete), session: Session = D
         for review, coach, user in review_rows:
             reviews_by_analysis.setdefault(review.analysis_id, []).append(_review_fields(review, coach, user))
     return {'items': [dict(_analysis_fields(row, count), coach_reviews=reviews_by_analysis.get(row.id, [])) for row, count in rows]}
+
+
+@app.delete('/api/analyses/{analysis_id}', status_code=204)
+def delete_analysis(analysis_id: str, athlete: User = Depends(require_athlete), session: Session = Depends(get_session)):
+    row = session.scalar(select(Analysis).where(Analysis.id == analysis_id, Analysis.athlete_id == athlete.id).with_for_update())
+    if row is None:
+        raise HTTPException(404, 'Análisis no encontrado')
+    running_ai = session.scalar(select(AIReasoningRun.id).where(AIReasoningRun.analysis_id == analysis_id, AIReasoningRun.status.in_(['PENDING', 'RUNNING'])))
+    if row.status in {'PENDING', 'PROCESSING'} or running_ai:
+        raise HTTPException(409, 'Espera a que el análisis termine antes de eliminarlo')
+    files = [(UPLOADS, row.video_path), (RESULTS, row.annotated_video_path), (RESULTS, row.thumbnail_path), (ANALYSIS_FILES, row.analysis_json_path)]
+    review_ids = select(CoachReview.id).where(CoachReview.analysis_id == analysis_id)
+    session.execute(delete(AIObservationDecision).where(AIObservationDecision.analysis_id == analysis_id))
+    session.execute(delete(AIReviewMoment).where(AIReviewMoment.analysis_id == analysis_id))
+    session.execute(delete(AIObservation).where(AIObservation.analysis_id == analysis_id))
+    session.execute(delete(AIReasoningRun).where(AIReasoningRun.analysis_id == analysis_id))
+    for model in (Annotation, CoachAnnotation):
+        session.execute(delete(model).where(model.review_id.in_(review_ids)))
+    session.execute(delete(CoachReview).where(CoachReview.analysis_id == analysis_id))
+    session.execute(delete(Repetition).where(Repetition.analysis_id == analysis_id))
+    session.execute(update(Analysis).where(Analysis.source_analysis_id == analysis_id).values(source_analysis_id=None))
+    session.delete(row)
+    session.commit()
+    # Reanalyses share originals: retain every file referenced by another record.
+    for directory, relative in files:
+        if not relative:
+            continue
+        referenced = session.scalar(select(Analysis.id).where(
+            (Analysis.video_path == relative) | (Analysis.annotated_video_path == relative) |
+            (Analysis.thumbnail_path == relative) | (Analysis.analysis_json_path == relative)
+        ).limit(1))
+        if referenced:
+            continue
+        parts = Path(relative).parts[1:]
+        target = directory.joinpath(*parts).resolve()
+        if not parts or not target.is_relative_to(directory.resolve()):
+            continue
+        try:
+            target.unlink(missing_ok=True)
+        except OSError:
+            logger.exception('Cannot remove file for deleted analysis %s', analysis_id)
 
 
 @app.get('/api/coaches')

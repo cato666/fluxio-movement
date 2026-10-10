@@ -28,6 +28,8 @@ _ALIASES = {
     "clean_and_jerk": {"clean and jerk", "clean & jerk", "clean jerks"},
     "snatch": {"snatch", "power snatch", "arrancada"},
     "other": {"otro", "other", "generico", "genérico"},
+    "overhead_squat": {"overhead squat", "overhead scuatch", "sentadilla overhead", "sentadilla sobre la cabeza"},
+    "handstand_push_up": {"flexión invertida (en pino)", "flexión invertida", "flexion invertida", "flexiones en pino", "handstand push-up", "handstand push up", "hspu"},
 }
 
 
@@ -104,9 +106,10 @@ def exercise_assessment(exercise: str, samples: list[dict[str, Any]]) -> dict[st
         detected = "press"
     elif len(very_deep_knee) >= 3 and len(strong_hinge) < 3:
         detected = "squat"
-    # Body pose alone cannot safely distinguish Olympic lifts from their
-    # visually similar overhead patterns. Keep those selections inconclusive.
-    if selected in {"stoh", "clean", "clean_and_jerk", "snatch"} and detected is not None:
+    # Body pose alone cannot safely distinguish these compound movements
+    # from similar overhead patterns. STOH also permits leg drive and reception.
+    # Keep those selections inconclusive instead of rejecting the chosen exercise.
+    if selected in {"stoh", "clean", "clean_and_jerk", "snatch", "overhead_squat", "handstand_push_up"} and detected is not None:
         return {"status": "INCONCLUSIVE", "selected_exercise": selected, "detected_pattern": detected,
                 "confidence": "low", "evidence": evidence,
                 "message": "La pose corporal no alcanza para distinguir este ejercicio de patrones similares; se analizará usando la selección indicada."}

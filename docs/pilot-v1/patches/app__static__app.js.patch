@@ -1,0 +1,41 @@
+--- a/app/static/app.js
++++ b/app/static/app.js
+@@ -54,6 +54,8 @@
+ }
+ 
+ function showView(id) {
++  const adminView = document.getElementById('admin-view');
++  if (adminView) adminView.hidden = id !== 'admin-view';
+   const trainingView = $('#training-view');
+   if (trainingView) trainingView.hidden = id !== 'training-view';
+   if (id !== "detail-view" && detailPoller) { detailPoller.stop(); detailPoller = null; }
+@@ -334,6 +336,21 @@
+       const link = element("a", "button-link", action.state === "AVAILABLE" ? action.label : "Ver análisis");
+       link.href = action.state === "AVAILABLE" ? action.href : `/analyses/${item.id}`;
+       side.append(link);
++      const remove = element("button", "secondary-button delete-button", "Eliminar análisis");
++      remove.type = "button";
++      remove.disabled = ["PENDING", "PROCESSING"].includes(item.status);
++      if (remove.disabled) remove.title = "Espera a que termine el análisis";
++      remove.onclick = async () => {
++        if (!window.confirm("¿Eliminar este análisis y sus resultados, revisiones y comentarios? Esta acción no se puede deshacer.")) return;
++        remove.disabled = true;
++        try {
++          await apiJson(`/api/analyses/${encodeURIComponent(item.id)}`, {method: "DELETE"});
++          items.splice(items.indexOf(item), 1);
++          render();
++          status.textContent = "Análisis eliminado.";
++        } catch (error) { status.textContent = error.message; remove.disabled = false; }
++      };
++      side.append(remove);
+       card.append(thumb, info, side);
+       list.append(card);
+       }
+@@ -1150,6 +1167,7 @@
+ else if (path === "/login") setupLogin();
+ else if (path === "/para-atletas") setupCommercialAudience("athlete");
+ else if (path === "/para-coaches") setupCommercialAudience("coach");
++else if (path === "/admin") window.setupAdministration();
+ else if (path === "/internal/usage") setupUsage();
+ else if (path === "/coach/analyses/new") setupCoachNewAnalysis();
+ else if (path === "/coach/athletes/new") setupCoachNewAthlete();

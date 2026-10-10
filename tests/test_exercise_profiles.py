@@ -201,3 +201,28 @@ def test_configured_exercises_accept_front_and_side_views(exercise):
     loader = ExerciseProfileLoader()
     assert loader.load(exercise, "side").id
     assert loader.load(exercise, "front").id
+
+
+@pytest.mark.parametrize("view", ["side", "front"])
+@pytest.mark.parametrize("exercise,signal,values,extra", [
+    ("Overhead squat", "knee_angle", [165, 165, 140, 140, 95, 95, 140, 140, 165, 165], {"wrist_lift": .12, "elbow_angle": 170}),
+    ("Flexión invertida (en pino)", "elbow_angle", [170, 170, 140, 140, 90, 90, 135, 135, 170, 170], {"inverted_body_ratio": .8}),
+])
+def test_new_exercises_count_complete_cycles_in_both_views(view, exercise, signal, values, extra):
+    profile = ExerciseProfileLoader().load(exercise, view)
+    sequence = [{"time_s": index * .1, signal: value, **extra} for index, value in enumerate(values)]
+    assert len(RepDetector(profile).detect(sequence)) == 1
+    assert RepDetector(profile).detect(sequence[:6]) == []
+
+
+@pytest.mark.parametrize("view", ["side", "front"])
+@pytest.mark.parametrize("exercise,signal,extra", [
+    ("Overhead squat", "knee_angle", {"wrist_lift": .01, "elbow_angle": 170}),
+    ("Overhead squat", "knee_angle", {"wrist_lift": .12, "elbow_angle": 130}),
+    ("Flexión invertida (en pino)", "elbow_angle", {"inverted_body_ratio": -.8}),
+])
+def test_new_exercises_require_overhead_or_inverted_position(view, exercise, signal, extra):
+    profile = ExerciseProfileLoader().load(exercise, view)
+    sequence = [{"time_s": index * .1, signal: value, **extra}
+                for index, value in enumerate([170, 170, 140, 140, 90, 90, 135, 135, 170, 170])]
+    assert RepDetector(profile).detect(sequence) == []

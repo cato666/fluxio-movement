@@ -75,6 +75,9 @@ def test_exact_0020_0021_roundtrip_preserves_all_preexisting_rows(session, monke
             WeeklySummaryService(session, DEMO_ATHLETE_ID).create_share()
             session.close()
     assert session.scalar(select(func.count()).select_from(WeeklyShare)) == 0
+    session.close()
+    # This gate checks the exact weekly roundtrip, then restores later migrations.
+    command.upgrade(config, 'head')
     command.check(config)
     evidence('migration-roundtrip', {'stages':stages,
         'table_counts':{name:len(rows) for name,rows in original.items()},

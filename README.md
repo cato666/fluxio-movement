@@ -85,6 +85,12 @@ No agregues Nginx, Caddy ni certificados al repositorio: Easypanel se encarga de
 
 ## Límites del MVP
 
+## Administración
+
+El administrador accede a `/admin` para gestionar usuarios, planes Free/Pago,
+límites mensuales, organización y auditoría. Ver [documentación de Administración](docs/ADMINISTRACION.md).
+La versión requiere la migración `0022_administration`.
+
 ## Biblioteca de ejercicios
 
 La sección **Exercise Library** (`/exercises`) está disponible para usuarios autenticados.

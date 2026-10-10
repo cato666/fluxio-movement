@@ -1,0 +1,12 @@
+--- a/tests/test_weekly_release_validation.py
++++ b/tests/test_weekly_release_validation.py
+@@ -75,6 +75,9 @@
+             WeeklySummaryService(session, DEMO_ATHLETE_ID).create_share()
+             session.close()
+     assert session.scalar(select(func.count()).select_from(WeeklyShare)) == 0
++    session.close()
++    # This gate checks the exact weekly roundtrip, then restores later migrations.
++    command.upgrade(config, 'head')
+     command.check(config)
+     evidence('migration-roundtrip', {'stages':stages,
+         'table_counts':{name:len(rows) for name,rows in original.items()},

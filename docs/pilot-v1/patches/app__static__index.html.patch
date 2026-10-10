@@ -1,0 +1,49 @@
+--- a/app/static/index.html
++++ b/app/static/index.html
+@@ -25,7 +25,9 @@
+   <script src="/static/vendor/qrcodegen.js?v=1" defer></script>
+   <script src="/static/whatsapp-link.js?v=recomposition-3" defer></script>
+   <script src="/static/training.js?v=21" defer></script>
+-  <script src="/static/app.js?v=training-audio-usage-3" defer></script>
++  <link rel="stylesheet" href="/static/admin.css">
++  <script src="/static/admin.js" defer></script>
++  <script src="/static/app.js?v=analysis-delete-1" defer></script>
+   <script src="/static/mobile-ux.js?v=visual-v2-1" defer></script>
+ </head>
+ <body>
+@@ -47,7 +49,7 @@
+         <a hidden data-nav-role="COACH" href="/coach/reviews">Bandeja coach</a>
+         <a hidden data-nav-role="COACH" href="/coach/analyses/new">Subir video</a>
+         <a hidden data-nav-role="COACH" href="/coach/athletes/new">Registrar atleta</a>
+-        <a hidden data-nav-role="SYSTEM_ADMIN" href="/internal/usage">Uso IA</a>
++        <a hidden data-nav-role="SYSTEM_ADMIN" href="/admin">Administración</a><a hidden data-nav-role="SYSTEM_ADMIN" href="/internal/usage">Uso IA</a>
+       </nav>
+       <div class="auth-actions"><a class="mvp-link" href="/login">Probar gratis</a></div>
+       <div class="functional-actions" hidden><span id="session-user" class="session-user"></span><button id="logout-button" class="logout-button" type="button">Salir</button></div>
+@@ -128,7 +130,7 @@
+           <label>Ejercicio
+             <select name="exercise" required>
+               <option value="">Selecciona un ejercicio</option>
+-              <option>Sentadilla</option>
++              <option>Sentadilla</option><option>Overhead squat</option><option>Flexión invertida (en pino)</option>
+               <option>Peso muerto</option>
+               <option>Thruster</option>
+               <option>Clean</option>
+@@ -176,7 +178,7 @@
+       <form id="coach-analysis-form" class="card" enctype="multipart/form-data">
+         <div class="form-grid">
+           <label>Atleta<select name="athlete_id" id="coach-athlete" required><option value="">Cargando atletas…</option></select></label>
+-          <label>Ejercicio<select name="exercise" required><option value="">Selecciona un ejercicio</option><option>Sentadilla</option><option>Peso muerto</option><option>Thruster</option><option>Clean</option><option>Clean &amp; Jerk</option><option>Snatch</option><option>Press</option><option value="STOH">STOH (Shoulder to Overhead)</option><option>Otro</option></select></label>
++          <label>Ejercicio<select name="exercise" required><option value="">Selecciona un ejercicio</option><option>Sentadilla</option><option>Overhead squat</option><option>Flexión invertida (en pino)</option><option>Peso muerto</option><option>Thruster</option><option>Clean</option><option>Clean &amp; Jerk</option><option>Snatch</option><option>Press</option><option value="STOH">STOH (Shoulder to Overhead)</option><option>Otro</option></select></label>
+           <label>Carga (kg) <span class="muted">· opcional</span><input name="load_kg" type="number" min="0" step="0.1" inputmode="decimal"></label>
+           <label>Vista<select name="view" required><option value="side">De costado</option><option value="front">De frente</option></select></label>
+         </div>
+@@ -239,7 +241,7 @@
+         <p class="muted">Crea un nuevo análisis con el mismo video y conserva el historial anterior.</p>
+         <div class="form-grid">
+           <label>Ejercicio
+-            <select id="reanalyze-exercise"><option>Sentadilla</option><option>Peso muerto</option><option>Thruster</option><option>Clean</option><option>Clean &amp; Jerk</option><option>Snatch</option><option>Press</option><option value="STOH">STOH (Shoulder to Overhead)</option><option>Otro</option></select>
++            <select id="reanalyze-exercise"><option>Sentadilla</option><option>Overhead squat</option><option>Flexión invertida (en pino)</option><option>Peso muerto</option><option>Thruster</option><option>Clean</option><option>Clean &amp; Jerk</option><option>Snatch</option><option>Press</option><option value="STOH">STOH (Shoulder to Overhead)</option><option>Otro</option></select>
+           </label>
+           <label>Vista
+             <select id="reanalyze-view"><option value="side">De costado</option><option value="front">De frente</option></select>

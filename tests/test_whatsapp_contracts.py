@@ -13,7 +13,8 @@ def test_all_baseline_http_operations_and_schemas_are_preserved():
     baseline=json.loads((Path(__file__).parent/'fixtures/whatsapp-baseline-openapi.json').read_text())
     current=app.openapi()
     for path, contract in baseline['paths'].items():
-        assert current['paths'][path]==contract, path
+        for operation, expected in contract.items():
+            assert current['paths'][path][operation] == expected, (path, operation)
     for name, schema in baseline['components']['schemas'].items():
         assert current['components']['schemas'][name]==schema, name
 

@@ -6,6 +6,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from .database import get_session
 from .models import User
+from .administration import consume
 # Re-export schemas and pipeline names for existing imports and provider test seams.
 from .services.training_contracts import InterpretPayload, SessionPayload, VideoLink, WorkoutBlock
 from .services.training_media import IMAGE_LIMIT, image_directory
@@ -39,6 +40,7 @@ def router(require_athlete):
 
     @routes.post('/transcribe')
     def transcribe_recording(file: UploadFile = File(...), user: User = Depends(require_athlete), session: Session = Depends(get_session)):
+        consume(session, user.id, 'TRANSCRIBE')
         raw = file.file.read(AUDIO_LIMIT + 1)
         with http_errors():
             return {'text': service(user, session).transcribe(raw)}
@@ -59,6 +61,7 @@ def router(require_athlete):
     @routes.post('/interpret')
     def interpret_workout(payload: InterpretPayload, user: User = Depends(require_athlete), session: Session = Depends(get_session)):
         with http_errors():
+            consume(session, user.id, 'INTERPRET')
             return service(user, session).interpret(payload)
 
     @routes.get('')

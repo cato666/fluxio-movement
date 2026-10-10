@@ -20,11 +20,40 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(16))
     password_hash: Mapped[str | None] = mapped_column(Text)
     is_internal: Mapped[bool] = mapped_column(server_default=text('false'))
+    email: Mapped[str | None] = mapped_column(String(254), unique=True)
+    is_active: Mapped[bool] = mapped_column(default=True, server_default=text('true'))
+    plan: Mapped[str] = mapped_column(String(16), default='FREE', server_default='FREE')
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     __table_args__ = (
         CheckConstraint("role IN ('ATHLETE', 'COACH', 'SYSTEM_ADMIN')", name="ck_users_role"),
         UniqueConstraint("id", "role", name="uq_users_id_role"),
+        CheckConstraint("plan IN ('FREE', 'PAID')", name="ck_users_plan"),
     )
+
+
+class AdminSetting(Base):
+    __tablename__ = 'admin_settings'
+    key: Mapped[str] = mapped_column(String(40), primary_key=True)
+    value: Mapped[dict] = mapped_column(JSONB)
+
+
+class AdminAudit(Base):
+    __tablename__ = 'admin_audit'
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    actor_id: Mapped[UUID] = mapped_column(ForeignKey('users.id'))
+    action: Mapped[str] = mapped_column(String(40))
+    target: Mapped[str] = mapped_column(String(80))
+    changes: Mapped[dict] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class PlanInteraction(Base):
+    __tablename__ = 'plan_interactions'
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(ForeignKey('users.id'), index=True)
+    operation: Mapped[str] = mapped_column(String(24))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class Athlete(Base):
