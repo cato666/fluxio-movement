@@ -5,7 +5,7 @@ from uuid import uuid4
 from sqlalchemy import select, exists, func
 from sqlalchemy.orm import aliased
 from sqlalchemy.dialects.postgresql import insert
-from .identity import now
+from .identity import IdentityResolver, active_account, now
 from .models import WhatsAppInbox, WhatsAppOutbox, WhatsAppUsage
 from .security import ChannelError
 
@@ -72,10 +72,27 @@ def dispatch_one(session, provider, vault):
         row.state, row.payload_encrypted = 'EXPIRED', None
         session.commit()
         return True
-    payload = vault.decrypt(row.payload_encrypted, row.key_version)
     row.state, row.lease_until = 'SENDING', now() + timedelta(minutes=2)
     row.attempts += 1
     session.commit()
+    # Recheck after the durable SENDING commit, holding the user lock until send
+    # finishes. Deactivation may have committed between claiming and this check.
+    if row.athlete_id and active_account(session, row.athlete_id) is None:
+        IdentityResolver(session, vault).revoke(row.athlete_id)
+        row.state, row.payload_encrypted = 'CANCELLED', None
+        row.error_code, row.lease_until = 'account_inactive', None
+        session.commit()
+        return True
+    session.refresh(row)
+    if row.state != 'SENDING' or row.payload_encrypted is None:
+        session.commit()
+        return True
+    payload = vault.decrypt(row.payload_encrypted, row.key_version)
+    if row.athlete_id and IdentityResolver(session, vault).resolve(payload['phone']) != row.athlete_id:
+        row.state, row.payload_encrypted = 'CANCELLED', None
+        row.error_code, row.lease_until = 'identity_revoked', None
+        session.commit()
+        return True
     from .provider import ProviderError
     try:
         identifier = provider.send(payload['phone'], payload['text'], payload.get('actions'))

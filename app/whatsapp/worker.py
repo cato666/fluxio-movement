@@ -49,12 +49,15 @@ def process_one(provider, vault):
                     try:
                         message = InboundWhatsAppMessage(**vault.decrypt(row.payload_encrypted, row.key_version))
                         runtime.handle(session, row, message, vault, provider)
-                        row.state, row.processed_at, row.lease_until = 'DONE', now(), None
+                        row.state = 'CANCELLED' if row.state == 'CANCELLED' else 'DONE'
+                        row.processed_at, row.lease_until = now(), None
                         row.payload_encrypted = None
                         session.commit()
                     except Exception:
                         session.rollback()
                         row = session.get(WhatsAppInbox, identifier)
+                        if row.state == 'CANCELLED':
+                            return True
                         row.state = 'PENDING' if row.attempts < 3 else 'FAILED'
                         row.error_code = 'processing_failed'
                         row.lease_until = None

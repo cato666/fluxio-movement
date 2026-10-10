@@ -2,7 +2,7 @@
 from datetime import timedelta
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
-from .identity import IdentityResolver, now
+from .identity import IdentityResolver, active_account, now
 from .models import ConversationState, WhatsAppOutbox, WhatsAppPeer
 from .queue import reply, usage
 
@@ -24,6 +24,19 @@ def handle(session, inbox, message, vault, provider):
         return
     resolver = IdentityResolver(session, vault)
     athlete_id = resolver.resolve(message.phone)
+    if athlete_id is None:
+        inactive = resolver.inactive_phone(message.phone)
+        if inactive is not None and active_account(session, inactive) is None:
+            resolver.revoke(inactive)
+            inbox.athlete_id, inbox.error_code = inactive, 'account_inactive'
+            return
+    if athlete_id and active_account(session, athlete_id) is None:
+        resolver.revoke(athlete_id)
+        inbox.athlete_id, inbox.error_code = athlete_id, 'account_inactive'
+        return
+    session.refresh(inbox)
+    if inbox.state == 'CANCELLED':
+        return
     if message.text.upper().startswith('VINCULAR '):
         code = message.text.split(' ', 1)[1].strip()
         athlete_id = resolver.verify(code, message.phone)

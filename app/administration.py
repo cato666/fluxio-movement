@@ -125,6 +125,10 @@ def router(require_admin, authenticated):
             changes = {key: {'before': before.get(key), 'after': value} for key, value in data.items() if before.get(key) != value}
             if payload.password:
                 changes['password_reset'] = True
+            if before.get('is_active') and not user.is_active and user.role == 'ATHLETE':
+                # Revoke channel state in the same transaction as deactivation.
+                from .whatsapp.identity import IdentityResolver
+                IdentityResolver(session, None).revoke(user.id)
             audit(session, actor, 'USER_UPDATED' if identifier else 'USER_CREATED', user.id, changes)
             session.commit()
         except IntegrityError:

@@ -18,7 +18,10 @@ def report_usage(model, usage=None, duration_seconds=None):
     if row is None:
         row = TrainingAIUsage(athlete_id=athlete_id, operation=operation, model=model[:120], status='RUNNING')
         session.add(row)
-        session.commit()  # Keep a durable attempt even if the worker stops mid-call.
+        if recorder['commit']:
+            session.commit()  # Web keeps a durable attempt before external work.
+        else:
+            session.flush()  # WhatsApp retains its account lock through the call.
         recorder['row'] = row
         recorder['started'] = perf_counter()
     row.model = model[:120]
@@ -36,8 +39,8 @@ def report_usage(model, usage=None, duration_seconds=None):
 
 
 @contextmanager
-def track_usage(session, athlete_id, operation):
-    recorder = {'context': (session, athlete_id, operation)}
+def track_usage(session, athlete_id, operation, *, commit=True):
+    recorder = {'context': (session, athlete_id, operation), 'commit': commit}
     token = _current.set(recorder)
     error = None
     try:
@@ -52,7 +55,10 @@ def track_usage(session, athlete_id, operation):
             row.status = 'FAILED' if error else 'COMPLETED'
             row.error = error
             row.latency_ms = round((perf_counter() - recorder['started']) * 1000)
-            session.commit()
+            if commit:
+                session.commit()
+            else:
+                session.flush()
 
 
 def extend_usage(data, session):

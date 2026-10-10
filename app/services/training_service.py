@@ -65,7 +65,7 @@ class TrainingService:
             raise TrainingInvalid('Escribe el WOD o agrega una foto de la pizarra')
         image = self.image_path(payload.image_id).read_bytes() if payload.image_id else None
         try:
-            with track_usage(self.session, self.athlete_id, 'INTERPRET'):
+            with track_usage(self.session, self.athlete_id, 'INTERPRET', commit=self.commit):
                 return self.interpreter(payload.text, image)
         except RuntimeError as error:
             raise TrainingUnavailable(str(error)) from error
@@ -78,7 +78,7 @@ class TrainingService:
         if not raw:
             raise TrainingInvalid('La grabación está vacía')
         try:
-            with track_usage(self.session, self.athlete_id, 'TRANSCRIBE'):
+            with track_usage(self.session, self.athlete_id, 'TRANSCRIBE', commit=self.commit):
                 return self.transcriber(raw)
         except AudioUnavailable as error:
             raise TrainingUnavailable(str(error)) from error

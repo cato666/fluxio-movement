@@ -56,14 +56,14 @@ def receive(session, inbox, message, athlete_id, provider):
         raise TrainingInvalid('El mensaje no contiene una referencia de media válida')
     media = provider.download_media(message.media_reference, VIDEO_LIMIT if message.message_type == 'video' else MEDIA_LIMIT)
     usage(session, f'download:{inbox.id}:{inbox.attempts}', 'media_bytes', athlete_id, units=len(media.data))
-    session.commit()  # Account for completed downloads even if decoding fails.
+    session.flush()  # Keep the account lock until worker completion.
     mime = media.mime.lower()
     allowed = {'image': {'image/jpeg','image/png','image/webp'},
                'audio': {'audio/ogg','application/ogg','audio/webm','audio/mp4','audio/wav','audio/x-wav'},
                'video': {'video/mp4'}}
     if mime not in allowed.get(message.message_type, set()):
         raise TrainingInvalid('Tipo de media no soportado')
-    service = TrainingService(session, athlete_id)
+    service = TrainingService(session, athlete_id, commit=False)
     if message.message_type == 'audio':
         return None, None, service.transcribe(media.data)
     if message.message_type == 'image':
@@ -76,7 +76,7 @@ def receive(session, inbox, message, athlete_id, provider):
                        media_type=message.message_type, expires_at=now() + timedelta(hours=24))
     session.add(row)
     try:
-        session.commit()
+        session.flush()
     except Exception:
         (private_root() / path).unlink(missing_ok=True)
         raise

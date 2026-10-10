@@ -11,7 +11,7 @@ from ..models import TrainingSession
 from ..services.training_contracts import InterpretPayload, SessionPayload, WorkoutDraft
 from ..services.training_errors import TrainingError, TrainingInvalid
 from ..services.training_service import TrainingService
-from .identity import now
+from .identity import active_account, now
 from .media import receive
 from .models import AthleteIdentity, ConversationState, WhatsAppInbox, WhatsAppMedia
 from .provider import ProviderError
@@ -94,10 +94,9 @@ def propose(session, inbox, message, athlete_id, state, data, vault):
 
 
 def interpret(session, inbox, message, athlete_id, state, data, vault):
-    # Release conversation row locks before provider accounting commits its attempts.
-    # Identity remains serialized by the worker's advisory lock across those commits.
+    # Account lock survives provider accounting until worker completion.
     source = sanitize(data['source'])[:12000]
-    service = TrainingService(session, athlete_id)
+    service = TrainingService(session, athlete_id, commit=False)
     raw = service.interpret(InterpretPayload(text=source, image_id=data.get('image_id')))
     draft = WorkoutDraft.model_validate(raw).model_dump()
     if not draft['workout'].strip():
@@ -114,6 +113,9 @@ def interpret(session, inbox, message, athlete_id, state, data, vault):
 
 
 def handle_capture(session, inbox, message, athlete_id, vault, provider):
+    if active_account(session, athlete_id) is None:
+        inbox.error_code = 'account_inactive'
+        return
     # Also serialize against web unlink; an old phone must never confirm a new draft.
     identity = session.scalar(select(AthleteIdentity).where(AthleteIdentity.athlete_id == athlete_id,
         AthleteIdentity.phone_hash == vault.phone_hash(message.phone), AthleteIdentity.revoked_at.is_(None)))
@@ -250,7 +252,7 @@ def handle_capture(session, inbox, message, athlete_id, vault, provider):
         if not note or len(note) > 4000:
             respond(session, inbox, message, athlete_id, vault, '¿Qué nota quieres agregar? Escribe hasta 4000 caracteres.')
             return
-        sessions = TrainingService(session, athlete_id).list_sessions()
+        sessions = TrainingService(session, athlete_id, commit=False).list_sessions()
         today = now().astimezone(ZoneInfo('America/Santiago')).date()
         recent = [s for s in sessions if today - timedelta(days=7) <= s['trained_on'] <= today]
         if not recent:
@@ -304,8 +306,16 @@ def handle_capture(session, inbox, message, athlete_id, vault, provider):
             return
         interpret(session, inbox, message, athlete_id, state, data, vault)
     except (TrainingError, ProviderError, ValueError):
-        # Roll back only the pending proposal; durable media/usage attempts remain.
-        session.rollback()
+        # Expected content/provider errors keep media and usage in the worker
+        # transaction; rolling back here would release the account lock.
+        if active_account(session, athlete_id) is None:
+            inbox.error_code = 'account_inactive'
+            return
+        if not session.scalar(select(AthleteIdentity.id).where(
+            AthleteIdentity.athlete_id == athlete_id,
+            AthleteIdentity.phone_hash == vault.phone_hash(message.phone),
+            AthleteIdentity.revoked_at.is_(None))):
+            return
         state = session.get(ConversationState, (athlete_id, 'whatsapp'))
         if state:
             transition(state, 'CLARIFY', data, vault)
