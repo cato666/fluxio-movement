@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "pilot": "Fluxio Movement Pilot A",
-  "status": "writer_read_checks_pass_owner_privacy_confirmed_operational_dependencies_pending",
+  "status": "custody_and_mail_provider_selected_easypanel_access_and_real_validations_pending",
   "execution_enabled": false,
   "scheduler_enabled": false,
   "effective_photo_cleanup_enabled": false,
@@ -61,7 +61,14 @@
     ],
     "all_required_versions_verified": false,
     "application_configuration_reference": null,
-    "independent_recovery_verified": false
+    "independent_recovery_verified": false,
+    "custody_decision": {
+      "primary": "KeePassXC on Gaston personal Windows computer",
+      "secondary": "protected copy on encrypted external device",
+      "status": "owner_selected_not_created_or_recovery_verified",
+      "runtime_key_delivery": "pending_secure_runtime_secret_mechanism",
+      "key_generation_or_replacement_authorized": false
+    }
   },
   "credentials": {
     "backup_writer_secret_reference": null,
@@ -98,7 +105,8 @@
     "on_stale": true,
     "stale_after_hours_proposed": 24,
     "confirmed_channel_reference": null,
-    "delivery_verified": false
+    "delivery_verified": false,
+    "preferred_provider": "Resend"
   },
   "recovery_targets": {
     "rpo_hours": 24,

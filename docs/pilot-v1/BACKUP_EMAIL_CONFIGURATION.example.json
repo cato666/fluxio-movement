@@ -1,12 +1,12 @@
 {
-  "status": "prepared_not_configured_not_sent",
-  "transport": "smtp_tls_required",
+  "status": "resend_preferred_private_addresses_domain_and_adapter_pending",
+  "transport": "resend_https_api_proposed_not_implemented",
   "recipient": null,
   "sender": null,
-  "smtp_host": null,
-  "smtp_port": null,
-  "tls_mode": null,
-  "credentials_private_reference": null,
+  "smtp_host": "smtp.resend.com",
+  "smtp_port": 465,
+  "tls_mode": "implicit_tls_if_smtp_selected",
+  "credentials_private_reference": "runtime secret RESEND_API_KEY (not configured)",
   "send_authorized": false,
   "delivery_verified": false,
   "codes": [
@@ -18,7 +18,19 @@
   ],
   "subject_template": "Fluxio Pilot A: alerta de respaldo {code}",
   "body_template": "Evento: {code}. Fecha UTC: {timestamp}. ID operativo: {backup_id}. Revisar el estado del respaldo y registrar respuesta. No incluye datos de atletas ni enlaces privados.",
-  "success_policy": "SMTP accepted is not proof of inbox receipt; Gaston must confirm receipt",
+  "success_policy": "provider acceptance is not inbox receipt; Gaston must confirm receipt",
   "delivery_failure_policy": "persist redacted failure independently; do not claim notification delivered",
-  "anti_spam_policy_pending": "confirm deduplication, reminder interval and escalation before activation"
+  "anti_spam_policy_pending": "confirm deduplication, reminder interval and escalation before activation",
+  "provider_preference": "resend",
+  "api_endpoint": "https://api.resend.com/emails",
+  "domain_verified": false,
+  "smtp_username": "resend",
+  "runtime_variable_names": [
+    "RESEND_API_KEY",
+    "BACKUP_ALERT_FROM",
+    "BACKUP_ALERT_TO",
+    "BACKUP_ALERTS_ENABLED"
+  ],
+  "alternative_transport": "SMTP TLS using API key as password; integration not implemented",
+  "idempotency_policy": "persist stable event/request ID; same event and payload reuse key; uncertain send no blind resend; provider retention window must be respected"
 }
