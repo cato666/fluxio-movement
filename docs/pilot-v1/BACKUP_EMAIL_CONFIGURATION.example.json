@@ -1,5 +1,5 @@
 {
-  "status": "adapter_offline_tested_private_configuration_and_real_send_pending",
+  "status": "superseded_by_telegram_not_active",
   "transport": "resend_https_api_prepared_not_activated",
   "recipient": null,
   "sender": null,

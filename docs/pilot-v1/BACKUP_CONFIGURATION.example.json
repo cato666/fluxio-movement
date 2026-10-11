@@ -106,7 +106,8 @@
     "stale_after_hours_proposed": 24,
     "confirmed_channel_reference": null,
     "delivery_verified": false,
-    "preferred_provider": "Resend"
+    "preferred_provider": "Telegram",
+    "configuration_reference": "BACKUP_TELEGRAM_CONFIGURATION.example.json"
   },
   "recovery_targets": {
     "rpo_hours": 24,

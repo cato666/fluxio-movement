@@ -1,0 +1,22 @@
+{
+  "status": "offline_tested_disabled_real_receipt_pending",
+  "provider": "telegram",
+  "outbound_method": "sendMessage",
+  "webhooks_enabled": false,
+  "send_authorized": false,
+  "receipt_verified": false,
+  "token_secret_reference": null,
+  "chat_secret_reference": null,
+  "state_directory_private_reference": null,
+  "runtime_variables": {
+    "TELEGRAM_BOT_TOKEN": "private",
+    "TELEGRAM_CHAT_ID": "private_authorized_chat",
+    "TELEGRAM_ALERTS_ENABLED": "false",
+    "TELEGRAM_ALERT_TIMEOUT_SECONDS": "10",
+    "TELEGRAM_ALERT_MIN_INTERVAL_SECONDS": "60",
+    "TELEGRAM_ALERT_DAILY_LIMIT": "20"
+  },
+  "adapter": "scripts/pilot_telegram_alerts.py",
+  "automatic_retries": false,
+  "rate_limited_notifications": "failed notification must remain recorded; watchdog requires approved recovery/escalation"
+}

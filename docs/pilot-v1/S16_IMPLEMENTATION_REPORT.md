@@ -1,3 +1,15 @@
+# S16 — Telegram reemplaza Resend
+
+2026-10-11. Adaptador saliente Telegram preparado con reutilización de recibos/validación, timeout, rate limit persistente y callback seguro para backup. **31 tests simulados PASS + 16 regresiones PASS**. Sin Telegram real ni webhooks. Resend desactivado como canal; intento previo Resend HTTP 403 conservado como histórico, no repetir.
+
+Config/instrucciones Chat ID y mensaje de prueba en [S16_TELEGRAM_ALERTS.md](S16_TELEGRAM_ALERTS.md). TELEGRAM_BOT_TOKEN/CHAT_ID privados; TELEGRAM_ALERTS_ENABLED=false. No stdout de tokens, direcciones de API o datos de chats. Monitores y scheduler no instalados; permisos y recuperación real pendientes.
+
+**S16 BLOCKED / Pilot A NO-GO:** recepción real Telegram no autorizada/ejecutada, KeePassXC y backup representativo EasyPanel aún pendientes. No modificar CI, push, deploy, EasyPanel o workspace original. Riesgo de gates CI aceptado temporalmente, S15 pendiente; aprobación manual antes del push conserva pruebas del SHA definitivo.
+
+---
+
+## Histórico — prevalece Telegram como canal actual
+
 # S16 — adaptador Resend preparado, validación offline
 
 Fecha: 2026-10-11. Política de release vigente: control manual de tests/resultados/SHA y aprobación explícita antes de push; riesgo de ausencia de gates CI aceptado temporalmente, S15 no completada. Workflow sin cambios.

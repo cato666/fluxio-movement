@@ -1,3 +1,15 @@
+# S16 — Telegram reemplaza Resend
+
+2026-10-11. Adaptador saliente Telegram preparado con reutilización de recibos/validación, timeout, rate limit persistente y callback seguro para backup. **31 tests simulados PASS + 16 regresiones PASS**. Sin Telegram real ni webhooks. Resend desactivado como canal; intento previo Resend HTTP 403 conservado como histórico, no repetir.
+
+Config/instrucciones Chat ID y mensaje de prueba en [S16_TELEGRAM_ALERTS.md](S16_TELEGRAM_ALERTS.md). TELEGRAM_BOT_TOKEN/CHAT_ID privados; TELEGRAM_ALERTS_ENABLED=false. No stdout de tokens, direcciones de API o datos de chats. Monitores y scheduler no instalados; permisos y recuperación real pendientes.
+
+**S16 BLOCKED / Pilot A NO-GO:** recepción real Telegram no autorizada/ejecutada, KeePassXC y backup representativo EasyPanel aún pendientes. No modificar CI, push, deploy, EasyPanel o workspace original. Riesgo de gates CI aceptado temporalmente, S15 pendiente; aprobación manual antes del push conserva pruebas del SHA definitivo.
+
+---
+
+## Histórico — prevalece Telegram como canal actual
+
 # Actualización de responsabilidades — 2026-10-11
 
 Gastón administra EasyPanel; Codex no necesita acceso SSH ni sesión del panel. GitHub es origen de la versión publicada y GitHub Actions dispara deploy **solo bajo autorización expresa**. Codex prepara código/pruebas/manifiesto y sube exclusivamente refs aprobadas. Gastón aplica variables, obtiene inventario y evidencia redactada API/worker/DB/volúmenes/proxy, realiza backups/restore/rollback autorizados y confirma SHA/digests. Falta de acceso directo de Codex no es bloqueo; falta de evidencia verificable sí.
