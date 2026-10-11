@@ -1,39 +1,60 @@
-# S10 â€” Integridad del registro: reproducciÃ³n y parada obligatoria
+# S10 — Integridad del registro de entrenamientos
 
-Fecha: 2026-10-11. Rama codex/pilot-v1-stabilization. Base documental f7a70067fc812d4c1248f2c2ccf5eccd6fee777e; cÃ³digo S09 1d739a86e73d9d1cc5e0c89d80eb809c699f03be.
+Fecha: 2026-10-11. Rama `codex/pilot-v1-stabilization`. Base de reanudación `213fb793bfde0d4a9cb4d648fc28cf0d722ed8e1`; autorización expresa del usuario después de la parada de reproducción. **Estado: cierre técnico local PASS, no habilita publicación.**
 
-**Estado: FAIL / BLOCKED, NO IMPLEMENTADA.** No cambios funcionales S10 ni commit de implementaciÃ³n. El commit documental de esta parada no constituye cierre tÃ©cnico S10.
+## Defectos reproducidos y corrección
 
-## Evidencia reproducible
+La ejecución anterior demostró tres FAIL/P1: campos omitidos se sobrescribían con defaults, notas desaparecían del registro visible y el replay de POST con una clave generaba dos sesiones. No se intervino sobre datos reales. Reproducción previa conservada en C:/Users/desarrollo/AppData/Local/Temp/fluxio-s10-validation-20261011/.
 
-Tres casos sintÃ©ticos sobre PostgreSQL desechable: **0 PASS / 3 FAIL / 0 ERROR / 0 SKIPPED**, XML final en 1,37 s. No falla ambiental ni proveedor real. ReproducciÃ³n: C:/Users/desarrollo/AppData/Local/Temp/fluxio-s10-validation-20261011/reproduction.py y reproduction.xml. Se copiÃ³ solo al runner temporal como tests/test_s10_reproduction.py; no se incorporÃ³ un test fallido a la suite del candidato.
+- Edición: _assign usa exclude_unset solo para update. Los campos opcionales omitidos se conservan; null, texto vacío y [] explícitos mantienen su semántica de limpieza. Campos obligatorios y propiedad de imagen/análisis conservan el contrato. Update y delete bloquean la fila y refrescan su estado; append de notas también refresca después de bloquear para evitar perder notas por una instancia stale.
+- Web: envía los campos obligatorios y solamente los opcionales modificados. Una nota WhatsApp añadida mientras el atleta edita otro campo no se reemplaza por el valor viejo reenviado automáticamente.
+- Creación web: Idempotency-Key UUID opcional; mismo atleta/clave/payload normalizado retorna la sesión actual sin insert/update. Otro payload devuelve 409; sesión eliminada devuelve 404, nunca se recrea por replay. UUID malformado lo rechaza el contrato HTTP. Usuarios distintos no comparten espacio de claves.
+- Web genera una clave por formulario y la conserva ante respuesta perdida/error. Si un intento pudo haberse guardado, modificar el borrador no inventa una clave nueva; un conflicto indica revisar bitácora y mantiene el borrador. Una captura nueva tiene una clave nueva.
+- WhatsApp: mantiene su confirmación atómica por identidad/estado/versión/token y la purga existente; no se reconstruye el flujo ni se cambian consentimiento, cuotas o outbox.
 
-| ID / severidad | Pasos y resultado observado | Causa / archivos |
-|---|---|---|
-| S10-D01 / P1 | POST con resultados, adaptaciones, RPE y fuente. PUT vÃ¡lido con solo trained_on/title/workout. Resultado observado: result_text, adaptations, rpe y source_text anteriores se sustituyen por defaults. | TrainingService._assign usa model_dump completo tambiÃ©n al editar; app/services/training_service.py y training_contracts.py. |
-| S10-D02 / P1 | Crear registro, aÃ±adir nota por add_athlete_note (flujo WhatsApp), editar solo tÃ­tulo/programaciÃ³n. La nota desaparece de adaptations visible. La copia interna athlete_notes continÃºa presente: se verificÃ³, no equivale a una nota visible consistente. | Mismo defecto de asignaciÃ³n; detalle/semana usan adaptations. No se borrÃ³ ningÃºn dato real. |
-| S10-D03 / P1 | Dos POST iguales con la misma Idempotency-Key. Ambos 201, dos IDs distintos y dos filas persistidas. Una repeticiÃ³n tras perder la respuesta podrÃ­a duplicar el registro. | El endpoint create no recibe la clave; TrainingService.create crea siempre. El botÃ³n web bloquea doble click concurrente pero no hace idempotente un reintento tras respuesta perdida. app/training.py y app/static/training.js. |
+## Idempotencia y migración
 
-Los mÃ©todos CRUD afectados no se modificaron en S09; el diff entre S08 y S09 lo confirma. Son defectos existentes descubiertos por pruebas nuevas, no evidencia de una regresiÃ³n causada por S09. La suite anterior 769 PASS permanece evidencia de su cobertura, pero no implica que S10 estÃ© aprobada.
+Tabla aditiva training_save_requests: athlete_id y request_key como PK compuesta, session_id, payload_hash y created_at. No almacena texto, fotografías, audio, teléfono ni respuesta de proveedor. La huella SHA-256 incluye atleta/clave y JSON normalizado; no se imprime en logs. No convierte el registro manual en una operación facturable.
 
-## Alcance revisado
+El bloqueo existente de cuenta activa FOR NO KEY UPDATE serializa guardados keyed del atleta. La sesión y la evidencia se guardan en una sola transacción; un fallo de commit/validación revierte ambas. La tabla conserva evidencia al eliminar: session_id carece deliberadamente de FK a la sesión para impedir resurrección. No hay TTL/limpieza automática del ledger; su retención no se decide eliminando protección de replay.
 
-TrainingService, SessionPayload, TrainingSession y relaciones con TrainingImage/Analysis; adaptador HTTP; captura y notas WhatsApp; submit web; representaciÃ³n semanal. La confirmaciÃ³n WhatsApp existente usa bloqueo de identidad/estado, versiÃ³n/token, savepoint y clear; no se encontrÃ³ en esta lectura un motivo para sustituirla. La ausencia de un hallazgo no certifica todavÃ­a todas las pruebas S10 de restart, concurrencia, medios, legacy y notas.
+Migración `0024_training_save_requests`, padre `0023_consumption_reservations`. Únicamente crea una tabla; no reescribe usuarios, notas, sesiones ni medios históricos. Se probó desde cero y 0023 con una sesión histórica intacta, además del check de drift. Ninguna migración persistente.
 
-## CorrecciÃ³n mÃ­nima propuesta para revisiÃ³n
+Compatibilidad: POST sin clave conserva contrato legacy, cada petición constituye un nuevo registro; no es posible distinguir una repetición accidental de dos entrenamientos iguales sin identificador. WhatsApp usa su identidad de acción vigente. JSON de sesiones no agrega campos públicos. PUT sigue exigiendo trained_on/title/workout; su omisión opcional conserva datos. La edición explícita de un campo sigue reemplazándolo; los clientes externos que reenvíen todo el payload deben hacerlo deliberadamente.
 
-1. En update, asignar Ãºnicamente campos explÃ­citamente presentes (`model_dump(exclude_unset=True)`), manteniendo campos obligatorios y validaciones de propiedad. Create conserva defaults actuales. Null y listas vacÃ­as explÃ­citos siguen permitiendo limpiar campos. AÃ±adir pruebas de foto, blocks, video_links, notas y valores legacy; probar rollback ante FK/validaciÃ³n fallida.
-2. Hacer persistente y por atleta la idempotencia de creaciÃ³n, con comparaciÃ³n del payload normalizado y conflicto 409 ante reutilizaciÃ³n con otro contenido. Debe sobrevivir al reinicio y conservar tombstone tras borrar: no basta un cache en memoria o deshabilitar un botÃ³n. Revisar el mecanismo mÃ­nimo antes de elegir un cambio de esquema; ninguna migraciÃ³n se ha creado/aplicado.
-3. En web, mantener una clave estable al reintentar el mismo borrador y generar una nueva solo cuando cambie el payload o comience otro registro; preservar borrador al fallar. No cambiar consentimiento S05 ni consumo S06/S09 para el registro manual.
-4. Mantener la atomicidad de WhatsApp y probar doble confirmaciÃ³n, botÃ³n vencido, fallo tras guardado, notas web/chat, ownership y reincio con datos sintÃ©ticos. Definir campo visible canÃ³nico sin borrar notas histÃ³ricas.
-5. Promover estos tres casos a pruebas del candidato solo al implementar la correcciÃ³n, aÃ±adir concurrencia real en PostgreSQL y regresiones S02â€“S09, cerrar suites Python/JS y commit limpio antes de S11.
+El campo visible canónico de notas sigue siendo adaptations, empleado por detalle y semana; athlete_notes conserva la evidencia histórica previa y no se agrega al resumen público. Editar explícitamente adaptations actualiza la vista; no se borran notas históricas ni se modifica política S05.
 
-No se propone limpiar duplicados existentes ni restaurar campos reales sin autorizaciÃ³n, evidencia y respaldo; no se ejecutÃ³ remediaciÃ³n sobre cuentas/datos existentes.
+## Archivos modificados
 
-## RazÃ³n de la parada y riesgos
+app/models.py; app/services/training_errors.py; app/services/training_service.py; app/training.py; app/static/training.js; migrations/versions/0024_training_save_requests.py; tests/test_training_integrity.py; tests/training-ux.test.cjs; tests/test_whatsapp_contracts.py.
 
-El encargo establece: Â«Detente inmediatamente cuando exista ... PÃ©rdida o corrupciÃ³n potencial de datosÂ» y Â«Una prueba obligatoria fallida sin resolverÂ». Estos tres casos activan esa regla; por eso no se aplicÃ³ cÃ³digo funcional S10 ni se avanzÃ³ a S11. Se solicita revisiÃ³n de los hallazgos y autorizaciÃ³n para reanudar su correcciÃ³n acotada. No es una limitaciÃ³n de Docker ni una solicitud para publicar.
+## Pruebas y resultados
 
-Siguen abiertos: E2E integrado S05 BLOCKED; costos adicionales de video; paridad EasyPanel; proveedores reales; backup/restore del destino. S11 requiere ademÃ¡s polÃ­tica de retenciÃ³n aprobada y S16; sus decisiones se documentan sin implementar borrado.
+| Ejecución final | PASS | FAIL | ERROR | SKIPPED |
+|---|---:|---:|---:|---:|
+| Python completa, 238,01 s | 787 | 0 | 0 | 0 |
+| Dirigidas integridad/CRUD/migración/WhatsApp | 89 | 0 | 0 | 0 |
+| Contratos/migración dirigidos | 2 | 0 | 0 | 0 |
+| Nota web/chat y semana adicional | 1 | 0 | 0 | 0 |
+| JavaScript completa final, 24,63 s | 72 | 0 | 0 | 0 |
 
-RecomendaciÃ³n: **NO-GO; no cerrar S10 ni continuar fases**. Sin push, merge, deploy, proveedores reales, migraciones persistentes, cuentas reales o cambios al workspace original.
+Dirigidas incluidas en la completa: no sumar. Las tres reproducciones originales ahora PASS dentro de tests/test_training_integrity.py. Regresiones S02–S09 y biomecánica existente incluidas. La última corrección fue exclusivamente JS (copia inmutable para comparar arrays): no se modificaron fuentes Python después de su PASS; se repitió JavaScript completo sobre la versión final. Código JS final sincronizado al runner para la comparación de fuentes. E2E integrado navegador/servidor S05 permanece BLOCKED; proveedores y destino NOT RUN/PENDIENTE.
+
+Casos nuevos: tres reproducciones originales; replay desde otro proceso; dos guardados concurrentes reales; conflicto/delete/tombstone; separación por atleta/legacy; validación y commit fallidos; foto/blocks/video_links omitidos y limpieza explícita; edición inválida conserva todo; instancia stale/notas concurrentes; inactividad/replay; evidencia sin contenido; manual sin presupuesto/proveedores; migration 0023→0024/legacy; delete conserva medio/foto; consistencia de notas web/chat/detalle/semana. UI: clave estable al fallar, conflicto de contenido conserva borrador, campos opcionales sin cambios no se reenvían y cambios explícitos en arrays anidados/video se comparan contra una copia inicial inmutable.
+
+Entorno: PostgreSQL 17.6, movement_test tmpfs sin mounts persistentes, reset explícito solo de fixtures; storage temporal; runner propio y red interna existente sin puertos publicados/redes añadidas. Proveedores simulados y claves reales vacías. Evidencia final en C:/Users/desarrollo/AppData/Local/Temp/fluxio-s10-final-validation-20261011/; capturas JS fuera del candidato en fluxio-s10-js-evidence-20261011/ y fluxio-s10-js-final-evidence-20261011/. Fuente ejecutada/candidato: 188 hashes iguales. Sintaxis de 42 módulos PASS.
+
+Incidencia de preparación resuelta: la prueba nueva de medios importaba una fixture con nombre inexistente; se corrigió al helper/modelo existente. La revisión de diff corrigió una recodificación local de cadenas y conservó exactamente los textos UTF-8 originales antes de probar; no se cambió copy de producto para esta fase. La primera suite completa tuvo un FAIL de contrato al detectar la nueva cabecera opcional; se añadió únicamente create a la allowlist existente y se exigió exactamente UUID/null opcional. El resto del OpenAPI sigue comparándose íntegramente, sin reemplazar la baseline. No se omitieron pruebas.
+
+## Riesgos y gates
+
+- La nueva aplicación exige la migración 0024 antes de utilizar guardados con clave; falta comprobar esquema/configuración/digest del destino. No se aplicó en EasyPanel.
+- No ejecutar downgrade sobre producto: perdería evidencia de idempotencia. Rollback requiere un bundle de migraciones compatible con 0024; un binario anterior sin esa revisión puede fallar en el script de arranque. Ensayo y respaldo corresponden a S14/S16, pendientes.
+- Formularios nuevos y clientes legacy sin clave pueden registrar contenido igual deliberadamente. No se deduplican datos existentes por texto/fecha, ni se cambia silenciosamente ese contrato.
+- Claves/evidencia persistentes crecen con guardados keyed, incluidos tombstones; no se eliminan por un TTL arbitrario.
+- Pruebas con API simulada no cierran E2E integrado S05.
+- Costos adicionales reales de video, paridad EasyPanel, proveedores reales y backup/restore del destino permanecen pendientes, junto con E2E S05 BLOCKED. Pilot **NO-GO**.
+
+Workspace original intacto: 153 huellas y estado Git sin diferencias. Selección/secretos sin hallazgos de patrones; no garantía absoluta. Sin push, merge, deploy, proveedores/cuentas reales ni acciones sobre bases/archivos persistentes.
+
+Commit funcional: `09b4215f5b1aec1e44e77f67e42360ecedfd373c`. Commit documental identificable mediante git log de este reporte. Recomendación: aceptar cierre técnico S10 y continuar exclusivamente al análisis S11 conforme a la autorización secuencial; no implementar borrado/retención sin política del propietario y sin resolver dependencia S16.
