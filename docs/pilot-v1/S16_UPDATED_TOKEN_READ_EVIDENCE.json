@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-11",
+  "bucket": "fluxio-movement-backups",
+  "checks": [
+    {
+      "check": "bucket_access",
+      "http": 200,
+      "status": "PASS"
+    },
+    {
+      "check": "list_permission_zero_objects",
+      "http": 200,
+      "status": "PASS"
+    }
+  ],
+  "privacy_and_token_scope_source": "owner_cloudflare_panel_confirmation",
+  "token_name_association_source": "owner_confirmation_not_introspected",
+  "object_reads": 0,
+  "writes": 0,
+  "deletions": 0
+}

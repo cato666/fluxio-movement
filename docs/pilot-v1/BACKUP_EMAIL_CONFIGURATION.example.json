@@ -1,0 +1,24 @@
+{
+  "status": "prepared_not_configured_not_sent",
+  "transport": "smtp_tls_required",
+  "recipient": null,
+  "sender": null,
+  "smtp_host": null,
+  "smtp_port": null,
+  "tls_mode": null,
+  "credentials_private_reference": null,
+  "send_authorized": false,
+  "delivery_verified": false,
+  "codes": [
+    "BACKUP_FAILED",
+    "BACKUP_MISSING",
+    "BACKUP_STALE",
+    "BACKUP_INCOMPLETE",
+    "ALERT_DELIVERY_FAILED"
+  ],
+  "subject_template": "Fluxio Pilot A: alerta de respaldo {code}",
+  "body_template": "Evento: {code}. Fecha UTC: {timestamp}. ID operativo: {backup_id}. Revisar el estado del respaldo y registrar respuesta. No incluye datos de atletas ni enlaces privados.",
+  "success_policy": "SMTP accepted is not proof of inbox receipt; Gaston must confirm receipt",
+  "delivery_failure_policy": "persist redacted failure independently; do not claim notification delivered",
+  "anti_spam_policy_pending": "confirm deduplication, reminder interval and escalation before activation"
+}

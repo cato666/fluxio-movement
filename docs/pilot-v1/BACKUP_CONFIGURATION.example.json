@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "pilot": "Fluxio Movement Pilot A",
-  "status": "synthetic_trial_pass_operational_configuration_pending",
+  "status": "writer_read_checks_pass_owner_privacy_confirmed_operational_dependencies_pending",
   "execution_enabled": false,
   "scheduler_enabled": false,
   "effective_photo_cleanup_enabled": false,
@@ -21,8 +21,9 @@
     "bucket_or_container": "fluxio-movement-backups",
     "prefix": null,
     "independent_of_easypanel_vps": null,
-    "private_access_verified": false,
-    "identification_source": "owner_reported_authenticated_synthetic_upload_download_verified"
+    "private_access_verified": true,
+    "identification_source": "owner_reported_authenticated_synthetic_upload_download_verified",
+    "privacy_evidence": "owner_confirmed_cloudflare_panel_private_no_custom_domain_no_r2_dev_2026-10-11"
   },
   "encryption": {
     "at_rest_required": "AES-256",
@@ -66,7 +67,11 @@
     "backup_writer_secret_reference": null,
     "restore_reader_secret_reference": null,
     "retention_operator_secret_reference": null,
-    "least_privilege_verified": false
+    "least_privilege_verified": false,
+    "writer_token_name": "fluxio-movement-backup-writer",
+    "writer_bucket_scope_confirmed_by_owner": true,
+    "writer_permission_confirmed_by_owner": "Object Read & Write",
+    "updated_writer_read_checks": "S16_UPDATED_TOKEN_READ_EVIDENCE.json"
   },
   "schedule": {
     "daily": true,

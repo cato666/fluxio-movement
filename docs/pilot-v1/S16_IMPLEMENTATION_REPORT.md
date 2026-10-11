@@ -1,3 +1,35 @@
+# S16 — verificación del token actualizado y decisiones operativas pendientes
+
+Fecha: 2026-10-11, America/Santiago. Base `3fa022956e6e5fc2315aa67e24499c7ff4ae4086`. **S16 BLOCKED operativamente; Pilot A NO-GO.** No repetición de ensayos sintéticos, nuevas cargas R2, instalación de jobs, correos, EasyPanel ni proveedores IA.
+
+| Control | Estado vigente |
+|---|---|
+| Bucket privado, sin dominio ni r2.dev | PASS de confirmación del propietario en Cloudflare; no inspección independiente de la API/panel por el agente. |
+| Writer Active, Object Read & Write, exclusivo al bucket | Confirmado por propietario: fluxio-movement-backup-writer. Nombre/policy no introspectados con credencial S3. |
+| Token actualizado operativo | PASS técnico: HEAD bucket HTTP 200, ListObjectsV2 max-keys=0 HTTP 200; cero objetos consultados, cero escrituras. Evidencia S16_UPDATED_TOKEN_READ_EVIDENCE.json. |
+| Identidad de restore y separación de medios | BLOCKED: lector separado no identificado; medios EasyPanel no inventariados. least_privilege_verified permanece false. |
+| Claves | Ambas claves sintéticas anteriores siguen disponibles localmente en Temp/recovery-key-private/aes256.key; fuera de EasyPanel/R2/Git, sin imprimir contenido. No hay clave de producción configurada ni almacén independiente aprobado. |
+| Alertas por correo | Preparado contrato/mensaje redactado BACKUP_EMAIL_CONFIGURATION.example.json. BLOCKED destinatario, remitente, proveedor SMTP TLS, credencial y autorización de un envío de prueba. Cero correos enviados; no adaptador SMTP implementado sin configuración elegida. |
+| Diario / pre-release | Helper y cron preparados, probados previamente; NO listos para activar: adaptador path/hash, collector/quiescencia, transporte, clave, correo, estado y horario faltan. execution_enabled/scheduler_enabled siguen false. |
+| Restore EasyPanel representativo | Preparado procedimiento y permisos requeridos, NOT RUN. Falta acceso read-only para inventario y autorización separada del backup real/pausa/restore. Ensayo previo no representa volumen/costos/RTO de destino. |
+
+## Decisiones exactas y autorización por etapa
+
+1. **Custodia:** confirmar una bóveda/gestor de secretos fuera del VPS y distinto del bucket, su referencia privada y acceso de recuperación de Gastón. Propuesta: bóveda cifrada con MFA y copia de recuperación offline protegida, suplente por designar. No usar Temp ni el único servidor como almacén permanente. Con elección aprobada, autorizar crear/custodiar una clave nueva de producción y recuperar una clave sintética desde esa bóveda en máquina aislada; no copiar claves por chat.
+2. **Correo:** entregar dirección de Gastón, remitente autorizado, proveedor/host/puerto SMTP y modo TLS, ubicación privada de credenciales. Luego autorización concreta: “Autorizar un correo de prueba de alerta S16 al destinatario indicado desde el remitente indicado”. Antes del envío mostrar mensaje concreto sin datos personales del producto; confirmar recepción por Gastón, no solo aceptación SMTP. Solicitar separadamente activación de alertas automáticas y pauta de deduplicación/escalado.
+3. **EasyPanel lectura:** indicar proyecto/servicios API, worker, PostgreSQL y storage, y acceso SSH/panel privado por referencia. Autorización requerida: “Autorizar inspección read-only de esos servicios para inventario S16, sin cambios ni copia de datos”. Inventariar versión, 29 tablas del candidato y posibles schemas adicionales, mounts privados, tamaño, escritores, roles, claves/versiones y capacidad. No imprimir conexiones ni contenido de usuarios.
+4. **Backup real:** después del inventario presentar ventana exacta y servicios a pausar/reanudar, set/prefijo, tamaño/costo estimado, destino aislado y acceso/retención de la copia. Pedir autorización específica para esa pausa y dump completo + storage cifrado hacia R2. PostgreSQL lógico no modifica filas, pero la coordinación de servicios cambia infraestructura y exige aprobación. No ejecutarlo solo por aprobar inspección.
+5. **Restore:** autorizar restaurar únicamente ese set identificado en instancia nueva aislada con proveedores apagados, acceso restringido, validación de imágenes/videos/usuarios/analyses/reviews y claves/permisos, tiempo extremo a extremo. Aprobar manejo posterior de la copia; nunca restore en producción ni eliminación implícita.
+6. **Programación:** aprobar horario/zona, operador/suplente, directorio de estado protegido, adaptador fijado por hash, alerts watchdog y ventanas coherentes. Solo tras gates y restore aceptados solicitar autorización de instalar/activar diario y pre-release; no publicar aplicación. Mantener borrado manual de siete daily + pre-release hasta prueba/aprobación separada de cualquier automatización destructiva.
+
+Las decisiones 1 y 2 se requieren ahora para continuar implementación del adaptador; no se inventan proveedor ni direcciones. Mantener evidencia previa 28 tests Linux y restore sintético, sin declararlos reejecutados. Ningún cambio funcional en esta etapa; JSON/docs solamente. Original solo leído; configuración con secretos sigue sin incorporarse al candidato.
+
+Commit de esta etapa: git log -1 -- docs/pilot-v1/S16_UPDATED_TOKEN_READ_EVIDENCE.json. Detenerse para decisiones de custodia/correo/acceso; no cierre falso de S16 ni siguiente fase.
+
+---
+
+## Evidencia histórica
+
 # S16 — preparación operativa y validación local vigente
 
 Fecha: 2026-10-11, America/Santiago. Base `84ad8a992a6f78d36ba8844abf24777308202c24`, rama codex/pilot-v1-stabilization. **Preparación local PASS; cierre operativo S16 BLOCKED; Pilot A NO-GO.** Esta etapa no repitió el upload/restore R2 validado previamente: cero operaciones nuevas R2, cero Kapso/OpenAI, cero EasyPanel, ningún job instalado, ningún objeto borrado.

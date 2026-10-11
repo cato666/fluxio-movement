@@ -1,3 +1,15 @@
+# Actualización S16 — 2026-10-11
+
+Privacidad del bucket y token writer exclusivo/Active confirmados por el propietario en Cloudflare; token actualizado validado con dos lecturas HTTP 200, sin objetos ni escrituras. Confirmación del propietario y comprobación técnica tienen alcance distinto. Ver S16_UPDATED_TOKEN_READ_EVIDENCE.json.
+
+**S16 BLOCKED / NO-GO:** falta lector de restore/separación de medios, bóveda independiente y recuperación real de claves, correo configurado/autorizado/recibido, adaptador EasyPanel coherente/capacidad, backup y restore representativo autorizados. Daily/pre-release están preparados pero no listos para activar; ejecución y scheduler permanecen deshabilitados. No repetir ensayos locales ya PASS.
+
+Contrato de correo inerte: BACKUP_EMAIL_CONFIGURATION.example.json. Decisiones y autorizaciones precisas en [reporte S16](S16_IMPLEMENTATION_REPORT.md): primero bóveda y datos SMTP/destinatario, luego acceso EasyPanel de lectura; backup/pausa/restore y activación requieren autorizaciones separadas sobre planes concretos.
+
+---
+
+## Estado histórico conservado
+
 # S16 — operación preparada, todavía no activada
 
 Fecha: 2026-10-11. Consultar [reporte vigente](S16_IMPLEMENTATION_REPORT.md). Gastón es operador confirmado. Bucket fluxio-movement-backups identificado y ensayo R2 AES-256-GCM PASS; cierre operativo BLOCKED.
