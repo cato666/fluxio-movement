@@ -1,0 +1,31 @@
+{
+  "id": "/",
+  "name": "Fluxio Movement",
+  "short_name": "Fluxio",
+  "lang": "es",
+  "start_url": "/training",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#08251e",
+  "theme_color": "#08251e",
+  "icons": [
+    {
+      "src": "/static/icons/fluxio-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/fluxio-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/fluxio-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
