@@ -151,11 +151,11 @@ body.weekly-public main.weekly-shared{position:relative;max-width:1000px;padding
 .recap-activity-bar { display:block; width:12px; height:4px; border-radius:3px; background:#476057; }
 .recap-activity-day[data-active="true"] .recap-activity-bar { height:24px; background:var(--lime, #c8f36a); }
 
-/* Native photo disclosure on phones; desktop retains its preview. */
-.recap-feature-photo { display:none; }
-@media(max-width:600px) {
- .recap-feature .recap-feature-desktop { display:none; }
- .recap-feature-photo { display:block; }
- .recap-feature-photo > summary { min-height:44px; padding:12px 0; color:#c8f36a; cursor:pointer; font-size:13px; }
- .recap-feature-photo[open] > a { display:block; margin-top:8px; }
-}
+/* One collapsible photo, with an explicit close control at every width. */
+.recap-feature-photo { display:block; }
+.recap-feature-photo > summary { min-height:44px; padding:12px 0; color:#c8f36a; cursor:pointer; font-size:13px; }
+.recap-photo-hide { display:none; }
+.recap-feature-photo[open] .recap-photo-show { display:none; }
+.recap-feature-photo[open] .recap-photo-hide { display:inline-flex; align-items:center; gap:12px; }
+.recap-photo-hide > span { font-size:24px; line-height:16px; }
+.recap-feature-photo > img { margin-top:8px; }
