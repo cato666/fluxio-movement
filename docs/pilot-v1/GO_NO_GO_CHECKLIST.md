@@ -1,6 +1,6 @@
 # Go / No-Go — Pilot v1.0
 
-Estado al 2026-10-10: **NO-GO**. Plan documental disponible; no implementación ni release certificada. Cada casilla exige evidencia fechada del candidato/destino y firma del responsable; desconocido equivale a pendiente. No usar resultados 09-10 para marcar candidato futuro PASS.
+Estado al 2026-10-10: **NO-GO**. S01–S05 implementadas; S06 validada localmente y pendiente de revisión; 643 pruebas Python y 69 JavaScript aprobadas. Release y destino aún sin certificar. Cada casilla exige evidencia fechada del candidato/destino y firma del responsable; desconocido equivale a pendiente. No usar resultados 09-10 para marcar candidato futuro PASS.
 
 ## Aprobación del plan
 
@@ -11,6 +11,10 @@ Estado al 2026-10-10: **NO-GO**. Plan documental disponible; no implementación 
 - [ ] Se autoriza una fase posterior de correcciones pequeñas; ninguna funcionalidad nueva.
 
 Esta aprobación no autoriza llamadas OpenAI, mensajes Kapso, operaciones destructivas, altas reales, migraciones persistentes ni deploy. Solicitar permisos específicos sobre resultados concretos cuando corresponda.
+
+## Pendiente heredado S05
+
+- [ ] **BLOCKED**: E2E integrado navegador/servidor HTTP real. Las pruebas de interfaz simulada y HTTP dentro del contenedor pasaron separadamente; no sustituyen este gate. No ampliar redes Docker para resolverlo sin autorización.
 
 ## Gate de candidato — QA + seguridad + release owner
 
@@ -48,13 +52,13 @@ Esta aprobación no autoriza llamadas OpenAI, mensajes Kapso, operaciones destru
 
 | Campo | Valor actual |
 | --- | --- |
-| Decisión | NO-GO; revisión del plan pendiente |
-| Candidato / digest | No construido |
-| SQL destino / head candidato | Destino desconocido / propuesta 0022_administration más correcciones aprobadas si requieren schema |
+| Decisión | NO-GO; E2E integrado S05 BLOCKED y gates de release pendientes |
+| Candidato / digest | Rama codex/pilot-v1-stabilization; código S06 35bd3c67b2e9d75f73c1d57a994acf31f66849a6 / digest no construido |
+| SQL destino / head candidato | Destino desconocido / candidato 0023_consumption_reservations; migración persistente no autorizada |
 | QA / seguridad / operador / coach / release owner | Por asignar |
 | Evidencia / excepciones P2 | Baseline histórica documentada; sin excepciones aprobadas |
 | Permisos de pruebas reales / deploy / migración / altas | No otorgados en esta etapa |
-| Próximo paso | Revisión y aprobación del plan; luego S01, sin deploy ni gasto |
+| Próximo paso | Revisión final S06 y resolución del E2E integrado S05 BLOCKED; S07 no iniciada, sin deploy ni gasto |
 
 Una firma Go debe enlazar resultados actuales y autorización final. Si falta un gate obligatorio, registrar No-Go y tarea concreta; no declarar listo por health ready ni por cobertura histórica.
 
