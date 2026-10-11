@@ -23,13 +23,28 @@ def fields(row):
 
 class TrainingService:
     def __init__(self, session: Session, athlete_id: UUID, *, media=None,
-                 interpreter=None, transcriber=None, commit=True):
+                 interpreter=None, transcriber=None, commit=True, request_key=None, channel='web', reservation_id=None):
         self.session = session
         self.athlete_id = athlete_id
         self.media = media if media is not None else TrainingMediaStore()
         self.interpreter = interpreter if interpreter is not None else interpret
         self.transcriber = transcriber if transcriber is not None else transcribe
         self.commit = commit
+        self.request_key, self.channel = request_key, channel
+        self.reservation_id = reservation_id
+
+    def _reserve(self, operation):
+        from .consumption_limits import reserve, reject
+        if self.reservation_id is None:
+            return reserve(self.session, self.athlete_id, operation, request_key=self.request_key, channel=self.channel)
+        from ..models import PlanInteraction
+        from ..whatsapp.identity import active_account
+        row = self.session.get(PlanInteraction, self.reservation_id)
+        if active_account(self.session, self.athlete_id) is None or row is None or (
+            row.user_id != self.athlete_id or row.operation != operation or row.channel != self.channel
+            or row.request_key != str(self.request_key) or row.reservation_state != 'RESERVED' or row.started_at is not None):
+            reject(409, 'reservation_binding_invalid')
+        return row.id
 
     def _persist(self):
         # Web keeps its existing commit. Durable channels can join their transaction.
@@ -64,28 +79,55 @@ class TrainingService:
         if not payload.text.strip() and payload.image_id is None:
             raise TrainingInvalid('Escribe el WOD o agrega una foto de la pizarra')
         image = self.image_path(payload.image_id).read_bytes() if payload.image_id else None
+        reservation = self._reserve('INTERPRET')
+        from .consumption_limits import transition
+        from .workout_interpretation import interpret as native_interpret, enabled
+        if self.interpreter is native_interpret and not enabled():
+            transition(reservation, 'UNCERTAIN' if self.reservation_id else 'RELEASED', not_called=not self.reservation_id)
+            raise TrainingUnavailable('La interpretación automática no está configurada. Puedes completar la ficha manualmente.')
+        transition(reservation, 'STARTED')
+        succeeded = False
         try:
-            with track_usage(self.session, self.athlete_id, 'INTERPRET', commit=self.commit):
-                return self.interpreter(payload.text, image)
+            with track_usage(self.session, self.athlete_id, 'INTERPRET', commit=False):
+                result = self.interpreter(payload.text, image)
+                succeeded = True
+                return result
         except RuntimeError as error:
             raise TrainingUnavailable(str(error)) from error
         except Exception as error:
             raise TrainingProcessingFailed('No se pudo interpretar el WOD. Reintenta o completa la ficha manualmente.') from error
+        finally:
+            transition(reservation, 'CONFIRMED' if succeeded else 'UNCERTAIN')
+            self._persist()
 
     def transcribe(self, raw: bytes):
         if len(raw) > AUDIO_LIMIT:
             raise TrainingTooLarge('El audio supera 8 MB')
         if not raw:
             raise TrainingInvalid('La grabación está vacía')
+        reservation = self._reserve('TRANSCRIBE')
+        from .consumption_limits import transition
+        from .training_transcription import transcribe as native_transcribe
+        import os
+        if self.transcriber is native_transcribe and (not os.getenv('OPENAI_API_KEY') or os.getenv('TRAINING_VOICE_ENABLED', 'true').lower() not in {'true','1','yes'}):
+            transition(reservation, 'UNCERTAIN' if self.reservation_id else 'RELEASED', not_called=not self.reservation_id)
+            raise TrainingUnavailable('La transcripción no está configurada. Puedes escribir tu entrenamiento.')
+        transition(reservation, 'STARTED')
+        succeeded = False
         try:
-            with track_usage(self.session, self.athlete_id, 'TRANSCRIBE', commit=self.commit):
-                return self.transcriber(raw)
+            with track_usage(self.session, self.athlete_id, 'TRANSCRIBE', commit=False):
+                result = self.transcriber(raw)
+                succeeded = True
+                return result
         except AudioUnavailable as error:
             raise TrainingUnavailable(str(error)) from error
         except ValueError as error:
             raise TrainingInvalid(str(error)) from error
         except Exception as error:
             raise TrainingProcessingFailed('No se pudo transcribir. Conserva la grabación y reintenta, o escribe el entrenamiento.') from error
+        finally:
+            transition(reservation, 'CONFIRMED' if succeeded else 'UNCERTAIN')
+            self._persist()
 
     def owned(self, identifier):
         row = self.session.scalar(select(TrainingSession).where(

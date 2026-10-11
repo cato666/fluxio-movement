@@ -39,7 +39,20 @@ function takeFlash() {
   return message;
 }
 
+const pendingVideoRequests = new Map();
 async function apiJson(url, options) {
+  const billableVideo = options?.method === 'POST' && /^\/api\/(?:analyses(?:\/[^/]+\/reanalyze)?|analyze)$/.test(url);
+  let pending;
+  if (billableVideo) {
+    const signature = options.body instanceof FormData
+      ? JSON.stringify([...options.body].map(([key,value]) => [key, value instanceof File ? [value.name,value.size,value.lastModified] : value]))
+      : options.body;
+    pending = pendingVideoRequests.get(url);
+    if (!pending || pending.signature !== signature) {
+      pending = {signature, key:crypto.randomUUID()}; pendingVideoRequests.set(url,pending);
+    }
+    options = {...options, headers:{...options.headers, 'Idempotency-Key':pending.key}};
+  }
   const response = await fetch(url, options);
   if (response.ok && response.status === 204) return null;
   const data = await response.json();
@@ -50,6 +63,7 @@ async function apiJson(url, options) {
     error.status = response.status;
     throw error;
   }
+  if (billableVideo) pendingVideoRequests.delete(url);
   return data;
 }
 

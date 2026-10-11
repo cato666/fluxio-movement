@@ -15,7 +15,7 @@ def now():
 
 def active_account(session, athlete_id):
     # Same user lock as administrative deactivation; keep it through the operation.
-    user = session.scalar(select(User).where(User.id == athlete_id).with_for_update()
+    user = session.scalar(select(User).where(User.id == athlete_id).with_for_update(key_share=True)
                           .execution_options(populate_existing=True))
     return user if user and user.is_active and user.role == 'ATHLETE' else None
 
@@ -100,7 +100,7 @@ class IdentityResolver:
         return challenge.athlete_id
 
     def revoke(self, athlete_id):
-        self.session.scalar(select(User).where(User.id == athlete_id).with_for_update())
+        self.session.scalar(select(User).where(User.id == athlete_id).with_for_update(key_share=True))
         peers = self.session.scalars(select(AthleteIdentity.phone_hash).where(
             AthleteIdentity.athlete_id == athlete_id, AthleteIdentity.revoked_at.is_(None))).all()
         self.session.scalar(select(Athlete).where(Athlete.user_id == athlete_id).with_for_update())

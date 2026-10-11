@@ -5,7 +5,7 @@ const AthleteState=require('../app/static/athlete-state.js');
 function harness(fetch){
   const nodes=new Map();let n=0;
   const node=id=>{if(!nodes.has(id))nodes.set(id,{children:[],dataset:{},hidden:false,disabled:false,textContent:'',attributes:{},classList:{add(){},remove(){},toggle(){},contains(){return false;}},append(...items){this.children.push(...items);},prepend(...items){this.children.unshift(...items);},replaceChildren(...items){this.children=items;this.textContent='';},setAttribute(k,v){this.attributes[k]=v;},getAttribute(k){return this.attributes[k];},addEventListener(k,fn){this[k]=fn;},scrollIntoView(){this.scrolled=true;},pause(){this.paused=true;}});return nodes.get(id);};
-  const context=vm.createContext({document:{querySelector:node,createElement:()=>node(`new${++n}`),createTextNode:text=>({textContent:text})},window:{location:{assign:href=>context.destination=href},sessionStorage:{setItem:(k,v)=>context.flash=v},setTimeout(){},clearTimeout(){}},HTMLMediaElement:{HAVE_METADATA:1},AthleteState,Intl,console,fetch});
+  const context=vm.createContext({document:{querySelector:node,createElement:()=>node(`new${++n}`),createTextNode:text=>({textContent:text})},window:{location:{assign:href=>context.destination=href},sessionStorage:{setItem:(k,v)=>context.flash=v},setTimeout(){},clearTimeout(){}},HTMLMediaElement:{HAVE_METADATA:1},AthleteState,Intl,console,fetch,FormData:globalThis.FormData,File:globalThis.File,crypto:require('node:crypto')});
   vm.runInContext(fs.readFileSync(require.resolve('../app/static/app.js'),'utf8').split('const path = window.location.pathname;')[0],context);vm.runInContext('showView=()=>{};',context);
   return{node,context};
 }
@@ -24,3 +24,14 @@ test('active request is visible and cannot be posted again',async()=>{let posts=
 test('double click only posts once; 409 re-reads existing requests without claiming success',async()=>{let resolve,posts=0;const pending=new Promise(r=>resolve=r);let reviews=[];const h=harness(async(url,options={})=>{if(options.method){posts++;await pending;reviews=[{status:'PENDING',coach:{id:'c',name:'Coach'}}];return response({detail:'Ya existe una solicitud'},409);}return response(url==='/api/coaches'?{items:[{id:'c',name:'Coach'}]}:{status:'COMPLETED',coach_reviews:reviews});});await h.context.setupCoachSelection('a');const button=h.node('#coach-list').children[0].children.at(-1);const first=button.onclick();await button.onclick();resolve();await first;assert.equal(posts,1);assert.equal(button.disabled,true);assert.equal(h.context.destination,undefined);assert.equal(h.context.flash,undefined);assert.match(h.node('#coach-selection-status').textContent,/Ya existe/);});
 test('uncertain failed POST plus failed read blocks retry and preserves error',async()=>{let posts=0,failed=false;const h=harness(async(url,options={})=>{if(options.method){posts++;failed=true;throw Error('Sin conexión');}if(failed)throw Error('offline');return response(url==='/api/coaches'?{items:[{id:'c',name:'Coach'}]}:{status:'COMPLETED',coach_reviews:[]});});await h.context.setupCoachSelection('a');const button=h.node('#coach-list').children[0].children.at(-1);await button.onclick();await button.onclick();assert.equal(posts,1);assert.equal(button.disabled,true);assert.match(text(h.node('#coach-selection-status')),/Sin conexión.*comprobar/);assert.equal(h.context.flash,undefined);});
 test('result refresh does not reload the same video or duplicate repetitions',()=>{const h=harness();let loads=0;for(const id of ['#annotated-video','#original-video']){const video=h.node(id);Object.defineProperty(video,'src',{set(value){video.attributes.src=value;loads++;}});}const item={original_video_url:'/original',annotated_video_url:'/annotated',repetitions_detected:1,analysis_json:{},repetitions:[{number:1,start_s:0,bottom_s:2,end_s:4,metrics:{}}]};h.context.renderCompleted(item);h.context.renderCompleted(item);assert.equal(loads,2);assert.equal(h.node('#reps').children.length,1);});
+
+test('S06 video transport retries retain key and changed inputs get a new key',async()=>{
+  const keys=[];
+  const h=harness(async(url,options)=>{keys.push(options.headers['Idempotency-Key']);return response({detail:'Uncertain'},502);});
+  const options={method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({exercise:'Clean',view:'side'})};
+  await assert.rejects(h.context.apiJson('/api/analyses/a/reanalyze',options));
+  await assert.rejects(h.context.apiJson('/api/analyses/a/reanalyze',options));
+  assert.equal(keys[0],keys[1]);assert.match(keys[0],/^[0-9a-f-]{36}$/);
+  await assert.rejects(h.context.apiJson('/api/analyses/a/reanalyze',{...options,body:JSON.stringify({exercise:'Clean',view:'front'})}));
+  assert.notEqual(keys[2],keys[0]);
+});

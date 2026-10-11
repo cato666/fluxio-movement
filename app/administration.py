@@ -24,25 +24,19 @@ def policies(session):
 def usage(session, user):
     start = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     count = session.scalar(select(func.count()).select_from(PlanInteraction).where(
-        PlanInteraction.user_id == user.id, PlanInteraction.created_at >= start))
+        PlanInteraction.user_id == user.id, PlanInteraction.created_at >= start, PlanInteraction.reservation_state != 'RELEASED'))
     policy = policies(session)[user.plan]
     return {'plan': user.plan, 'used': count, 'monthly_limit': policy['monthly_limit'],
             'remaining': max(0, policy['monthly_limit'] - count), 'enabled_operations': policy['enabled_operations'],
             'period_start': start}
 
 
-def consume(session, user_id, operation):
-    # Same lock for account changes and quota reservations. Commit before external work.
-    user = session.scalar(select(User).where(User.id == user_id).with_for_update().execution_options(populate_existing=True))
-    if user is None or not user.is_active:
-        raise HTTPException(403, 'La cuenta está desactivada')
-    status = usage(session, user)
-    if operation not in status['enabled_operations']:
-        raise HTTPException(403, 'Esta función no está habilitada en tu plan')
-    if status['remaining'] == 0:
-        raise HTTPException(429, 'Alcanzaste el límite mensual de interacciones de tu plan')
-    session.add(PlanInteraction(user_id=user.id, operation=operation))
+def consume(session, user_id, operation, request_key=None):
+    from .services.consumption_limits import reserve
+    identifier = reserve(session, user_id, operation, request_key=request_key)
+    session.info['consumption_reservation'] = identifier
     session.commit()
+    return identifier
 
 
 class AccountPayload(BaseModel):
@@ -147,7 +141,8 @@ def router(require_admin, authenticated):
     @routes.get('/api/admin/settings')
     def settings(_user=Depends(require_admin), session=Depends(get_session)):
         organization = session.get(AdminSetting, 'organization')
-        return {'plans': policies(session), 'organization': organization.value if organization else {'name': 'Fluxio Movement', 'contact_email': ''},
+        consumption = session.get(AdminSetting, 'consumption_limits')
+        return {'consumption_limits': consumption.value if consumption else None, 'plans': policies(session), 'organization': organization.value if organization else {'name': 'Fluxio Movement', 'contact_email': ''},
                 'roles': {'SYSTEM_ADMIN': 'Usuarios, planes, configuración y auditoría', 'COACH': 'Revisiones y registro de atletas', 'ATHLETE': 'Entrenamientos y análisis propios'}}
 
     def set_setting(session, actor, key, value):
@@ -166,6 +161,20 @@ def router(require_admin, authenticated):
         if set(payload) != {'FREE', 'PAID'}:
             raise HTTPException(422, 'Configura ambos planes')
         return set_setting(session, actor, 'plans', {key: value.model_dump() for key, value in payload.items()})
+
+    @routes.put('/api/admin/consumption-limits')
+    def consumption_limits(payload: dict, actor=Depends(require_admin), session=Depends(get_session)):
+        from .services.consumption_limits import configuration, DEFAULTS, VIDEO_COSTS, LOCK
+        from sqlalchemy import text
+        allowed = set(DEFAULTS) | set(VIDEO_COSTS) | {'PILOT_START'}
+        if set(payload) != allowed:
+            raise HTTPException(422, 'Configura todos los límites y costos; no se admiten campos adicionales')
+        configuration(session, 'ANALYZE', overrides=payload)
+        session.execute(text('SELECT pg_advisory_xact_lock(:key)'), {'key': LOCK})
+        window = session.get(AdminSetting, 'consumption_window')
+        if window and window.value['start'] != configuration(session, overrides=payload)['PILOT_START'].isoformat():
+            raise HTTPException(409, 'El inicio del piloto no puede cambiar después de reservar consumo')
+        return set_setting(session, actor, 'consumption_limits', payload)
 
     @routes.put('/api/admin/organization')
     def organization(payload: OrganizationPayload, actor=Depends(require_admin), session=Depends(get_session)):

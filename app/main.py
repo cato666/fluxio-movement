@@ -12,7 +12,7 @@ import subprocess
 from alembic.config import Config
 from alembic.script import ScriptDirectory
 
-from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, Request, UploadFile, Header
 from pydantic import BaseModel
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -442,7 +442,13 @@ def _run_analysis(
             shutil.copyfileobj(file.file, _LimitedWriter(destination, MAX_UPLOAD_BYTES))
         analysis.status = 'PROCESSING'
         session.commit()
+        if session.info.get('consumption_reservation'):
+            from .services.consumption_limits import bind_video
+            bind_video(session.info['consumption_reservation'], job)
 
+        from .whatsapp.identity import active_account
+        if active_account(session, athlete_id) is None:
+            raise HTTPException(403, 'account_inactive')
         preflight = validate_video_exercise(str(video), exercise)
 
         # La vista lateral es la convención del flujo existente. Mantener esa
@@ -523,8 +529,20 @@ def _process_analysis(job: str, exercise: str, view: str):
     """Runs in Starlette's threadpool after the 202 response is sent."""
     with SessionLocal() as session:
         row = session.get(Analysis, job)
-        if row is None:
+        if row is None or row.status != 'PROCESSING':
             return
+        from .services.consumption_limits import video_reservation, transition
+        try:
+            reservation = video_reservation(session, job, row.athlete_id)
+            transition(reservation, 'STARTED')
+        except HTTPException as error:
+            if error.status_code == 409:
+                session.rollback()
+                return  # Duplicate job must not overwrite the original job's state.
+            row.status, row.stage, row.error = 'FAILED', None, 'consumption_rejected'
+            session.commit()
+            return
+        succeeded = False
         video = UPLOADS / Path(row.video_path).name
         out = TEMP / job
         annotated = RESULTS / job / 'annotated.mp4'
@@ -561,6 +579,7 @@ def _process_analysis(job: str, exercise: str, view: str):
                 row.status, row.progress, row.stage = 'COMPLETED', 100, None
                 row.completed_at = datetime.now(timezone.utc)
                 session.commit()
+                succeeded = True
         except Exception as exc:
             session.rollback()
             logger.error('Async analysis %s failed', job)
@@ -569,17 +588,36 @@ def _process_analysis(job: str, exercise: str, view: str):
                 row.status, row.stage = 'FAILED', None
                 row.error, row.completed_at = (str(exc)[:2000] or type(exc).__name__), datetime.now(timezone.utc)
                 session.commit()
+        finally:
+            reasoning_state = session.scalar(select(AIReasoningRun.status).where(AIReasoningRun.analysis_id == job))
+            transition(reservation, 'CONFIRMED' if succeeded and reasoning_state != 'FAILED' else 'UNCERTAIN')
 
 
 def _run_ai_reasoning(analysis_id: str, exercise: str, view: str, result: dict):
     """Persists AI output separately: a provider failure never fails biomechanics."""
     with SessionLocal() as session:
         run = session.scalar(select(AIReasoningRun).where(AIReasoningRun.analysis_id == analysis_id))
+        if run is not None:
+            return
         if run is None:
             run = AIReasoningRun(analysis_id=analysis_id, status='RUNNING')
             session.add(run)
             session.commit()
+        from .services.consumption_limits import video_reservation, transition
+        from .whatsapp.identity import active_account
+        from .models import PlanInteraction
+        analysis = session.get(Analysis, analysis_id)
+        existing = session.scalar(select(PlanInteraction).where(PlanInteraction.resource_id == analysis_id))
+        own_reservation = existing is None
+        reservation = None
         try:
+            if analysis is None or active_account(session, analysis.athlete_id) is None:
+                raise HTTPException(403, 'account_inactive')
+            reservation = video_reservation(session, analysis_id, analysis.athlete_id)
+            if own_reservation:
+                transition(reservation, 'STARTED')
+            elif existing.reservation_state != 'RESERVED':
+                raise HTTPException(409, 'reservation_closed')
             reasoning = run_reasoning(exercise, view, result)
             if reasoning is None:
                 run.status, run.completed_at = 'DISABLED', datetime.now(timezone.utc)
@@ -614,9 +652,12 @@ def _run_ai_reasoning(analysis_id: str, exercise: str, view: str, result: dict):
             run = session.scalar(select(AIReasoningRun).where(AIReasoningRun.analysis_id == analysis_id))
             if run is not None:
                 run.status, run.completed_at = 'FAILED', datetime.now(timezone.utc)
-                run.error = f'{type(exc).__name__}: {str(exc)[:400]}'
+                run.error = type(exc).__name__
                 session.commit()
-            logger.warning('AI reasoning failed for analysis %s: %s', analysis_id, type(exc).__name__)
+            logger.warning('AI reasoning failed; private details suppressed')
+        finally:
+            if own_reservation and reservation:
+                transition(reservation, 'CONFIRMED' if run.status in ('COMPLETED', 'DISABLED') else 'UNCERTAIN')
 
 
 def _generate_review_moments_safely(analysis_id: str, result: dict):
@@ -658,6 +699,9 @@ def _prepare_async_analysis(file: UploadFile, exercise: str, objective: str, loa
             shutil.copyfileobj(file.file, _LimitedWriter(destination, MAX_UPLOAD_BYTES))
         row.status, row.progress, row.stage = 'PROCESSING', 5, 'analyzing'
         session.commit()
+        if session.info.get('consumption_reservation'):
+            from .services.consumption_limits import bind_video
+            bind_video(session.info['consumption_reservation'], job)
         return row
     except Exception as exc:
         session.rollback()
@@ -790,14 +834,23 @@ class CoachAthleteCreate(BaseModel):
 @app.post('/api/analyze')
 def analyze(
     file: UploadFile = File(...), athlete: User = Depends(require_athlete),
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_session), idempotency_key: UUID | None = Header(default=None),
 ):
     """Original API contract, retained for the F1.1 client."""
-    consume(session, athlete.id, 'ANALYZE')
-    return _run_analysis(
-        file, 'Sin especificar', 'Análisis técnico', None, session,
-        legacy_response=True, athlete_id=athlete.id,
-    )
+    from .services.consumption_limits import transition
+    reservation = consume(session, athlete.id, 'ANALYZE', idempotency_key)
+    transition(reservation, 'STARTED')
+    try:
+        result = _run_analysis(
+            file, 'Sin especificar', 'Análisis técnico', None, session,
+            legacy_response=True, athlete_id=athlete.id,
+        )
+    except Exception:
+        transition(reservation, 'UNCERTAIN')
+        raise
+    reasoning_state = session.scalar(select(AIReasoningRun.status).where(AIReasoningRun.analysis_id == result.get('job_id')))
+    transition(reservation, 'UNCERTAIN' if reasoning_state == 'FAILED' else 'CONFIRMED')
+    return result
 
 
 @app.post('/api/analyses', status_code=202)
@@ -805,10 +858,17 @@ def create_analysis(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...), exercise: str = Form(...),
     objective: str = Form(...), load_kg: float | None = Form(None), view: str = Form('side'),
-    athlete: User = Depends(require_athlete), session: Session = Depends(get_session),
+    athlete: User = Depends(require_athlete), session: Session = Depends(get_session), idempotency_key: UUID | None = Header(default=None),
 ):
-    consume(session, athlete.id, 'ANALYZE')
-    row = _prepare_async_analysis(file, exercise, objective, load_kg, view, session, athlete.id)
+    consume(session, athlete.id, 'ANALYZE', idempotency_key)
+    from .services.consumption_limits import transition
+    try:
+        row = _prepare_async_analysis(file, exercise, objective, load_kg, view, session, athlete.id)
+    except Exception:
+        transition(session.info['consumption_reservation'], 'UNCERTAIN')
+        raise
+    from .services.consumption_limits import bind_video
+    bind_video(session.info['consumption_reservation'], row.id)
     background_tasks.add_task(_process_analysis, row.id, exercise, view)
     session.expire_all()
     return _get_analysis(row.id, athlete.id, session)
@@ -841,7 +901,7 @@ def create_coach_analysis(
 def reanalyze_analysis(
     analysis_id: str, payload: AnalysisReanalyzeRequest,
     background_tasks: BackgroundTasks, athlete: User = Depends(require_athlete),
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_session), idempotency_key: UUID | None = Header(default=None),
 ):
     source = session.get(Analysis, analysis_id)
     if source is None or source.athlete_id != athlete.id:
@@ -852,7 +912,7 @@ def reanalyze_analysis(
         raise HTTPException(409, 'El video original ya no está disponible para reanalizar')
     exercise, objective = _validate_metadata(payload.exercise, source.objective or 'Reanálisis técnico', source.load_kg)
     view = _validate_view(payload.view)
-    consume(session, athlete.id, 'ANALYZE')
+    consume(session, athlete.id, 'ANALYZE', idempotency_key)
     job = uuid4().hex[:12]
     row = Analysis(
         id=job, athlete_id=athlete.id, status='PROCESSING', progress=5, stage='reanalyzing',
@@ -865,7 +925,11 @@ def reanalyze_analysis(
     except SQLAlchemyError:
         session.rollback()
         logger.error('Cannot create reanalysis for %s', analysis_id)
+        from .services.consumption_limits import transition
+        transition(session.info['consumption_reservation'], 'UNCERTAIN')
         raise HTTPException(503, 'Persistencia no disponible')
+    from .services.consumption_limits import bind_video
+    bind_video(session.info['consumption_reservation'], row.id)
     background_tasks.add_task(_process_analysis, row.id, exercise, view)
     session.expire_all()
     return _get_analysis(row.id, athlete.id, session)

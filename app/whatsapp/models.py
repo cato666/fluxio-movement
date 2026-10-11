@@ -101,6 +101,7 @@ class WhatsAppUsage(Base):
     athlete_id: Mapped[UUID | None] = mapped_column(ForeignKey('athletes.user_id'), index=True)
     event_key: Mapped[str] = mapped_column(String(200), unique=True)
     category: Mapped[str] = mapped_column(String(32))
+    reservation_state: Mapped[str | None] = mapped_column(String(16))
     units: Mapped[int] = mapped_column(Integer, default=1)
     cost: Mapped[Decimal | None] = mapped_column(Numeric(18, 8))
     currency: Mapped[str] = mapped_column(String(3), default='USD')

@@ -37,6 +37,16 @@ def handle(session, inbox, message, vault, provider):
     session.refresh(inbox)
     if inbox.state == 'CANCELLED':
         return
+    from ..services.consumption_limits import admit_message
+    from fastapi import HTTPException
+    try:
+        admitted = admit_message(session, inbox, athlete_id)
+    except HTTPException:
+        inbox.error_code = 'rate_limited'
+        return  # Silent rejection prevents a response loop and extra sends.
+    if not admitted:
+        inbox.error_code = 'admission_replay'
+        return
     if message.text.upper().startswith('VINCULAR '):
         code = message.text.split(' ', 1)[1].strip()
         athlete_id = resolver.verify(code, message.phone)

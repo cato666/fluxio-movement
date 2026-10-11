@@ -14,7 +14,15 @@ def test_all_baseline_http_operations_and_schemas_are_preserved():
     current=app.openapi()
     for path, contract in baseline['paths'].items():
         for operation, expected in contract.items():
-            assert current['paths'][path][operation] == expected, (path, operation)
+            actual = dict(current['paths'][path][operation])
+            if operation == 'post' and path in ('/api/training-sessions/interpret', '/api/training-sessions/transcribe', '/api/analyze', '/api/analyses', '/api/analyses/{analysis_id}/reanalyze'):
+                parameters = actual.get('parameters', [])
+                added = [p for p in parameters if p['name'] == 'idempotency-key']
+                assert len(added) == 1 and added[0]['in'] == 'header' and not added[0]['required']
+                kept = [p for p in parameters if p['name'] != 'idempotency-key']
+                if kept: actual['parameters'] = kept
+                else: actual.pop('parameters', None)
+            assert actual == expected, (path, operation)
     for name, schema in baseline['components']['schemas'].items():
         if name == 'SharePayload':
             actual = current['components']['schemas'][name]

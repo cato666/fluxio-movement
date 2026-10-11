@@ -54,6 +54,14 @@ def receive(session, inbox, message, athlete_id, provider):
         return cached, image_id, None
     if not message.media_reference:
         raise TrainingInvalid('El mensaje no contiene una referencia de media válida')
+    from ..services.consumption_limits import reserve, check_budget
+    reservation = None
+    if message.message_type in {'audio', 'image'}:
+        operation = 'TRANSCRIBE' if message.message_type == 'audio' else 'INTERPRET'
+        reservation = reserve(session, athlete_id, operation, request_key=inbox.id, channel='whatsapp')
+        session.info.setdefault('media_reservations', {})[(inbox.id, operation)] = reservation
+    else:
+        check_budget()
     media = provider.download_media(message.media_reference, VIDEO_LIMIT if message.message_type == 'video' else MEDIA_LIMIT)
     usage(session, f'download:{inbox.id}:{inbox.attempts}', 'media_bytes', athlete_id, units=len(media.data))
     session.flush()  # Keep the account lock until worker completion.
@@ -63,7 +71,7 @@ def receive(session, inbox, message, athlete_id, provider):
                'video': {'video/mp4'}}
     if mime not in allowed.get(message.message_type, set()):
         raise TrainingInvalid('Tipo de media no soportado')
-    service = TrainingService(session, athlete_id, commit=False)
+    service = TrainingService(session, athlete_id, commit=False, request_key=inbox.id, channel='whatsapp', reservation_id=reservation if message.message_type == 'audio' else None)
     if message.message_type == 'audio':
         return None, None, service.transcribe(media.data)
     if message.message_type == 'image':

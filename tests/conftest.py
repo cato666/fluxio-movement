@@ -26,7 +26,14 @@ def migrated_database():
 
 
 @pytest.fixture(autouse=True)
-def clean_database(migrated_database):
+def clean_database(migrated_database, monkeypatch):
+    from app.services.consumption_limits import DEFAULTS
+    for name, value in DEFAULTS.items():
+        monkeypatch.setenv('USAGE_' + name, str(value))
+    for name in ('INTERPRET_DAILY', 'TRANSCRIBE_DAILY', 'ANALYZE_DAILY', 'WHATSAPP_INBOUND_DAILY', 'WHATSAPP_OUTBOUND_DAILY', 'WHATSAPP_RATE_PER_CONVERSATION', 'VIDEO_CONCURRENT'):
+        monkeypatch.setenv('USAGE_' + name, '100')
+    monkeypatch.setenv('USAGE_GLOBAL_DAILY_USD', '1000')
+    monkeypatch.setenv('USAGE_GLOBAL_PILOT_USD', '10000')
     with engine.begin() as connection:
         names = ', '.join('"' + table.name + '"' for table in Base.metadata.sorted_tables)
         connection.execute(text(f'TRUNCATE {names} CASCADE'))

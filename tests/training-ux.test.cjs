@@ -155,15 +155,17 @@ test('voice failure preserves recording; retry appends editable text; denied mic
   assert.equal(await page.locator('.training-recording-time').getAttribute('aria-hidden'),'true');
   await page.getByRole('button',{name:'Terminar grabación'}).click();
   await page.getByText('Grabación lista.',{exact:false}).waitFor();
-  await page.route('**/api/training-sessions/transcribe',route=>route.fulfill({status:502,json:{detail:'No se pudo transcribir.'}}));
+  const transcriptionKeys=[];
+  await page.route('**/api/training-sessions/transcribe',route=>{transcriptionKeys.push(route.request().headers()['idempotency-key']);return route.fulfill({status:502,json:{detail:'No se pudo transcribir.'}});});
   await page.getByRole('button',{name:'Transcribir audio',exact:true}).click();
   await page.getByText('La grabación se conserva',{exact:false}).waitFor();
   assert.equal(await page.locator('.training-voice audio').isVisible(),true);
-  await page.route('**/api/training-sessions/transcribe',route=>route.fulfill({json:{text:'Hice cinco rondas.'}}));
+  await page.route('**/api/training-sessions/transcribe',route=>{transcriptionKeys.push(route.request().headers()['idempotency-key']);return route.fulfill({json:{text:'Hice cinco rondas.'}});});
   await page.getByRole('button',{name:'Transcribir audio',exact:true}).click();
   await page.getByText('Texto agregado.',{exact:false}).waitFor();
   assert.equal(await page.getByLabel('Descripción del entrenamiento').inputValue(),'AMRAP 12\n\nHice cinco rondas.');
   assert.equal(await page.locator('.training-voice audio').isVisible(),false);
+  assert.equal(transcriptionKeys.length,2);assert.equal(transcriptionKeys[0],transcriptionKeys[1]);assert.match(transcriptionKeys[0],/^[0-9a-f-]{36}$/);
   await page.evaluate(()=>{navigator.mediaDevices.getUserMedia=()=>Promise.reject(new DOMException('Denied','NotAllowedError'));});
   await page.getByRole('button',{name:'Dictar entrenamiento'}).click();
   await page.getByText('No se permitió el micrófono.',{exact:false}).waitFor();
@@ -396,4 +398,23 @@ test('S05 an uncertain POST retains its request across remount and replay cannot
  fail=false;await page.locator('.weekly-share-trigger').click();await sheet.getByRole('checkbox').check();await sheet.getByRole('button',{name:'Crear enlace para compartir',exact:true}).click();
  await sheet.getByText('Esta publicación ya se procesó.',{exact:false}).waitFor();assert.deepEqual(ids,[ids[0],ids[0]]);
  assert.equal(await sheet.locator('.weekly-link-row').count(),1);assert.equal(await sheet.getByRole('link',{name:'Ver semana compartida'}).count(),0);
+}));
+
+test('S06 uncertain interpretation retry preserves key; correction creates a new reservation',()=>harness(async page=>{
+  const keys=[];
+  await page.getByLabel('Descripción del entrenamiento').fill('Hoy hice 4 rondas');
+  await page.route('**/api/training-sessions/interpret',route=>{
+    keys.push(route.request().headers()['idempotency-key']);
+    return route.fulfill({status:502,json:{detail:'Resultado incierto'}});
+  });
+  const prepare=page.getByRole('button',{name:'Interpretar WOD',exact:true});
+  await prepare.click(); await prepare.waitFor({state:'visible'});
+  await page.waitForFunction(()=>!document.querySelector('.training-chat-toolbar button:last-child').disabled);
+  await prepare.click();
+  await page.waitForFunction(()=>!document.querySelector('.training-chat-toolbar button:last-child').disabled);
+  assert.equal(keys.length,2);assert.equal(keys[0],keys[1]);assert.match(keys[0],/^[0-9a-f-]{36}$/);
+  await page.getByLabel('Descripción del entrenamiento').fill('Corrección: hoy hice 5 rondas');
+  await prepare.click();
+  await page.waitForFunction(()=>!document.querySelector('.training-chat-toolbar button:last-child').disabled);
+  assert.equal(keys.length,3);assert.notEqual(keys[2],keys[0]);
 }));

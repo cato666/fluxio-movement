@@ -6,6 +6,7 @@ import os
 from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
+from fastapi import HTTPException
 from sqlalchemy import select
 from ..models import TrainingSession
 from ..services.training_contracts import InterpretPayload, SessionPayload, WorkoutDraft
@@ -112,7 +113,8 @@ def propose(session, inbox, message, athlete_id, state, data, vault):
 def interpret(session, inbox, message, athlete_id, state, data, vault):
     # Account lock survives provider accounting until worker completion.
     source = sanitize(data['source'])[:12000]
-    service = TrainingService(session, athlete_id, commit=False)
+    service = TrainingService(session, athlete_id, commit=False, request_key=inbox.id, channel='whatsapp',
+        reservation_id=session.info.get('media_reservations', {}).get((inbox.id, 'INTERPRET')))
     raw = service.interpret(InterpretPayload(text=source, image_id=data.get('image_id')))
     draft = WorkoutDraft.model_validate(raw).model_dump()
     if not draft['workout'].strip():
@@ -347,7 +349,15 @@ def handle_capture(session, inbox, message, athlete_id, vault, provider):
             respond(session, inbox, message, athlete_id, vault, '¿Qué entrenamiento hiciste? Indica ejercicios y series o rondas.')
             return
         interpret(session, inbox, message, athlete_id, state, data, vault)
+    except HTTPException as error:
+        from ..services.consumption_limits import abandon_media
+        abandon_media(session, inbox.id)
+        inbox.error_code = 'consumption_rejected'
+        # Exactly one deduplicated generic response; do not retry or run AI.
+        respond(session, inbox, message, athlete_id, vault, error.detail)
     except (TrainingError, ProviderError, ValueError):
+        from ..services.consumption_limits import abandon_media
+        abandon_media(session, inbox.id)
         # Expected content/provider errors keep media and usage in the worker
         # transaction; rolling back here would release the account lock.
         if active_account(session, athlete_id) is None:

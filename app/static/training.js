@@ -592,13 +592,17 @@ window.setupTraining = async function (identifier) {
       } catch(error) { notify(error.message, true); photo.value=''; }
       finally { processing(false); }
     };
+    let pendingInterpret = null;
     prepare.onclick = async () => {
       if (busy) return;
       if (!source.value.trim() && !imageId) { status.textContent='Escribe el WOD o agrega una foto de la pizarra.'; source.focus(); return; }
+      const signature=JSON.stringify({text:source.value,image_id:imageId});
+      if(pendingInterpret?.signature!==signature)pendingInterpret={signature,key:crypto.randomUUID()};
       processing(true); notify('Interpretando el entrenamiento…'); prepare.textContent = 'Interpretando…';
       try {
-        const draft=await api('/api/training-sessions/interpret',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:source.value,image_id:imageId})});
+        const draft=await api('/api/training-sessions/interpret',{method:'POST',headers:{'Content-Type':'application/json','Idempotency-Key':pendingInterpret.key},body:signature});
         for (const key of (editing ? ['title','workout','result_text','adaptations','rpe'] : ['workout','result_text','adaptations','rpe'])) controls[key].value=draft[key] ?? '';
+        pendingInterpret=null;
         blocks=draft.blocks;renderBlocks();dirty=true;
         contextDetails.open = false;
         messages.replaceChildren();

@@ -56,6 +56,8 @@ def dispatch_one(session, provider, vault):
     # A stale in-flight send has an unknown outcome and is never replayed blindly.
     for stale in session.scalars(select(WhatsAppOutbox).where(WhatsAppOutbox.state == 'SENDING',
         WhatsAppOutbox.lease_until < now()).with_for_update(skip_locked=True)):
+        from ..services.consumption_limits import settle_send
+        settle_send(stale, 'UNCERTAIN')
         stale.state, stale.error_code = 'UNCERTAIN', 'send_interrupted'
     predecessor = aliased(WhatsAppOutbox)
     blocked = exists(select(predecessor.id).where(
@@ -94,6 +96,14 @@ def dispatch_one(session, provider, vault):
         session.commit()
         return True
     from .provider import ProviderError
+    from ..services.consumption_limits import reserve_send
+    from fastapi import HTTPException
+    try:
+        reserve_send(session, row)
+    except HTTPException:
+        row.state, row.error_code, row.lease_until = 'FAILED', 'consumption_rejected', None
+        session.commit()
+        return True
     try:
         identifier = provider.send(payload['phone'], payload['text'], payload.get('actions'))
     except ProviderError as error:
@@ -113,6 +123,8 @@ def dispatch_one(session, provider, vault):
             cost = None
         usage(session, f'outbound:{row.id}', 'outbound', row.athlete_id,
               cost=cost)
+    from ..services.consumption_limits import settle_send
+    settle_send(row, 'CONFIRMED' if row.state == 'SENT' else 'UNCERTAIN')
     row.lease_until = None
     session.commit()
     return True

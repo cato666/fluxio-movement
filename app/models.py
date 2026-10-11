@@ -1,8 +1,10 @@
+from decimal import Decimal
 """F1 persistence schema; review workflows are implemented in later phases."""
 from datetime import date, datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
+    Numeric,
     CheckConstraint, Date, DateTime, Float, ForeignKey, ForeignKeyConstraint,
     Index, Integer, String, Text, UniqueConstraint, func, text,
 )
@@ -53,6 +55,14 @@ class PlanInteraction(Base):
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(ForeignKey('users.id'), index=True)
     operation: Mapped[str] = mapped_column(String(24))
+    request_key: Mapped[str | None] = mapped_column(String(100))
+    channel: Mapped[str] = mapped_column(String(16), default='web', server_default='web')
+    budget_usd: Mapped[Decimal | None] = mapped_column(Numeric(18, 8))
+    reservation_state: Mapped[str] = mapped_column(String(16), default='UNCERTAIN', server_default='UNCERTAIN')
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    resource_id: Mapped[str | None] = mapped_column(String(32))
+    __table_args__ = (UniqueConstraint('user_id', 'operation', 'request_key', name='uq_plan_reservation'),
+                      UniqueConstraint('resource_id', name='uq_plan_resource'),)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

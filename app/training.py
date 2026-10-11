@@ -1,7 +1,7 @@
 """HTTP adapter for the shared service; existing contracts retained."""
 from contextlib import contextmanager
 from uuid import UUID
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Header
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from .database import get_session
@@ -31,19 +31,18 @@ def http_errors():
         raise HTTPException(status, str(error)) from error
 
 
-def service(user, session):
-    return TrainingService(session, user.id, interpreter=interpret, transcriber=transcribe)
+def service(user, session, request_key=None):
+    return TrainingService(session, user.id, interpreter=interpret, transcriber=transcribe, request_key=request_key)
 
 
 def router(require_athlete):
     routes = APIRouter(prefix='/api/training-sessions')
 
     @routes.post('/transcribe')
-    def transcribe_recording(file: UploadFile = File(...), user: User = Depends(require_athlete), session: Session = Depends(get_session)):
-        consume(session, user.id, 'TRANSCRIBE')
+    def transcribe_recording(file: UploadFile = File(...), user: User = Depends(require_athlete), session: Session = Depends(get_session), idempotency_key: UUID | None = Header(default=None)):
         raw = file.file.read(AUDIO_LIMIT + 1)
         with http_errors():
-            return {'text': service(user, session).transcribe(raw)}
+            return {'text': service(user, session, idempotency_key).transcribe(raw)}
 
     @routes.post('/images', status_code=201)
     def upload_image(file: UploadFile = File(...), user: User = Depends(require_athlete), session: Session = Depends(get_session)):
@@ -59,10 +58,9 @@ def router(require_athlete):
         return FileResponse(path, media_type='image/jpeg', headers={'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff'})
 
     @routes.post('/interpret')
-    def interpret_workout(payload: InterpretPayload, user: User = Depends(require_athlete), session: Session = Depends(get_session)):
+    def interpret_workout(payload: InterpretPayload, user: User = Depends(require_athlete), session: Session = Depends(get_session), idempotency_key: UUID | None = Header(default=None)):
         with http_errors():
-            consume(session, user.id, 'INTERPRET')
-            return service(user, session).interpret(payload)
+            return service(user, session, idempotency_key).interpret(payload)
 
     @routes.get('')
     def list_sessions(user: User = Depends(require_athlete), session: Session = Depends(get_session)):

@@ -12,6 +12,7 @@ window.createTrainingVoice = function ({container, source, onBusy, onText}) {
   const elapsed=document.createElement('span');elapsed.className='training-recording-time';elapsed.setAttribute('aria-hidden','true');panel.append(elapsed);
   const hint=document.createElement('p');hint.className='training-hint';hint.textContent='Graba hasta 3 minutos. Al transcribir, el audio se procesa con IA. Revisa el texto antes de interpretar el WOD.';panel.append(hint);
   container.append(panel);
+  let transcriptionKey=null;
   let recorder=null,stream=null,blob=null,url=null,timer=null,chunks=[],size=0;
   let active=false,pending=false,external=false,cancelled=false,disposed=false,started=0;
   const supported=!!(window.isSecureContext && navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
@@ -24,7 +25,7 @@ window.createTrainingVoice = function ({container, source, onBusy, onText}) {
     send.textContent=pending&&blob?'Transcribiendo…':'Transcribir audio';
   }
   function release() {clearInterval(timer);timer=null;stream?.getTracks().forEach(track=>track.stop());stream=null;}
-  function clearAudio() {blob=null;if(url)URL.revokeObjectURL(url);url=null;player.removeAttribute('src');player.load();}
+  function clearAudio() {transcriptionKey=null;blob=null;if(url)URL.revokeObjectURL(url);url=null;player.removeAttribute('src');player.load();}
   function finish() {if(recorder?.state==='recording')recorder.stop();release();}
   record.onclick=async()=>{
     if(pending||external||active)return;
@@ -55,8 +56,9 @@ window.createTrainingVoice = function ({container, source, onBusy, onText}) {
     if(!blob||pending||external)return;
     pending=true;onBusy(true);status.textContent='Transcribiendo audio…';sync();
     try {
+      transcriptionKey ||= crypto.randomUUID();
       const body=new FormData();body.append('file',blob,blob.type.includes('mp4')?'recording.mp4':'recording.webm');
-      const response=await fetch('/api/training-sessions/transcribe',{method:'POST',body});const data=await response.json();
+      const response=await fetch('/api/training-sessions/transcribe',{method:'POST',headers:{'Idempotency-Key':transcriptionKey},body});const data=await response.json();
       if(!response.ok)throw new Error(typeof data.detail==='string'?data.detail:'No se pudo transcribir. Reintenta.');
       if(typeof data.text!=='string'||!data.text.trim())throw new Error('No se obtuvo texto legible. Graba nuevamente o escribe el entrenamiento.');
       const text=[source.value.trim(),data.text].filter(Boolean).join('\n\n');
