@@ -1,8 +1,8 @@
-/* Shared journal width aligns the weekly summary and saved training list. */
-#training-view .training-journal {
-  position:relative; left:50%; transform:translateX(-50%);
-  width:min(1180px,calc(100vw - 248px));
+/* One shared overview width aligns header, WhatsApp, summary and training list. */
+#training-view.training-overview {
+  width:min(1180px,calc(100vw - 248px)); max-width:none;
 }
+#training-view.training-overview .training-journal { width:100%; max-width:none; }
 #training-view .weekly-summary-card {
   --surface-primary:var(--surface); --border-subtle:var(--border);
   display:grid;
@@ -69,7 +69,7 @@
  .weekly-summary-share { grid-column:1 / -1; border-left:0; border-top:1px solid var(--border-subtle); padding:16px 0 0; display:grid; grid-template-columns:minmax(0,1fr) 160px 160px; gap:16px; align-items:center; }
 }
 @media(max-width:900px) {
- #training-view .training-journal { width:100%; left:auto; transform:none; }
+ #training-view.training-overview { width:100%; }
  #training-view .weekly-summary-card { width:100%; left:auto; transform:none; }
 }
 @media(max-width:767px) {
