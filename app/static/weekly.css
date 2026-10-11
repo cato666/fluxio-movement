@@ -150,3 +150,12 @@ body.weekly-public main.weekly-shared{position:relative;max-width:1000px;padding
 .recap-activity-day { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:10px; height:48px; color:#c6d5ce; font-size:11px; }
 .recap-activity-bar { display:block; width:12px; height:4px; border-radius:3px; background:#476057; }
 .recap-activity-day[data-active="true"] .recap-activity-bar { height:24px; background:var(--lime, #c8f36a); }
+
+/* Native photo disclosure on phones; desktop retains its preview. */
+.recap-feature-photo { display:none; }
+@media(max-width:600px) {
+ .recap-feature .recap-feature-desktop { display:none; }
+ .recap-feature-photo { display:block; }
+ .recap-feature-photo > summary { min-height:44px; padding:12px 0; color:#c8f36a; cursor:pointer; font-size:13px; }
+ .recap-feature-photo[open] > a { display:block; margin-top:8px; }
+}
