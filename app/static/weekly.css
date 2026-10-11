@@ -130,10 +130,10 @@ body.weekly-public main.weekly-shared{position:relative;max-width:1000px;padding
 .recap-footer{font-size:12px}
 @media(max-width:600px){
  body.weekly-public main.weekly-shared{padding:12px max(12px,env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
- .recap-brand{top:36px;left:36px;font-size:18px}
+ .recap-brand{top:28px;left:32px;font-size:18px}
  .recap-opening{display:grid;grid-template-columns:1fr;gap:0;min-height:0;border-radius:14px}
- .recap-hero{padding:92px 24px 24px}
- .weekly-shared .recap-hero h1{font-size:36px;max-width:11ch}
+ .recap-hero{padding:72px 20px 16px}
+ .weekly-shared .recap-hero h1{font-size:28px;max-width:none;line-height:1.08}
  .recap-dates{font-size:11px;margin-bottom:12px}
  .recap-metrics{gap:12px;margin-top:22px}
  .recap-metrics>div,.recap-metrics>div:first-child{padding:0}
