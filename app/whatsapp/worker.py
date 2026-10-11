@@ -10,7 +10,6 @@ from ..security_config import validate_security
 validate_security()
 
 from ..database import SessionLocal, engine
-from ..models import TrainingImage, TrainingSession
 from .identity import now
 from .kapso import KapsoWhatsAppProvider
 from .models import ConversationState, WhatsAppInbox, WhatsAppOutbox, WhatsAppMedia
@@ -92,18 +91,14 @@ def cleanup(session):
                 row.state = 'EXPIRED'
     for row in session.scalars(select(WhatsAppMedia).where(WhatsAppMedia.expires_at <= now(),
             WhatsAppMedia.training_session_id.is_(None)).with_for_update(skip_locked=True)):
+        # S11 initial dry-run policy: no photo removal before verified S16 restore.
+        # Preserve every image, including legacy rows and unresolved references.
+        if row.media_type == 'image' or row.path.startswith('training-images/'):
+            continue
         root = private_root().resolve()
         target = (root / row.path).resolve()
         if not target.is_relative_to(root) or not row.path.startswith(('training-images/', 'original/whatsapp/')):
             continue
-        if row.media_type == 'image':
-            image = session.scalar(select(TrainingImage).where(TrainingImage.path == target.name,
-                TrainingImage.athlete_id == row.athlete_id).with_for_update())
-            if image and session.scalar(select(TrainingSession.id).where(TrainingSession.source_image_id == image.id).limit(1)):
-                row.expires_at = None
-                continue
-            if image:
-                session.delete(image)
         target.unlink(missing_ok=True)
         session.delete(row)
     session.commit()

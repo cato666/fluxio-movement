@@ -184,7 +184,7 @@ def test_photo_private_valid_and_cleanup(client, channel, session, tmp_path):
     session.expire_all(); assert media.training_session_id is None
     cleanup(session)
     media.expires_at = now() - timedelta(seconds=1); session.commit(); cleanup(session)
-    assert not target.exists() and session.scalar(select(TrainingImage)) is None
+    assert target.exists() and session.scalar(select(TrainingImage)) is not None  # S11 dry-run
 
 
 @pytest.mark.parametrize('media', [DownloadedMedia(b'invalid', 'image/png'),
@@ -293,7 +293,7 @@ def test_media_cancel_expiry_cleanup(client, channel, session, tmp_path):
     row=session.scalar(select(WhatsAppMedia)); target=tmp_path/row.path
     confirm(client, channel, session, 'cancel')
     row.expires_at=now()-timedelta(seconds=1); session.commit(); cleanup(session)
-    assert not target.exists() and session.scalar(select(WhatsAppMedia)) is None
+    assert target.exists() and session.scalar(select(WhatsAppMedia)) is not None  # S11 dry-run
 
 
 def test_other_phone_cannot_confirm_and_revoked_phone_loses_draft(client, channel, session):
