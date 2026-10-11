@@ -1,3 +1,13 @@
+# Actualización vigente S11 — política aprobada, cierre bloqueado
+
+Fecha: 2026-10-11. La respuesta «Si» aprueba la política S11/S16. S11 tiene una entrega **PARCIAL**: inventario read-only y bloqueo de eliminación de fotografías por el worker; no cuarentena ni borrado efectivo. Dependencia S16 **BLOCKED**: respaldo coherente/restore comprobado, destino y responsable pendientes. No usar una variable de configuración como sustituto de evidencia de recuperación. Sin migración nueva; head 0024 conservado. S12–S18 no iniciadas.
+
+Entrega funcional parcial `a4aefd7726a5d6f5f9b5c454bca16192ce0fe62d`: 795 Python / 72 JavaScript PASS (44 dirigidas incluidas, no sumables). 0 FAIL / 0 ERROR / 0 SKIPPED en Python. Los resultados actuales y el commit funcional constan en [S11_IMPLEMENTATION_REPORT.md](S11_IMPLEMENTATION_REPORT.md). Conservados: E2E integrado S05 **BLOCKED**, costos adicionales reales de video **PENDIENTE**, paridad EasyPanel **PENDIENTE**, proveedores reales **PENDIENTE**, backup/restore del destino **PENDIENTE**. Pilot **NO-GO**. La política ya no está pendiente; la implementación efectiva y su dependencia sí.
+
+El texto siguiente conserva evidencia histórica anterior a esta aprobación, no representa el estado vigente S11.
+
+---
+
 # Matriz de ejecuciÃ³n controlada S09â€“S18
 
 Fecha: 2026-10-11. Base verificada: f1a8bf47c92dbdb7079470a2f42b0d92f2d18e55, rama codex/pilot-v1-stabilization, worktree independiente limpio. S08 implementada (dfe2f870ba6e2aad277de478838cbea78d95fc3d), reporte presente y XML: 749 Python / 46 dirigidas / 69 JS PASS, cero fallos/omisiones. Esta verificaciÃ³n cumple la condiciÃ³n previa del nuevo encargo; no aprueba publicaciÃ³n ni proveedores.

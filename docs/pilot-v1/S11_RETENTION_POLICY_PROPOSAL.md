@@ -1,8 +1,8 @@
 # Propuesta de política S11 y dependencia de respaldo S16
 
-Fecha: 2026-10-11. **PROPUESTA, NO APROBADA, NO ACTIVA.** No se modifica el TTL actual ni se implementa borrado con esta documentación.
+Fecha: 2026-10-11. **POLÍTICA APROBADA por respuesta explícita «Si» del propietario a la consulta S11/S16. MODO EFECTIVO NO ACTIVO.** La aprobación comprende gracia 24 h, cuarentena 7 días, backups 7 diarios + snapshot pre-release 30 días, RPO 24 h/RTO 4 h; no autoriza eliminación real, deploy ni proveedores. El arranque queda en dry-run; destino, responsable y evidencia de restore S16 pendientes.
 
-## Decisión solicitada al propietario
+## Política aprobada; condiciones de activación pendientes
 
 | Categoría | Propuesta | Condición |
 |---|---|---|
@@ -18,7 +18,7 @@ Fecha: 2026-10-11. **PROPUESTA, NO APROBADA, NO ACTIVA.** No se modifica el TTL 
 
 La cuarentena y los respaldos retienen datos privados durante los plazos propuestos aunque no exista lectura pública. Aceptar la propuesta debe incluir estos plazos; no se presume aprobación por aprobar el alcance técnico general.
 
-## Implementación posterior, si se aprueba
+## Implementación por etapas tras aprobación
 
 1. Configuración controlada/validada, valores aprobados y evidencia de aprobación sin secretos; modo de limpieza efectiva deshabilitado hasta superar S16.
 2. Inventario desde el root privado, normalización de rutas y rechazo de symlinks/escapes; referencias TrainingImage/TrainingSession/WhatsAppMedia/ConversationState y relaciones públicas derivadas; legacies ambiguos excluidos.
