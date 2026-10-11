@@ -421,3 +421,20 @@ def test_legacy_outbound_cost_counted_without_double_counting_new_send(session,m
     session.commit()
     with pytest.raises(HTTPException): reserve(session,DEMO_ATHLETE_ID,'INTERPRET')
     assert rows(session)==[]
+
+
+def test_pending_reservations_carry_into_next_day_budget(session,monkeypatch):
+    now=clock();monkeypatch.setenv('USAGE_GLOBAL_DAILY_USD','0.05')
+    identifier=reserve(session,DEMO_ATHLETE_ID,'INTERPRET');session.commit()
+    monkeypatch.setattr('app.services.consumption_limits.clock',lambda:now+timedelta(days=1))
+    with pytest.raises(HTTPException):reserve(session,DEMO_ATHLETE_ID,'TRANSCRIBE')
+    session.rollback()
+    transition(identifier,'STARTED') # Already allocated last slot can be used once.
+    assert session.get(PlanInteraction,identifier).reservation_state=='RESERVED'
+
+
+def test_lowering_budget_blocks_reserved_provider_before_start(session,monkeypatch):
+    identifier=reserve(session,DEMO_ATHLETE_ID,'INTERPRET');session.commit()
+    monkeypatch.setenv('USAGE_GLOBAL_DAILY_USD','0')
+    with pytest.raises(HTTPException):transition(identifier,'STARTED')
+    assert session.get(PlanInteraction,identifier).started_at is None

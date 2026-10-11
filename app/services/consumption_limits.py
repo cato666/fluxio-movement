@@ -7,7 +7,7 @@ import logging
 import os
 from uuid import UUID, uuid4
 from fastapi import HTTPException
-from sqlalchemy import select, func, text, cast, String
+from sqlalchemy import select, func, text, cast, String, or_
 from sqlalchemy.orm import Session, aliased
 from ..models import User, PlanInteraction
 from ..database import engine
@@ -81,7 +81,7 @@ def clock():
     return datetime.now(timezone.utc)
 
 
-def budget(session, config, cost):
+def budget(session, config, cost, *, existing=False):
     from ..whatsapp.models import WhatsAppUsage
     from ..models import AdminSetting
     start = config['PILOT_START']
@@ -96,12 +96,13 @@ def budget(session, config, cost):
     for period, limit in ((today, 'GLOBAL_DAILY_USD'), (start, 'GLOBAL_PILOT_USD')):
         total = Decimal(0)
         for operation, reserved in session.execute(select(PlanInteraction.operation, PlanInteraction.budget_usd).where(
-                PlanInteraction.created_at >= period, PlanInteraction.reservation_state != 'RELEASED')):
+                or_(PlanInteraction.created_at >= period, PlanInteraction.started_at >= period,
+                    PlanInteraction.reservation_state == 'RESERVED'), PlanInteraction.reservation_state != 'RELEASED')):
             # Unknown historical costs retain a conservative reservation.
             total += reserved if reserved is not None else config[operation + '_RESERVE_USD'] + (
                 sum(config.get(k, Decimal(0)) for k in VIDEO_COSTS) if operation == 'ANALYZE' else 0)
         total += session.scalar(select(func.coalesce(func.sum(WhatsAppUsage.cost), 0)).where(
-            WhatsAppUsage.category == 'send_reservation', WhatsAppUsage.created_at >= period,
+            WhatsAppUsage.category == 'send_reservation', or_(WhatsAppUsage.created_at >= period, WhatsAppUsage.reservation_state == 'RESERVED'),
             WhatsAppUsage.reservation_state != 'RELEASED'))
         legacy = aliased(WhatsAppUsage)
         newer = aliased(WhatsAppUsage)
@@ -110,7 +111,7 @@ def budget(session, config, cost):
                 newer.category == 'send_reservation', newer.event_key.like(
                     'send-reservation:' + func.substr(legacy.event_key, 10, 36) + ':%')).exists()))
         total += sum(value if value is not None else config['WHATSAPP_SEND_RESERVE_USD'] for value in legacy_costs)
-        if total + cost > config[limit] or (cost == 0 and total >= config[limit]):
+        if total + cost > config[limit] or (not existing and cost == 0 and total >= config[limit]):
             reject(429, 'global_budget')
         if config[limit] and (total + cost) * 100 >= config[limit] * config['ALERT_PERCENT']:
             logger.warning('consumption_budget_alert period=%s threshold=%s', 'daily' if period == today else 'pilot', config['ALERT_PERCENT'])
@@ -145,7 +146,8 @@ def reserve(session, user_id, operation, *, request_key=None, channel='web'):
         today = clock().replace(hour=0, minute=0, second=0, microsecond=0)
         count = durable.scalar(select(func.count()).select_from(PlanInteraction).where(
             PlanInteraction.user_id == user_id, PlanInteraction.operation == operation,
-            PlanInteraction.created_at >= today, PlanInteraction.reservation_state != 'RELEASED'))
+            or_(PlanInteraction.created_at >= today, PlanInteraction.started_at >= today,
+                PlanInteraction.reservation_state == 'RESERVED'), PlanInteraction.reservation_state != 'RELEASED'))
         if count >= config[operation + '_DAILY']:
             reject(429, 'athlete_daily_limit')
         recent = durable.scalar(select(func.count()).select_from(PlanInteraction).where(
@@ -233,6 +235,9 @@ def transition(identifier, state, *, not_called=False):
         if state == 'STARTED':
             if row.started_at:
                 reject(409, 'provider_replay')
+            # Revalidate after queueing or a UTC day change; pending obligations
+            # count against the new day's budget before any provider starts.
+            budget(durable, configuration(durable, row.operation), Decimal(0), existing=True)
             row.started_at = clock()
         else:
             row.reservation_state = state
