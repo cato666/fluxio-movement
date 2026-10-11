@@ -80,9 +80,9 @@ test('AI draft reveals review, keeps text collapsed and opens incomplete require
   assert.equal(await page.evaluate(()=>document.activeElement.validity.valid),false);
 }));
 test('failed save preserves source and payload; retry succeeds with feedback',()=>harness(async page=>{
-  const bodies=[];let fail=true;
+  const bodies=[],saveKeys=[];let fail=true;
   await page.route('**/api/training-sessions',route=>{
-    if(route.request().method()==='POST') {bodies.push(route.request().postDataJSON());return route.fulfill({status:fail?503:200,json:fail?{detail:'Servicio temporalmente no disponible.'}:{id:'saved'}});}
+    if(route.request().method()==='POST') {saveKeys.push(route.request().headers()['idempotency-key']);bodies.push(route.request().postDataJSON());return route.fulfill({status:fail?503:200,json:fail?{detail:'Servicio temporalmente no disponible.'}:{id:'saved'}});}
     return route.fulfill({json:{items:[]}});
   });
   await page.getByLabel('Descripción del entrenamiento').fill('5x5 sentadillas');
@@ -95,6 +95,7 @@ test('failed save preserves source and payload; retry succeeds with feedback',()
   fail=false;await page.getByRole('button',{name:'Guardar entrenamiento',exact:true}).click();
   await page.waitForURL('**/training');
   assert.deepEqual(bodies[0],bodies[1]);
+  assert.match(saveKeys[0],/^[a-f0-9-]{36}$/);assert.equal(saveKeys[0],saveKeys[1]);
   assert.match(await page.evaluate(()=>sessionStorage.getItem('flash')),/Entrenamiento guardado/);
 }));
 test('offline interpretation keeps capture editable and provides recovery',()=>harness(async page=>{
@@ -208,7 +209,7 @@ test('existing session opens as a note, preserves edits between views and uses t
   assert.equal(await page.locator('[name=title]').inputValue(),'AMRAP confirmado');
   await page.getByRole('button',{name:'Guardar cambios',exact:true}).click();await page.waitForURL('**/training');
   assert.equal(request.method(),'PUT');assert.equal(request.postDataJSON().title,'AMRAP confirmado');
-  assert.equal(request.postDataJSON().source_text,'Mi WOD');
+  assert.equal('source_text' in request.postDataJSON(),false);
 }));
 test('saved note supports long content, absent optional data and 320–430px',()=>harness(async page=>{
   const workout='Sentadilla 5x5 · 60 kg\n'.repeat(80);
@@ -417,4 +418,58 @@ test('S06 uncertain interpretation retry preserves key; correction creates a new
   await prepare.click();
   await page.waitForFunction(()=>!document.querySelector('.training-chat-toolbar button:last-child').disabled);
   assert.equal(keys.length,3);assert.notEqual(keys[2],keys[0]);
+}));
+
+
+test('S10 response lost keeps save key and a changed retry gets conflict without losing draft',()=>harness(async page=>{
+  let first=true;const keys=[];const bodies=[];
+  await page.route('**/api/training-sessions',route=>{
+    if(route.request().method()!=='POST')return route.fulfill({json:{items:[]}});
+    keys.push(route.request().headers()['idempotency-key']);bodies.push(route.request().postDataJSON());
+    if(first){first=false;return route.abort('internetdisconnected');}
+    return route.fulfill({status:409,json:{detail:'Este guardado ya fue procesado con otros datos. Revisa tu bitácora.'}});
+  });
+  await page.getByLabel('Descripción del entrenamiento').fill('Sentadillas');
+  await page.getByRole('button',{name:'Completar manualmente'}).click();
+  await page.locator('[name=title]').fill('Primero');
+  await page.getByRole('button',{name:'Guardar entrenamiento',exact:true}).click();
+  await page.getByText('Tu borrador se conserva',{exact:false}).waitFor();
+  await page.locator('[name=title]').fill('Corregido');
+  await page.getByRole('button',{name:'Guardar entrenamiento',exact:true}).click();
+  await page.getByText('Este guardado ya fue procesado',{exact:false}).waitFor();
+  assert.equal(keys[0],keys[1]);assert.notEqual(bodies[0].title,bodies[1].title);
+  assert.equal(await page.locator('[name=title]').inputValue(),'Corregido');
+}));
+
+test('S10 editing title omits unchanged optional fields to preserve a concurrent WhatsApp note',()=>harness(async page=>{
+  const initial={...draft,id:'s10-edit',trained_on:'2026-10-01',source_text:'Mi WOD',video_links:[],source_image_id:null};
+  const latest={...initial,adaptations:initial.adaptations+'\nNota del atleta (whatsapp): Nueva nota'};let submitted;
+  await page.route('**/api/training-sessions/s10-edit',route=>{
+    if(route.request().method()==='PUT'){submitted=route.request().postDataJSON();return route.fulfill({json:{...latest,...submitted}});}
+    return route.fulfill({json:initial});
+  });
+  await page.evaluate(()=>window.setupTraining('s10-edit'));
+  await page.getByRole('button',{name:'Editar entrenamiento'}).click();
+  await page.locator('[name=title]').fill('Corregido');
+  await page.getByRole('button',{name:'Guardar cambios',exact:true}).click();await page.waitForURL('**/training');
+  assert.equal(submitted.title,'Corregido');
+  for(const key of ['adaptations','result_text','rpe','source_text','source_image_id','video_links','blocks'])assert.equal(key in submitted,false,key);
+  assert.match({...latest,...submitted}.adaptations,/Nueva nota/);
+}));
+
+
+test('S10 explicit nested block edits and unlink remain in the partial PUT payload',()=>harness(async page=>{
+  const initial={...draft,id:'s10-nested',trained_on:'2026-10-01',source_text:'Mi WOD',video_links:[{analysis_id:'own-video',movement:'Squat',context:'Ronda'}],source_image_id:null};let submitted;
+  await page.route('**/api/training-sessions/s10-nested',route=>{
+    if(route.request().method()==='PUT'){submitted=route.request().postDataJSON();return route.fulfill({json:{...initial,...submitted}});}
+    return route.fulfill({json:initial});
+  });
+  await page.evaluate(()=>window.setupTraining('s10-nested'));
+  await page.getByRole('button',{name:'Editar entrenamiento'}).click();
+  await page.getByLabel('Nombre del bloque').evaluate(el=>{el.closest('details').open=true});
+  await page.getByLabel('Nombre del bloque').fill('Bloque corregido');
+  await page.locator('.training-video button').evaluate(el=>{el.closest('details').open=true});
+  await page.getByRole('button',{name:'Desvincular'}).click();
+  await page.getByRole('button',{name:'Guardar cambios',exact:true}).click();await page.waitForURL('**/training');
+  assert.equal(submitted.blocks[0].title,'Bloque corregido');assert.deepEqual(submitted.video_links,[]);
 }));

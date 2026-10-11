@@ -15,10 +15,11 @@ def test_all_baseline_http_operations_and_schemas_are_preserved():
     for path, contract in baseline['paths'].items():
         for operation, expected in contract.items():
             actual = dict(current['paths'][path][operation])
-            if operation == 'post' and path in ('/api/training-sessions/interpret', '/api/training-sessions/transcribe', '/api/analyze', '/api/analyses', '/api/analyses/{analysis_id}/reanalyze'):
+            if operation == 'post' and path in ('/api/training-sessions', '/api/training-sessions/interpret', '/api/training-sessions/transcribe', '/api/analyze', '/api/analyses', '/api/analyses/{analysis_id}/reanalyze'):
                 parameters = actual.get('parameters', [])
                 added = [p for p in parameters if p['name'] == 'idempotency-key']
                 assert len(added) == 1 and added[0]['in'] == 'header' and not added[0]['required']
+                assert added[0]['schema']['anyOf'] == [{'type': 'string', 'format': 'uuid'}, {'type': 'null'}]
                 kept = [p for p in parameters if p['name'] != 'idempotency-key']
                 if kept: actual['parameters'] = kept
                 else: actual.pop('parameters', None)

@@ -95,6 +95,16 @@ class TrainingSession(Base):
     __table_args__ = (CheckConstraint("rpe IS NULL OR rpe BETWEEN 1 AND 10", name="ck_training_sessions_rpe"),)
 
 
+class TrainingSaveRequest(Base):
+    """Minimal durable replay evidence; deletion must not resurrect a session."""
+    __tablename__ = 'training_save_requests'
+    athlete_id: Mapped[UUID] = mapped_column(ForeignKey('athletes.user_id'), primary_key=True)
+    request_key: Mapped[UUID] = mapped_column(primary_key=True)
+    session_id: Mapped[UUID] = mapped_column(nullable=False)  # Deliberately no FK: keep deletion tombstone.
+    payload_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class WeeklyShare(Base):
     __tablename__ = 'weekly_shares'
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)

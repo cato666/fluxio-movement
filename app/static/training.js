@@ -652,14 +652,25 @@ window.setupTraining = async function (identifier) {
     form.append(sourceActions);
     const actions = make('div', '', 'form-actions training-save-actions');
     const save = make('button', editing ? 'Guardar cambios' : 'Guardar entrenamiento'); save.type = 'submit'; actions.append(save); form.append(actions);
+    const saveKey = editing ? null : crypto.randomUUID();
+    const editBaseline = editing ? JSON.parse(JSON.stringify({...data, source_text: data.source_text || '', video_links: data.video_links || [], blocks: data.blocks || []})) : null;
     form.onsubmit = async (event) => {
       event.preventDefault(); if (busy) return;
       processing(true); save.textContent = 'Guardando…'; notify('Guardando tu entrenamiento…'); form.setAttribute('aria-busy','true');
       const payload = Object.fromEntries(Object.entries(controls).map(([key, input]) => [key, input.value.trim()]));
       payload.rpe = payload.rpe === '' ? null : Number(payload.rpe);
       payload.source_text = source.value; payload.video_links = videoLinks; payload.blocks=blocks; payload.source_image_id=imageId;
+      if (editing) {
+        // Omitted optional fields preserve concurrent notes/media on the server.
+        for (const key of ['source_text','result_text','adaptations','rpe','video_links','blocks','source_image_id']) {
+          const previous = ['result_text','adaptations'].includes(key) ? (editBaseline[key] || '').trim() : editBaseline[key] ?? null;
+          if (JSON.stringify(payload[key]) === JSON.stringify(previous)) delete payload[key];
+        }
+      }
       try {
-        await api('/api/training-sessions' + (editing ? '/' + identifier : ''), {method: editing ? 'PUT' : 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+        const headers = {'Content-Type':'application/json'};
+        if (saveKey) headers['Idempotency-Key'] = saveKey;
+        await api('/api/training-sessions' + (editing ? '/' + identifier : ''), {method: editing ? 'PUT' : 'POST', headers, body: JSON.stringify(payload)});
         dirty = false; root.trainingCleanup?.(); setFlash(editing ? 'Cambios guardados en tu bitácora.' : 'Entrenamiento guardado en tu bitácora.'); window.location.assign('/training');
       } catch (error) { notify(`${error.message} Tu borrador se conserva en esta pantalla.`, true); save.disabled = false; save.textContent = editing ? 'Guardar cambios' : 'Guardar entrenamiento'; }
       finally { processing(false); form.setAttribute('aria-busy','false'); }

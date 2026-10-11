@@ -2,13 +2,15 @@
 
 No phone numbers, cookies, HTTP requests or provider-specific payloads belong here.
 """
-from uuid import UUID
+import hashlib
+import json
+from uuid import UUID, uuid4
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from ..models import Analysis, TrainingImage, TrainingSession
+from ..models import Analysis, TrainingImage, TrainingSession, TrainingSaveRequest
 from .training_contracts import InterpretPayload, SessionPayload
 from .training_errors import (
-    TrainingInvalid, TrainingNotFound, TrainingProcessingFailed,
+    TrainingConflict, TrainingInvalid, TrainingNotFound, TrainingProcessingFailed,
     TrainingTooLarge, TrainingUnavailable,
 )
 from .training_media import TrainingMediaStore
@@ -171,21 +173,23 @@ class TrainingService:
             transition(reservation, state, not_called=state == 'RELEASED')
             self._persist()
 
-    def owned(self, identifier):
-        row = self.session.scalar(select(TrainingSession).where(
-            TrainingSession.id == identifier, TrainingSession.athlete_id == self.athlete_id))
+    def owned(self, identifier, *, lock=False):
+        query = select(TrainingSession).where(TrainingSession.id == identifier, TrainingSession.athlete_id == self.athlete_id)
+        if lock:
+            query = query.with_for_update().execution_options(populate_existing=True)
+        row = self.session.scalar(query)
         if row is None:
             raise TrainingNotFound('Sesión no encontrada')
         return row
 
-    def _assign(self, row, payload):
+    def _assign(self, row, payload, *, editing=False):
         if payload.source_image_id:
             self.owned_image(payload.source_image_id)
         for link in payload.video_links:
             analysis = self.session.get(Analysis, link.analysis_id)
             if analysis is None or analysis.athlete_id != self.athlete_id:
                 raise TrainingNotFound('Análisis no disponible para esta sesión')
-        for key, value in payload.model_dump(mode='python').items():
+        for key, value in payload.model_dump(mode='python', exclude_unset=editing).items():
             setattr(row, key, value)
 
     def list_sessions(self):
@@ -196,9 +200,27 @@ class TrainingService:
 
     def create(self, payload: SessionPayload):
         payload = SessionPayload.model_validate(payload)
-        row = TrainingSession(athlete_id=self.athlete_id)
+        evidence = None
+        if self.request_key is not None:
+            from ..whatsapp.identity import active_account
+            if active_account(self.session, self.athlete_id) is None:
+                raise TrainingNotFound('Cuenta no disponible')
+            key = UUID(str(self.request_key))
+            canonical = json.dumps(payload.model_dump(mode='json'), sort_keys=True, separators=(',', ':'), ensure_ascii=False)
+            fingerprint = hashlib.sha256((str(self.athlete_id) + str(key) + canonical).encode()).hexdigest()
+            evidence = self.session.get(TrainingSaveRequest, (self.athlete_id, key))
+            if evidence is not None:
+                if evidence.payload_hash != fingerprint:
+                    raise TrainingConflict('Este guardado ya fue procesado con otros datos. Revisa tu bitácora antes de guardar otro registro.')
+                saved = fields(self.owned(evidence.session_id))  # Missing/deleted: never recreate.
+                self._persist()
+                return saved
+        row = TrainingSession(id=uuid4(), athlete_id=self.athlete_id)
         self._assign(row, payload)
         self.session.add(row)
+        if self.request_key is not None:
+            self.session.add(TrainingSaveRequest(athlete_id=self.athlete_id, request_key=key,
+                session_id=row.id, payload_hash=fingerprint))
         self._persist()
         return fields(row)
 
@@ -207,13 +229,13 @@ class TrainingService:
 
     def update(self, identifier, payload: SessionPayload):
         payload = SessionPayload.model_validate(payload)
-        row = self.owned(identifier)
-        self._assign(row, payload)
+        row = self.owned(identifier, lock=True)
+        self._assign(row, payload, editing=True)
         self._persist()
         return fields(row)
 
     def delete(self, identifier):
-        row = self.owned(identifier)
+        row = self.owned(identifier, lock=True)
         self.session.delete(row)
         self._persist()
         return {'deleted': True}
@@ -222,7 +244,7 @@ class TrainingService:
         if source not in {'web', 'whatsapp', 'ai'} or not note.strip() or len(note) > 4000:
             raise TrainingInvalid('Nota inválida')
         row = self.session.scalar(select(TrainingSession).where(
-            TrainingSession.id == identifier, TrainingSession.athlete_id == self.athlete_id).with_for_update())
+            TrainingSession.id == identifier, TrainingSession.athlete_id == self.athlete_id).with_for_update().execution_options(populate_existing=True))
         if row is None:
             raise TrainingNotFound('Sesión no encontrada')
         addition = f'Nota del atleta ({source}): {note.strip()}'

@@ -23,3 +23,7 @@ class TrainingUnavailable(TrainingError):
 
 class TrainingProcessingFailed(TrainingError):
     pass
+
+
+class TrainingConflict(TrainingError):
+    pass

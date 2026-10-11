@@ -14,7 +14,7 @@ from .services.training_transcription import AUDIO_LIMIT, transcribe
 from .services.workout_interpretation import interpret
 from .services.training_service import TrainingService, fields
 from .services.training_errors import (
-    TrainingError, TrainingInvalid, TrainingNotFound, TrainingProcessingFailed,
+    TrainingConflict, TrainingError, TrainingInvalid, TrainingNotFound, TrainingProcessingFailed,
     TrainingTooLarge, TrainingUnavailable,
 )
 
@@ -25,7 +25,7 @@ def http_errors():
         yield
     except TrainingError as error:
         status = {
-            TrainingInvalid: 422, TrainingTooLarge: 413, TrainingNotFound: 404,
+            TrainingConflict: 409, TrainingInvalid: 422, TrainingTooLarge: 413, TrainingNotFound: 404,
             TrainingUnavailable: 503, TrainingProcessingFailed: 502,
         }[type(error)]
         raise HTTPException(status, str(error)) from error
@@ -67,9 +67,9 @@ def router(require_athlete):
         return {'items': service(user, session).list_sessions()}
 
     @routes.post('', status_code=201)
-    def create(payload: SessionPayload, user: User = Depends(require_athlete), session: Session = Depends(get_session)):
+    def create(payload: SessionPayload, user: User = Depends(require_athlete), session: Session = Depends(get_session), idempotency_key: UUID | None = Header(default=None)):
         with http_errors():
-            return service(user, session).create(payload)
+            return service(user, session, idempotency_key).create(payload)
 
     @routes.get('/{identifier}')
     def detail(identifier: UUID, user: User = Depends(require_athlete), session: Session = Depends(get_session)):
