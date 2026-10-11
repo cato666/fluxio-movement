@@ -16,15 +16,12 @@ class AudioUnavailable(RuntimeError):
     pass
 
 
-def transcribe(raw: bytes) -> str:
-    from .training_usage import report_usage
+def prepare_audio(raw: bytes):
     if len(raw) > AUDIO_LIMIT:
         raise ValueError('El audio supera 8 MB')
     ogg = raw.startswith(b'OggS')
     if not (raw.startswith(b'\x1a\x45\xdf\xa3') or (raw.startswith(b'RIFF') and raw[8:12] == b'WAVE') or raw[4:8] == b'ftyp' or ogg):
         raise ValueError('Audio inválido. Graba nuevamente en formato WebM, MP4, WAV u OGG/Opus.')
-    if not os.getenv('OPENAI_API_KEY') or os.getenv('TRAINING_VOICE_ENABLED', 'true').lower() not in {'true', '1', 'yes'}:
-        raise AudioUnavailable('La transcripción no está configurada. Puedes escribir tu entrenamiento.')
     with tempfile.TemporaryDirectory(prefix='training-voice-') as directory:
         original = Path(directory) / 'recording'
         normalized = Path(directory) / 'audio.wav'
@@ -51,6 +48,24 @@ def transcribe(raw: bytes) -> str:
             raise ValueError('No se pudo leer el audio. Graba nuevamente.') from error
         except FileNotFoundError as error:
             raise AudioUnavailable('La transcripción no está disponible en este servidor. Puedes escribir tu entrenamiento.') from error
+    return audio_bytes, seconds
+
+
+def enabled():
+    return bool(os.getenv('OPENAI_API_KEY')) and os.getenv('TRAINING_VOICE_ENABLED', 'true').lower() in {'true', '1', 'yes'}
+
+
+def transcribe(raw: bytes) -> str:
+    if not enabled():
+        raise AudioUnavailable('La transcripción no está configurada. Puedes escribir tu entrenamiento.')
+    return transcribe_prepared(prepare_audio(raw))
+
+
+def transcribe_prepared(prepared, *, before_call=None) -> str:
+    from .training_usage import report_usage
+    if not enabled():
+        raise AudioUnavailable('La transcripción no está configurada. Puedes escribir tu entrenamiento.')
+    audio_bytes, seconds = prepared
     boundary = 'training-' + uuid4().hex
     fields = {'model': os.getenv('TRAINING_TRANSCRIPTION_MODEL', 'gpt-transcribe'), 'language': 'es', 'response_format': 'json'}
     body = b''
@@ -60,6 +75,8 @@ def transcribe(raw: bytes) -> str:
     body += audio_bytes + f'\r\n--{boundary}--\r\n'.encode()
     request = Request('https://api.openai.com/v1/audio/transcriptions', data=body, headers={'Authorization': 'Bearer ' + os.environ['OPENAI_API_KEY'], 'Content-Type': 'multipart/form-data; boundary=' + boundary}, method='POST')
     report_usage(fields['model'], duration_seconds=seconds)
+    if before_call is not None:
+        before_call()
     with urlopen(request, timeout=45) as response:
         data = json.loads(response.read())
     usage = data.get('usage')

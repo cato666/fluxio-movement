@@ -46,7 +46,9 @@ def store_video(raw):
     return target.relative_to(private_root()).as_posix()
 
 
-def receive(session, inbox, message, athlete_id, provider):
+def receive(session, inbox, message, athlete_id, provider, *, reusable_audio=None):
+    if message.message_type == 'audio' and isinstance(reusable_audio, dict) and reusable_audio.get('reference') == message.media_reference and isinstance(reusable_audio.get('transcript'), str) and reusable_audio['transcript']:
+        return None, None, reusable_audio['transcript']
     cached = session.scalar(select(WhatsAppMedia).where(WhatsAppMedia.inbox_id == inbox.id,
                                                      WhatsAppMedia.athlete_id == athlete_id))
     if cached:
@@ -58,10 +60,13 @@ def receive(session, inbox, message, athlete_id, provider):
     reservation = None
     if message.message_type in {'audio', 'image'}:
         operation = 'TRANSCRIBE' if message.message_type == 'audio' else 'INTERPRET'
+        TrainingService(session, athlete_id, commit=False).check_provider(operation)
         reservation = reserve(session, athlete_id, operation, request_key=inbox.id, channel='whatsapp')
         session.info.setdefault('media_reservations', {})[(inbox.id, operation)] = reservation
     else:
         check_budget()
+    if reservation is not None:
+        session.info.setdefault('media_provider_started', set()).add(reservation)
     media = provider.download_media(message.media_reference, VIDEO_LIMIT if message.message_type == 'video' else MEDIA_LIMIT)
     usage(session, f'download:{inbox.id}:{inbox.attempts}', 'media_bytes', athlete_id, units=len(media.data))
     session.flush()  # Keep the account lock until worker completion.

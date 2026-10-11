@@ -353,12 +353,12 @@ def test_account_lock_held_during_web_provider(session):
     assert rows(session)[0].reservation_state=='CONFIRMED'
 
 
-def test_disabled_native_provider_releases_only_unstarted_reservation(session,monkeypatch):
+def test_disabled_native_provider_is_rejected_before_reserving(session,monkeypatch):
     from app.services.training_errors import TrainingUnavailable
     monkeypatch.delenv('OPENAI_API_KEY',raising=False)
     with pytest.raises(TrainingUnavailable): TrainingService(session,DEMO_ATHLETE_ID).interpret(InterpretPayload(text='WOD'))
     records=rows(session)
-    assert len(records)==1 and records[0].reservation_state=='RELEASED' and records[0].started_at is None
+    assert records==[]
 
 
 def test_unknown_legacy_processing_video_blocks_new_job(session):
@@ -406,6 +406,7 @@ def test_kapso_http_error_keeps_reservation_and_402_never_retries(client,session
 
 def test_audio_at_quota_never_downloads_or_calls_ai(client,session,monkeypatch):
     configure(monkeypatch);link(session)
+    monkeypatch.setenv('OPENAI_API_KEY','fixture-s09')
     for _ in range(3):
         identifier=reserve(session,DEMO_ATHLETE_ID,'TRANSCRIBE');transition(identifier,'CONFIRMED');session.commit()
     class NoDownload(FakeProvider):

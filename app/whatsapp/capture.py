@@ -325,7 +325,7 @@ def handle_capture(session, inbox, message, athlete_id, vault, provider):
         data = {'kind':'workout', 'source':'', 'date':day.isoformat()}
     try:
         if message.message_type in {'image','audio','video'}:
-            media, image_id, transcript = receive(session, inbox, message, athlete_id, provider)
+            media, image_id, transcript = receive(session, inbox, message, athlete_id, provider, reusable_audio=data.get('audio_source'))
             usage(session, f'media:{inbox.id}', 'media', athlete_id)
             if media:
                 data['media_id'] = str(media.id)
@@ -333,6 +333,7 @@ def handle_capture(session, inbox, message, athlete_id, vault, provider):
                 data['image_id'] = str(image_id)
             if transcript:
                 text = transcript
+                data['audio_source'] = {'reference': message.media_reference, 'transcript': sanitize(transcript)}
             if message.message_type == 'video':
                 data['source'] = sanitize(text)
                 transition(state, 'CONTEXT', data, vault)

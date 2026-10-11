@@ -850,6 +850,7 @@ def analyze(
 ):
     """Original API contract, retained for the F1.1 client."""
     from .services.consumption_limits import transition
+    _validate_upload(file)
     reservation = consume(session, athlete.id, 'ANALYZE', idempotency_key)
     transition(reservation, 'STARTED')
     try:
@@ -872,6 +873,9 @@ def create_analysis(
     objective: str = Form(...), load_kg: float | None = Form(None), view: str = Form('side'),
     athlete: User = Depends(require_athlete), session: Session = Depends(get_session), idempotency_key: UUID | None = Header(default=None),
 ):
+    _validate_upload(file)
+    _validate_metadata(exercise, objective, load_kg)
+    _validate_view(view)
     consume(session, athlete.id, 'ANALYZE', idempotency_key)
     from .services.consumption_limits import transition
     try:

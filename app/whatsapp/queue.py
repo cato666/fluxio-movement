@@ -147,6 +147,16 @@ def _dispatch_one(session, provider, vault):
     from .provider import ProviderError
     from ..services.consumption_limits import reserve_send
     from fastapi import HTTPException
+    from .kapso import KapsoWhatsAppProvider
+    if isinstance(provider, KapsoWhatsAppProvider):
+        try:
+            provider.prepare_send(payload['phone'], payload['text'], payload.get('actions'))
+        except (ChannelError, ValueError, TypeError, KeyError) as error:
+            code = error.code if isinstance(error, ProviderError) and error.code in SAFE_ERRORS else 'protected_payload_invalid'
+            row.state, row.error_code, row.lease_until = 'FAILED', code, None
+            session.commit()
+            logger.warning('whatsapp_outbox outcome=FAILED reason=%s', code)
+            return True
     try:
         reserve_send(session, row)
     except HTTPException:

@@ -52,7 +52,7 @@ def enabled():
     return os.getenv('TRAINING_AI_ENABLED', 'true').lower() in {'true', '1', 'yes'} and bool(os.getenv('OPENAI_API_KEY'))
 
 
-def interpret(text: str, image: bytes | None = None) -> dict:
+def interpret(text: str, image: bytes | None = None, *, before_call=None) -> dict:
     from .training_usage import report_usage
     if not enabled():
         raise RuntimeError('La interpretación automática no está configurada. Puedes completar la ficha manualmente.')
@@ -61,13 +61,16 @@ def interpret(text: str, image: bytes | None = None) -> dict:
         content.append({'type': 'input_image', 'image_url': 'data:image/jpeg;base64,' + base64.b64encode(image).decode(), 'detail': 'high'})
     model = os.getenv('TRAINING_AI_MODEL') or os.getenv('AI_REASONING_MODEL', 'gpt-5.6-terra')
     report_usage(model)
-    response = _request({
+    request_body = {
         'model': model,
         'store': False,
         'input': [{'role': 'system', 'content': PROMPT}, {'role': 'user', 'content': content}],
         'text': {'format': {'type': 'json_schema', 'name': 'training_draft', 'strict': True, 'schema': WorkoutDraft.model_json_schema()}},
         'max_output_tokens': 4500,
-    }, os.environ['OPENAI_API_KEY'])
+    }
+    if before_call is not None:
+        before_call()
+    response = _request(request_body, os.environ['OPENAI_API_KEY'])
     report_usage(response.get('model') or model, response.get('usage'))
     if response.get('status') == 'incomplete':
         raise ValueError('Interpretación incompleta')

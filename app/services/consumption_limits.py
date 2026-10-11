@@ -228,6 +228,8 @@ def transition(identifier, state, *, not_called=False):
     with Session(bind=engine) as durable:
         durable.execute(text('SELECT pg_advisory_xact_lock(:key)'), {'key': LOCK})
         row = durable.get(PlanInteraction, identifier)
+        if state == 'RELEASED' and row is not None and row.reservation_state == 'RELEASED' and not_called and row.started_at is None:
+            return  # Idempotent proof; never reopen or refund a started operation.
         if row is None or row.reservation_state != 'RESERVED':
             reject(409, 'reservation_not_open')
         if state == 'RELEASED' and (not not_called or row.started_at is not None):
@@ -290,4 +292,6 @@ def abandon_media(session, inbox_id):
                 continue
             row = durable.get(PlanInteraction, identifier)
             if row and row.reservation_state == 'RESERVED':
-                transition(identifier, 'UNCERTAIN')
+                downloaded = identifier in session.info.get('media_provider_started', set())
+                transition(identifier, 'UNCERTAIN' if downloaded or row.started_at else 'RELEASED',
+                           not_called=not downloaded and row.started_at is None)

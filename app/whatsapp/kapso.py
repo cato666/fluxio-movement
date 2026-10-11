@@ -130,8 +130,9 @@ class KapsoWhatsAppProvider:
         except Exception:
             raise ProviderError('provider_transport_error', uncertain=body is not None) from None
 
-    def send(self, phone, text, actions=None):
-        if not self.number_id:
+    def prepare_send(self, phone, text, actions=None):
+        # Pure local preflight: no opener or provider work.
+        if not self.number_id or not self.key:
             raise ProviderError('provider_not_configured', not_sent=True)
         payload = {'messaging_product': 'whatsapp', 'recipient_type': 'individual', 'to': normalize_phone(phone)[1:]}
         if actions:
@@ -141,7 +142,15 @@ class KapsoWhatsAppProvider:
                 'action': {'buttons': [{'type': 'reply', 'reply': {'id': a['id'], 'title': a['title']}} for a in actions]}})
         else:
             payload.update(type='text', text={'body': text, 'preview_url': False})
-        raw, _ = self._read(f'{self.base}/{quote(self.number_id, safe="")}/messages', body=json.dumps(payload).encode())
+        url = f'{self.base}/{quote(self.number_id, safe="")}/messages'
+        parsed = urlsplit(url)
+        if parsed.scheme != 'https' or parsed.hostname != 'api.kapso.ai' or parsed.port not in (None, 443) or parsed.username:
+            raise ProviderError('provider_url_rejected', not_sent=True)
+        return url, json.dumps(payload).encode()
+
+    def send(self, phone, text, actions=None):
+        url, body = self.prepare_send(phone, text, actions)
+        raw, _ = self._read(url, body=body)
         try:
             identifier = json.loads(raw)['messages'][0]['id']
             if not isinstance(identifier, str) or not 1 <= len(identifier) <= 240:

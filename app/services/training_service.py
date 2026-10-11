@@ -46,6 +46,25 @@ class TrainingService:
             reject(409, 'reservation_binding_invalid')
         return row.id
 
+    def check_provider(self, operation):
+        from ..whatsapp.identity import active_account
+        from .consumption_limits import reject
+        user = active_account(self.session, self.athlete_id)
+        if user is None:
+            reject(403, 'account_inactive')
+        from ..administration import usage
+        entitlement = usage(self.session, user)
+        if operation not in entitlement['enabled_operations']:
+            reject(403, 'operation_disabled')
+        if not entitlement['remaining']:
+            reject(429, 'monthly_quota')
+        from .workout_interpretation import interpret as native_interpret, enabled as interpretation_enabled
+        from .training_transcription import transcribe as native_transcribe, enabled as transcription_enabled
+        if operation == 'INTERPRET' and self.interpreter is native_interpret and not interpretation_enabled():
+            raise TrainingUnavailable('La interpretación automática no está configurada. Puedes completar la ficha manualmente.')
+        if operation == 'TRANSCRIBE' and self.transcriber is native_transcribe and not transcription_enabled():
+            raise TrainingUnavailable('La transcripción no está configurada. Puedes escribir tu entrenamiento.')
+
     def _persist(self):
         # Web keeps its existing commit. Durable channels can join their transaction.
         if self.commit:
@@ -79,25 +98,33 @@ class TrainingService:
         if not payload.text.strip() and payload.image_id is None:
             raise TrainingInvalid('Escribe el WOD o agrega una foto de la pizarra')
         image = self.image_path(payload.image_id).read_bytes() if payload.image_id else None
+        self.check_provider('INTERPRET')
         reservation = self._reserve('INTERPRET')
         from .consumption_limits import transition
-        from .workout_interpretation import interpret as native_interpret, enabled
-        if self.interpreter is native_interpret and not enabled():
-            transition(reservation, 'UNCERTAIN' if self.reservation_id else 'RELEASED', not_called=not self.reservation_id)
-            raise TrainingUnavailable('La interpretación automática no está configurada. Puedes completar la ficha manualmente.')
-        transition(reservation, 'STARTED')
+        started = False
+        def before_call():
+            nonlocal started
+            transition(reservation, 'STARTED')
+            started = True
         succeeded = False
         try:
             with track_usage(self.session, self.athlete_id, 'INTERPRET', commit=False):
-                result = self.interpreter(payload.text, image)
+                from .workout_interpretation import interpret as native_interpret
+                if self.interpreter is native_interpret:
+                    result = self.interpreter(payload.text, image, before_call=before_call)
+                else:
+                    before_call()
+                    result = self.interpreter(payload.text, image)
                 succeeded = True
                 return result
         except RuntimeError as error:
-            raise TrainingUnavailable(str(error)) from error
+            raise TrainingUnavailable('La interpretación no está disponible. Puedes completar la ficha manualmente.') from error
         except Exception as error:
             raise TrainingProcessingFailed('No se pudo interpretar el WOD. Reintenta o completa la ficha manualmente.') from error
         finally:
-            transition(reservation, 'CONFIRMED' if succeeded else 'UNCERTAIN')
+            unknown_download = reservation in self.session.info.get('media_provider_started', set())
+            state = 'CONFIRMED' if succeeded else 'UNCERTAIN' if started or unknown_download else 'RELEASED'
+            transition(reservation, state, not_called=state == 'RELEASED')
             self._persist()
 
     def transcribe(self, raw: bytes):
@@ -105,18 +132,31 @@ class TrainingService:
             raise TrainingTooLarge('El audio supera 8 MB')
         if not raw:
             raise TrainingInvalid('La grabación está vacía')
+        self.check_provider('TRANSCRIBE')
+        from .training_transcription import transcribe as native_transcribe, prepare_audio, transcribe_prepared
+        prepared = None
+        if self.transcriber is native_transcribe:
+            try:
+                prepared = prepare_audio(raw)
+            except AudioUnavailable as error:
+                raise TrainingUnavailable(str(error)) from error
+            except ValueError as error:
+                raise TrainingInvalid(str(error)) from error
         reservation = self._reserve('TRANSCRIBE')
         from .consumption_limits import transition
-        from .training_transcription import transcribe as native_transcribe
-        import os
-        if self.transcriber is native_transcribe and (not os.getenv('OPENAI_API_KEY') or os.getenv('TRAINING_VOICE_ENABLED', 'true').lower() not in {'true','1','yes'}):
-            transition(reservation, 'UNCERTAIN' if self.reservation_id else 'RELEASED', not_called=not self.reservation_id)
-            raise TrainingUnavailable('La transcripción no está configurada. Puedes escribir tu entrenamiento.')
-        transition(reservation, 'STARTED')
+        started = False
+        def before_call():
+            nonlocal started
+            transition(reservation, 'STARTED')
+            started = True
         succeeded = False
         try:
             with track_usage(self.session, self.athlete_id, 'TRANSCRIBE', commit=False):
-                result = self.transcriber(raw)
+                if prepared is not None:
+                    result = transcribe_prepared(prepared, before_call=before_call)
+                else:
+                    before_call()
+                    result = self.transcriber(raw)
                 succeeded = True
                 return result
         except AudioUnavailable as error:
@@ -126,7 +166,9 @@ class TrainingService:
         except Exception as error:
             raise TrainingProcessingFailed('No se pudo transcribir. Conserva la grabación y reintenta, o escribe el entrenamiento.') from error
         finally:
-            transition(reservation, 'CONFIRMED' if succeeded else 'UNCERTAIN')
+            unknown_download = reservation in self.session.info.get('media_provider_started', set())
+            state = 'CONFIRMED' if succeeded else 'UNCERTAIN' if started or unknown_download else 'RELEASED'
+            transition(reservation, state, not_called=state == 'RELEASED')
             self._persist()
 
     def owned(self, identifier):
