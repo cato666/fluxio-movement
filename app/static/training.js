@@ -129,7 +129,7 @@ window.setupTraining = async function (identifier) {
     overview.append(heading,details,activity);
     workouts.append(controls,make('h3','Entrenamientos de la semana'),entries,message);
     const shareHeader=make('div','','weekly-summary-share-heading');const shareDescription=make('div');
-    shareDescription.append(make('h3','Compartir semana'),make('p','Crea un enlace público para compartir tu progreso.'));
+    shareDescription.append(make('h3','Compartir semana'),make('p','Comparte tu semana solo después de confirmar qué será público.'));
     shareHeader.append(icon('M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2'),shareDescription);
     const createFromCard=make('button','Crear enlace','weekly-summary-create');createFromCard.type='button';
     sharing.append(shareHeader,createFromCard,shareTrigger);section.append(overview,workouts,sharing);
@@ -138,49 +138,56 @@ window.setupTraining = async function (identifier) {
     const sheetHeader=make('header','','weekly-sheet-header'); const sheetTitle=make('h2','Compartir esta semana'); sheetTitle.id='weekly-share-title';
     const close=compactButton('Cerrar compartir semana','M6 6l12 12M6 18 18 6'); sheetHeader.append(sheetTitle,close);
     const sheetWeek=make('p','','weekly-sheet-week');
-    const hint=make('p','Incluye entrenamientos, resultados, notas, esfuerzo y fotos. Se actualiza con los cambios de esta semana. Vence en 7 días como máximo. Quien tenga el enlace puede verlos.','weekly-sheet-hint');
+    const hint=make('p','Quien tenga el enlace podrá consultar esta semana: entrenamientos, resultados, notas, esfuerzo y fotografías. También mostrará registros, fotografías, resultados y notas que agregues o modifiques después en esta semana. Vence en 7 días como máximo y puedes revocarlo antes.','weekly-sheet-hint');
     const share=make('button','Crear nuevo enlace','weekly-create-link'); share.type='button'; share.setAttribute('aria-label','Crear enlace para compartir'); share.prepend(icon('M12 5v14M5 12h14'));
     const listTitle=make('h3','Enlaces activos');
     const shareList=make('div','','weekly-share-list');
     const output=make('div','','weekly-output');
     const sheetStatus=make('p','','weekly-message'); sheetStatus.setAttribute('role','status'); sheetStatus.setAttribute('aria-live','polite');
     const revoke=make('button','Revocar enlaces de esta semana','weekly-revoke-all'); revoke.type='button'; revoke.prepend(icon('M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6'));
-    sheet.append(sheetHeader,sheetWeek,hint,share,listTitle,shareList,output,sheetStatus,revoke); section.append(sheet);
+    const consentLabel=make('label','','weekly-consent'); const consent=make('input');consent.type='checkbox';consentLabel.append(consent,document.createTextNode('Acepto publicar esta semana y sus cambios posteriores.'));
+    const cancelShare=make('button','Cancelar publicación','weekly-ghost-button');cancelShare.type='button';
+    sheet.append(sheetHeader,sheetWeek,hint,consentLabel,cancelShare,share,listTitle,shareList,output,sheetStatus,revoke); section.append(sheet);
     let selected, activeShares=[], busy=false, panelAnimation, disposing=false, shareOpener=shareTrigger;
     const localLinks=new Map(),localCreated=new Map();
     const shortDate=value=>new Intl.DateTimeFormat('es-CL',{day:'numeric',month:'short'}).format(calendarDate(value)).replaceAll('.','');
     const restoreFocus=()=>{if(!disposing)shareOpener.focus();};
-    const closeSheet=()=>{sheet.close();restoreFocus();}; close.onclick=closeSheet;
-    sheet.addEventListener('cancel',event=>{event.preventDefault();closeSheet();});
-    sheet.addEventListener('click',event=>{if(event.target===sheet){const box=sheet.getBoundingClientRect();if(event.clientX<box.left||event.clientX>box.right||event.clientY<box.top||event.clientY>box.bottom)closeSheet();}});
+    let consentRequest;
+    const resetConsent=()=>{consent.checked=false;consentRequest=undefined;};
+    const closeSheet=()=>{resetConsent();sheet.close();restoreFocus();};cancelShare.onclick=closeSheet; close.onclick=closeSheet;
+    sheet.addEventListener('cancel',event=>{event.preventDefault();if(!busy)closeSheet();});
+    sheet.addEventListener('click',event=>{if(!busy&&event.target===sheet){const box=sheet.getBoundingClientRect();if(event.clientX<box.left||event.clientX>box.right||event.clientY<box.top||event.clientY>box.bottom)closeSheet();}});
     sheet.addEventListener('close',()=>{panelAnimation?.cancel();restoreFocus();});
     function openShare(event,opener=shareTrigger){
       if(!selected)return;
-      shareOpener=opener;
+      shareOpener=opener;resetConsent();cancelShare.textContent='Cancelar publicación';sheetStatus.textContent='';
       root.querySelectorAll('.training-entry-options').forEach(other=>other.open=false);
       sheet.showModal();
       if(event.detail && window.matchMedia('(prefers-reduced-motion: no-preference)').matches) { panelAnimation?.cancel(); panelAnimation=sheet.animate([{opacity:.7,transform:'translateY(12px)'},{opacity:1,transform:'translateY(0)'}],{duration:200,easing:'cubic-bezier(.16,1,.3,1)'}); }
     }
     shareTrigger.onclick=event=>openShare(event);
-    createFromCard.onclick=event=>{if(busy||!selected)return;openShare(event,createFromCard);share.click();};
+    createFromCard.onclick=event=>{if(busy||!selected)return;openShare(event,createFromCard);};
     const previousCleanup=root.trainingCleanup;
     root.trainingCleanup=()=>{disposing=true;panelAnimation?.cancel();if(sheet.open)sheet.close();previousCleanup?.();};
-    const lock=value=>{busy=value;[previous,next,current,share,revoke,createFromCard].forEach(button=>button.disabled=value);picker.disabled=value;shareList.querySelectorAll('button').forEach(button=>button.disabled=value);};
+    const lock=value=>{busy=value;[previous,next,current,share,revoke,createFromCard,cancelShare,close,consent].forEach(button=>button.disabled=value);picker.disabled=value;shareList.querySelectorAll('button').forEach(button=>button.disabled=value);};
     const copyLink=async(url,button)=>{
       try{await navigator.clipboard.writeText(url);sheetStatus.textContent='Enlace copiado.';}
       catch{const label=make('label','Enlace para compartir');const field=make('input');field.readOnly=true;field.value=url;label.append(field);output.replaceChildren(label);field.focus();field.select();sheetStatus.textContent='Selecciona y copia el enlace del campo.';}
     };
     const renderShares=()=>{
-      shareCount.textContent=`${activeShares.length} ${activeShares.length===1?'enlace activo':'enlaces activos'}`;
+      const available=activeShares.filter(item=>!item.consent_required).length;
+      const blocked=activeShares.length-available;
+      shareCount.textContent=`${available} ${available===1?'enlace activo':'enlaces activos'}`+(blocked?` · ${blocked} anteriores bloqueados`:'');
       shareTrigger.setAttribute('aria-label','Compartir semana · '+shareCount.textContent);
       shareList.replaceChildren();
       if(!activeShares.length)shareList.append(make('p','No hay enlaces activos para esta semana.','weekly-sheet-hint'));
       for(const item of activeShares){
         const row=make('article','','weekly-link-row'); const text=make('div');
         const expires=new Intl.DateTimeFormat('es-CL',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'America/Santiago'}).format(new Date(item.expires_at));
-        text.append(make('strong','Enlace activo'),make('span',`Vence ${expires} · Santiago`));
+        text.append(make('strong',item.consent_required?'Enlace anterior bloqueado':'Enlace activo'),make('span',`Vence ${expires} · Santiago`));
         const createdAt=item.created_at || localCreated.get(item.id);
         text.append(make('small',createdAt ? 'Creado '+new Intl.DateTimeFormat('es-CL',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'America/Santiago'}).format(new Date(createdAt))+' · Santiago' : 'Fecha de creación no disponible'));
+        if(item.consent_required)text.append(make('small','Sin evidencia de consentimiento. Crea un enlace nuevo después de confirmar.'));
         row.append(icon('M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2'),text);
         const actions=make('div','','weekly-link-actions'); const url=localLinks.get(item.id);
         if(url){const copy=compactButton('Copiar enlace','M9 9h12v12H9ZM15 9V3H3v12h6');copy.onclick=()=>copyLink(url,copy);actions.append(copy);}
@@ -228,13 +235,21 @@ window.setupTraining = async function (identifier) {
     function move(days){if(!selected)return;const date=calendarDate(selected);date.setDate(date.getDate()+days);load(localISO(date));}
     previous.onclick=()=>move(-7);next.onclick=()=>move(7);current.onclick=()=>load();picker.onchange=()=>{if(picker.value){calendar.open=false;load(picker.value);}};
     share.onclick=async()=>{
-      if(busy)return;lock(true);sheetStatus.textContent='Creando enlace…';
+      if(busy||!selected)return;
+      if(!consent.checked){sheetStatus.textContent='Confirma que aceptas publicar esta semana y sus cambios posteriores.';consent.focus();return;}
+      const requestStore='weekly-consent-request:'+selected;
+      consentRequest ||= sessionStorage.getItem(requestStore) || crypto.randomUUID();
+      sessionStorage.setItem(requestStore,consentRequest);
+      lock(true);cancelShare.textContent='Cerrar';sheetStatus.textContent='Creando enlace…';
       try{
-        const created=await api('/api/training-week/shares',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({day:selected})});activeShares.push(created);
+        const created=await api('/api/training-week/shares',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({day:selected,consent:true,consent_version:'weekly-live-v1',request_id:consentRequest})});
+        sessionStorage.removeItem(requestStore);resetConsent();
+        if(!created.path){activeShares=(await api('/api/training-week/shares?day='+selected)).items;renderShares();output.replaceChildren();sheetStatus.textContent='Esta publicación ya se procesó. Si perdiste la URL, revoca el enlace y confirma uno nuevo.';return;}
+        if(!activeShares.some(item=>item.id===created.id))activeShares.push(created);
         const url=new URL(created.path,window.location.origin).href;localLinks.set(created.id,url);localCreated.set(created.id,new Date().toISOString());renderShares();
         const label=make('label','Enlace para compartir');const field=make('input');field.readOnly=true;field.value=url;label.append(field);
         const open=link('Ver semana compartida',created.path);open.target='_blank';open.rel='noopener noreferrer';output.replaceChildren(label,open);sheetStatus.textContent='Enlace creado. Puedes copiarlo en Enlaces activos.';
-      }catch(error){sheetStatus.textContent=error.message;}
+      }catch(error){sheetStatus.textContent=error.message+' No se confirmó el resultado. Reintenta con la misma solicitud o consulta y revoca los enlaces.';}
       finally{lock(false);revoke.disabled=!activeShares.length;}
     };
     revoke.onclick=async()=>{

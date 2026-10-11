@@ -1,3 +1,4 @@
+from tests.share_helpers import consent_payload, consent_args
 """Release gates only. Never connects to real messaging providers."""
 import hashlib
 import json
@@ -72,7 +73,11 @@ def test_exact_0020_0021_roundtrip_preserves_all_preexisting_rows(session, monke
         assert present == (operation == 'upgrade')
         stages.append({'operation':operation,'revision':actual,'preexisting_rows_identical':True,'photo_identical':True})
         if operation == 'upgrade' and len(stages) == 1:
-            WeeklySummaryService(session, DEMO_ATHLETE_ID).create_share()
+            # At 0021 the active-account column does not exist. This migration
+            # fixture represents a historical grant, not a current publication.
+            session.add(WeeklyShare(athlete_id=DEMO_ATHLETE_ID, token_hash=hashlib.sha256(b'legacy-fixture').hexdigest(),
+                week_start=date(2026, 9, 28), snapshot={}, expires_at=datetime.now(timezone.utc) + timedelta(hours=1)))
+            session.commit()
             session.close()
     assert session.scalar(select(func.count()).select_from(WeeklyShare)) == 0
     session.close()
@@ -104,7 +109,7 @@ def test_public_content_and_security_matrix(athlete_client, session, monkeypatch
         'result_text':'AUTHORIZED_RESULT','adaptations':'AUTHORIZED_NOTE','rpe':7,
         'source_text':'PRIVATE_INTERPRETATION_SOURCE','source_image_id':photo})
     assert response.status_code == 201
-    share = athlete_client.post('/api/training-week/shares',json={'day':'2026-10-02'}).json()
+    share = athlete_client.post('/api/training-week/shares',json=consent_payload('2026-10-02')).json()
     row = session.get(WeeklyShare, UUID(share['id']))
     if state == 'expired':
         row.expires_at = datetime.now(timezone.utc) - timedelta(seconds=1); session.commit()
@@ -132,7 +137,9 @@ def test_public_content_and_security_matrix(athlete_client, session, monkeypatch
         assert image.headers['x-content-type-options'] == 'nosniff'
         Image.open(BytesIO(image.content)).verify()
         assert photo in page.text
-        assert set(row.snapshot['items'][0]) == {'title','workout','result_text','adaptations','rpe','trained_on','source_image_id'}
+        assert set(row.snapshot) == {'consent'}
+        assert row.snapshot['consent']['version'] == 'weekly-live-v1'
+        assert 'AUTHORIZED_WORKOUT' not in json.dumps(row.snapshot)
     else:
         assert 'AUTHORIZED_WORKOUT' not in page.text
     evidence('public-'+state, {'html_status':page.status_code,'photo_status':image.status_code,
@@ -148,8 +155,8 @@ def test_two_athletes_cannot_cross_private_or_shared_resources(athlete_client, s
     raw = BytesIO(); Image.new('RGB',(80,80),'blue').save(raw,format='PNG')
     bphoto = bservice.store_image(raw.getvalue())
     bsession = bservice.create(SessionPayload(trained_on='2026-10-02',title='PRIVATE_B_WORKOUT',workout='PRIVATE_B_CONTENT',source_image_id=bphoto.id))
-    bshare = WeeklySummaryService(session,athlete_b.id).create_share(date(2026,10,2))
-    ashare = athlete_client.post('/api/training-week/shares',json={'day':'2026-10-02'}).json()
+    bshare = WeeklySummaryService(session,athlete_b.id).create_share(date(2026,10,2), **consent_args())
+    ashare = athlete_client.post('/api/training-week/shares',json=consent_payload('2026-10-02')).json()
     assert athlete_client.get('/api/training-sessions/'+str(bsession['id'])).status_code == 404
     assert athlete_client.get('/api/training-sessions/images/'+str(bphoto.id)).status_code == 404
     assert athlete_client.delete('/api/training-week/shares/'+bshare['id']).status_code == 404
@@ -167,7 +174,7 @@ def test_configurable_ttl_without_waiting(athlete_client, monkeypatch):
     fixed = datetime(2026,10,4,12,tzinfo=timezone.utc)
     monkeypatch.setattr('app.services.weekly_summary.now', lambda: fixed)
     monkeypatch.setenv('WEEKLY_SHARE_TOKEN_TTL_HOURS','1')
-    share = athlete_client.post('/api/training-week/shares',json={}).json()
+    share = athlete_client.post('/api/training-week/shares',json=consent_payload()).json()
     assert datetime.fromisoformat(share['expires_at']) == fixed + timedelta(hours=1)
     monkeypatch.setattr('app.services.weekly_summary.now', lambda: fixed + timedelta(minutes=59))
     assert athlete_client.get(share['path']).status_code == 200
@@ -175,7 +182,7 @@ def test_configurable_ttl_without_waiting(athlete_client, monkeypatch):
     assert athlete_client.get(share['path']).status_code == 404
     monkeypatch.setenv('WEEKLY_SHARE_TOKEN_TTL_HOURS','168')
     monkeypatch.setattr('app.services.weekly_summary.now', lambda: fixed)
-    default = athlete_client.post('/api/training-week/shares',json={}).json()
+    default = athlete_client.post('/api/training-week/shares',json=consent_payload()).json()
     assert datetime.fromisoformat(default['expires_at']) == fixed + timedelta(days=7)
     evidence('ttl', {'configured_hours':1,'before_expiry_status':200,'at_expiry_status':404,'release_default_hours':168})
 
@@ -193,8 +200,9 @@ def test_whatsapp_exact_commands_use_configured_real_public_base(client, session
     configure(monkeypatch); link(session)
     monkeypatch.setenv('PUBLIC_BASE_URL',base)
     provider = FakeProvider(); vault = Vault()
-    for command_text in ['resumen semana','compartir semana','revocar semana']:
-        event = payload(command_text)
+    for command_text in ['resumen semana','compartir semana','ACCEPT','revocar semana']:
+        from tests.test_whatsapp_capture import button
+        event = payload('', kind='interactive', action=button(session,'share')) if command_text == 'ACCEPT' else payload(command_text)
         assert webhook(client,event).status_code == 200
         assert process_one(provider,vault)
         assert webhook(client,event).json()['accepted'] == 0

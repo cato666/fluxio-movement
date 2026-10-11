@@ -5,7 +5,8 @@ import re
 from uuid import UUID
 from fastapi import APIRouter, Depends, Response
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, StrictBool, ConfigDict
+from typing import Literal
 from sqlalchemy.orm import Session
 from .database import get_session
 from .models import User
@@ -17,7 +18,11 @@ PRIVATE_HEADERS = {'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofoll
 
 
 class SharePayload(BaseModel):
+    model_config = ConfigDict(extra='forbid')
     day: date | None = None
+    consent: StrictBool = False
+    consent_version: Literal['weekly-live-v1'] | None = None
+    request_id: UUID | None = None
 
 
 def router(require_athlete):
@@ -39,7 +44,9 @@ def router(require_athlete):
     def create(payload: SharePayload, response: Response,
                user: User = Depends(require_athlete), session: Session = Depends(get_session)):
         response.headers.update(PRIVATE_HEADERS)
-        return WeeklySummaryService(session, user.id).create_share(payload.day)
+        with http_errors():
+            return WeeklySummaryService(session, user.id).create_share(payload.day,
+                consent=payload.consent, consent_version=payload.consent_version, request_id=payload.request_id)
 
     @routes.delete('/api/training-week/shares/{identifier}')
     def revoke(identifier: UUID, response: Response,

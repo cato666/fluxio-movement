@@ -5,9 +5,29 @@ import re
 import secrets
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
+from uuid import UUID
 from sqlalchemy import select, update
-from ..models import TrainingSession, WeeklyShare
-from .training_errors import TrainingNotFound
+from ..models import TrainingSession, WeeklyShare, User
+from .training_errors import TrainingNotFound, TrainingInvalid
+
+
+CONSENT_VERSION = 'weekly-live-v1'
+CONSENT_NOTICE = ('Quien tenga el enlace podrá consultar esta semana, incluidos entrenamientos, '
+    'resultados, notas, esfuerzo y fotografías. También mostrará registros, fotografías, '
+    'resultados y notas que agregues o modifiques después en esta semana. '
+    'Vence en 7 días como máximo y puedes revocarlo antes.')
+
+
+def consent_verified(row):
+    data = row.snapshot.get('consent') if isinstance(row.snapshot, dict) else None
+    try:
+        return (isinstance(data, dict) and data.get('version') == CONSENT_VERSION
+            and data.get('accepted') is True
+            and data.get('channel') in {'web', 'whatsapp'}
+            and bool(UUID(data['request_id']))
+            and datetime.fromisoformat(data['accepted_at']).tzinfo is not None)
+    except (KeyError, TypeError, ValueError):
+        return False
 
 
 def now():
@@ -50,22 +70,55 @@ class WeeklySummaryService:
                 {'trained_on': row.trained_on.isoformat(),
                  'source_image_id': str(row.source_image_id) if row.source_image_id else None} for row in rows]}
 
-    def create_share(self, day=None):
-        snapshot = self.summary(day)
+    def create_share(self, day=None, *, consent=False, consent_version=None, request_id=None, channel='web', event_id=None):
+        if consent is not True or consent_version != CONSENT_VERSION or channel not in {'web', 'whatsapp'}:
+            raise TrainingInvalid('Confirma qué se publicará antes de compartir tu semana')
+        try:
+            request_id = str(UUID(str(request_id)))
+        except (ValueError, TypeError):
+            raise TrainingInvalid('Identificador de consentimiento inválido') from None
+        # Serialize requests and administrative deactivation using the same User lock as S02.
+        user = self.session.scalar(select(User).where(User.id == self.athlete_id).with_for_update()
+            .execution_options(populate_existing=True))
+        if user is None or not user.is_active or user.role != 'ATHLETE':
+            raise TrainingNotFound('Cuenta no disponible')
+        if channel == 'whatsapp':
+            try:
+                event_id = str(UUID(str(event_id)))
+            except (ValueError, TypeError):
+                raise TrainingInvalid('Evidencia de consentimiento inválida') from None
+        start = week_start(day)
+        existing = self.session.scalar(select(WeeklyShare).where(
+            WeeklyShare.athlete_id == self.athlete_id,
+            WeeklyShare.snapshot['consent']['request_id'].astext == request_id))
+        if existing:
+            if existing.week_start != start:
+                raise TrainingInvalid('El consentimiento corresponde a otra semana')
+            # The raw token is never persisted/recovered. A replay creates nothing and
+            # never revives an expired/revoked grant, even if the first response was lost.
+            self.persist()
+            return {'id': str(existing.id), 'path': None, 'expires_at': existing.expires_at.isoformat(),
+                'already_created': True}
+        try:
+            ttl = int(os.getenv('WEEKLY_SHARE_TOKEN_TTL_HOURS', '168'))
+            if not 1 <= ttl <= 168:
+                raise ValueError()
+        except ValueError:
+            raise TrainingInvalid('El vencimiento del enlace debe estar entre 1 y 168 horas') from None
         token = secrets.token_urlsafe(32)
-        ttl = int(os.getenv('WEEKLY_SHARE_TOKEN_TTL_HOURS', '168'))
-        if not 1 <= ttl <= 168:
-            raise ValueError('WEEKLY_SHARE_TOKEN_TTL_HOURS must be between 1 and 168')
+        accepted_at = now()
         row = WeeklyShare(athlete_id=self.athlete_id, token_hash=token_hash(token),
-            week_start=date.fromisoformat(snapshot['week_start']), snapshot=snapshot,
-            expires_at=now() + timedelta(hours=ttl))
+            week_start=start, snapshot={'consent': {'version': CONSENT_VERSION,
+                'accepted': True, 'channel': channel, 'request_id': request_id, 'accepted_at': accepted_at.isoformat(),
+                **({'event_id': event_id} if channel == 'whatsapp' else {})}},
+            expires_at=accepted_at + timedelta(hours=ttl))
         self.session.add(row)
         self.persist()
         return {'id': str(row.id), 'path': '/shared/week/' + token,
             'expires_at': row.expires_at.isoformat()}
 
     def list_shares(self, day=None):
-        return [{'id': str(row.id), 'expires_at': row.expires_at.isoformat()}
+        return [{'id': str(row.id), 'expires_at': row.expires_at.isoformat(), 'consent_required': not consent_verified(row)}
             for row in self.session.scalars(select(WeeklyShare).where(
                 WeeklyShare.athlete_id == self.athlete_id, WeeklyShare.week_start == week_start(day),
                 WeeklyShare.revoked_at.is_(None), WeeklyShare.expires_at > now()))]
@@ -89,9 +142,10 @@ class WeeklySummaryService:
 def share_record(session, token):
     if not re.fullmatch(r'[A-Za-z0-9_-]{43}', token):
         raise TrainingNotFound('Este enlace venció, fue revocado o no existe')
-    row = session.scalar(select(WeeklyShare).where(WeeklyShare.token_hash == token_hash(token),
+    row = session.scalar(select(WeeklyShare).join(User, User.id == WeeklyShare.athlete_id).where(
+        User.is_active.is_(True), User.role == 'ATHLETE', WeeklyShare.token_hash == token_hash(token),
         WeeklyShare.revoked_at.is_(None), WeeklyShare.expires_at > now()))
-    if row is None:
+    if row is None or not consent_verified(row):
         raise TrainingNotFound('Este enlace venció, fue revocado o no existe')
     return row
 

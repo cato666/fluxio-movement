@@ -1,3 +1,4 @@
+from tests.share_helpers import consent_payload, consent_args
 from datetime import date, datetime, timedelta, timezone
 from io import BytesIO
 from uuid import uuid4
@@ -50,7 +51,7 @@ def test_empty_week_and_santiago_boundary(athlete_client, monkeypatch):
 
 def test_live_public_escape_no_private_metadata_and_revocation(athlete_client, session):
     item = create(athlete_client, title='<script>alert(1)</script>', source_text='SECRET_SOURCE')
-    response = athlete_client.post('/api/training-week/shares', json={'day': '2026-10-02'})
+    response = athlete_client.post('/api/training-week/shares', json=consent_payload('2026-10-02'))
     assert response.status_code == 201
     share = response.json(); token = share['path'].split('/')[-1]
     row = session.get(WeeklyShare, share['id'])
@@ -73,7 +74,7 @@ def test_live_public_escape_no_private_metadata_and_revocation(athlete_client, s
 
 def test_expiry_and_share_ownership(athlete_client, session):
     create(athlete_client)
-    share = athlete_client.post('/api/training-week/shares', json={'day':'2026-10-02'}).json()
+    share = athlete_client.post('/api/training-week/shares', json=consent_payload('2026-10-02')).json()
     row = session.get(WeeklyShare, share['id']); row.expires_at = datetime.now(timezone.utc) - timedelta(seconds=1); session.commit()
     response = athlete_client.get(share['path'])
     assert response.status_code == 404 and response.headers['cache-control'] == 'no-store'
@@ -89,7 +90,7 @@ def test_shared_photos_scoped_to_week_and_revocable(athlete_client, monkeypatch,
     raw = BytesIO(); Image.new('RGB', (100, 100)).save(raw, format='PNG')
     image = athlete_client.post('/api/training-sessions/images', files={'file':('board.png',raw.getvalue(),'image/png')}).json()
     create(athlete_client, source_image_id=image['id'])
-    share = athlete_client.post('/api/training-week/shares', json={'day':'2026-10-02'}).json()
+    share = athlete_client.post('/api/training-week/shares', json=consent_payload('2026-10-02')).json()
     photo = share['path'] + '/images/' + image['id']
     athlete_client.post('/api/auth/logout')
     assert athlete_client.get(photo).status_code == 200
@@ -134,7 +135,7 @@ def test_existing_link_tracks_add_edit_move_delete_and_photo_access(athlete_clie
     monkeypatch.setenv('STORAGE_PATH', str(tmp_path))
     # An existing link, including one created with an empty snapshot, follows its
     # original week only. Reading it never extends its expiry or stored identity.
-    share = athlete_client.post('/api/training-week/shares', json={'day':'2026-10-02'}).json()
+    share = athlete_client.post('/api/training-week/shares', json=consent_payload('2026-10-02')).json()
     row = session.get(WeeklyShare, share['id'])
     expiry, digest = row.expires_at, row.token_hash
     raw = BytesIO(); Image.new('RGB', (100, 100)).save(raw, format='PNG')
@@ -177,9 +178,9 @@ def test_existing_link_tracks_add_edit_move_delete_and_photo_access(athlete_clie
 
 
 def test_revoke_week_includes_every_link_but_preserves_other_weeks(athlete_client):
-    first = athlete_client.post('/api/training-week/shares', json={'day':'2026-10-02'}).json()
-    second = athlete_client.post('/api/training-week/shares', json={'day':'2026-10-04'}).json()
-    previous = athlete_client.post('/api/training-week/shares', json={'day':'2026-09-25'}).json()
+    first = athlete_client.post('/api/training-week/shares', json=consent_payload('2026-10-02')).json()
+    second = athlete_client.post('/api/training-week/shares', json=consent_payload('2026-10-04')).json()
+    previous = athlete_client.post('/api/training-week/shares', json=consent_payload('2026-09-25')).json()
     assert athlete_client.delete('/api/training-week/shares?day=2026-10-02').status_code == 200
     assert athlete_client.get(first['path']).status_code == 404
     assert athlete_client.get(second['path']).status_code == 404
@@ -200,6 +201,9 @@ def test_whatsapp_week_summary_share_replay_and_revoke(client, session, monkeypa
         assert webhook(client, body).status_code == 200
         assert process_one(provider, vault)
         assert webhook(client, body).json()['accepted'] == 0
+    from tests.test_whatsapp_capture import button
+    assert webhook(client, payload('', kind='interactive', action=button(session, 'share'))).status_code == 200
+    assert process_one(provider, vault)
     session.expire_all()
     assert session.scalar(select(func.count()).select_from(WeeklyShare)) == 1
     texts = [vault.decrypt(row.payload_encrypted, row.key_version)['text']

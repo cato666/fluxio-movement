@@ -354,8 +354,46 @@ test('weekly sheet preserves failed revocation and copying falls back to the cor
  await page.route('**/api/training-week/shares',r=>r.fulfill({status:201,json:{id:'new-share',path:'/shared/week/'+'a'.repeat(43),expires_at:'2099-10-11T12:00:00Z'}}));
  await page.evaluate(()=>window.setupTraining());await page.locator('.weekly-share-trigger').press('Enter');
  const sheet=page.getByRole('dialog');await sheet.getByRole('button',{name:'Revocar enlace',exact:true}).click();await sheet.getByText('Puedes reintentar la revocación.',{exact:false}).waitFor();assert.equal(await sheet.locator('.weekly-link-row').count(),1);
- await sheet.getByRole('button',{name:'Crear enlace para compartir',exact:true}).click();await sheet.getByRole('button',{name:'Copiar enlace',exact:true}).waitFor();
+ await sheet.getByRole('checkbox').check();await sheet.getByRole('button',{name:'Crear enlace para compartir',exact:true}).click();await sheet.getByRole('button',{name:'Copiar enlace',exact:true}).waitFor();
  await page.evaluate(()=>Object.defineProperty(navigator,'clipboard',{value:{writeText:async()=>{throw Error('Denied')}}}));
  await sheet.getByRole('button',{name:'Copiar enlace',exact:true}).click();assert.equal(await sheet.getByLabel('Enlace para compartir',{exact:true}).inputValue(),'http://localhost:18767/shared/week/'+'a'.repeat(43));
  await page.keyboard.press('Escape');
+}));
+
+
+test('S05 opening and cancelling never publishes; consent is explicit and one request is emitted',()=>harness(async page=>{
+ let calls=[];
+ await page.route(/\/api\/training-week(?:\?|$)/,r=>r.fulfill({json:{week_start:'2026-09-28',week_end:'2026-10-04',session_count:0,active_days:0,average_rpe:null,rpe_count:0,items:[]}}));
+ await page.route('**/api/training-sessions',r=>r.fulfill({json:{items:[]}}));
+ await page.route('**/api/training-week/shares?*',r=>r.fulfill({json:{items:[]}}));
+ await page.route('**/api/training-week/shares',async r=>{calls.push(r.request().postDataJSON());await new Promise(resolve=>setTimeout(resolve,150));await r.fulfill({status:201,json:{id:'consented',path:'/shared/week/'+'a'.repeat(43),expires_at:'2099-10-11T12:00:00Z'}})});
+ await page.evaluate(()=>window.setupTraining());
+ await page.locator('.weekly-summary-create').click();
+ const sheet=page.getByRole('dialog',{name:'Compartir esta semana'});
+ assert.equal(calls.length,0);
+ const hint=await sheet.locator('.weekly-sheet-hint').first().textContent();
+ for(const word of ['después','fotografías','resultados','notas','revocarlo'])assert.ok(hint.includes(word));
+ await sheet.getByRole('button',{name:'Crear enlace para compartir',exact:true}).click();assert.equal(calls.length,0);
+ await sheet.getByRole('checkbox').check();await sheet.getByRole('button',{name:'Cancelar publicación',exact:true}).click();assert.equal(calls.length,0);
+ await page.locator('.weekly-share-trigger').click();assert.equal(await sheet.getByRole('checkbox').isChecked(),false);
+ await sheet.getByRole('checkbox').check();await sheet.getByRole('button',{name:'Crear enlace para compartir',exact:true}).dblclick();
+ await sheet.getByText('Enlace creado. Puedes copiarlo en Enlaces activos.',{exact:true}).waitFor();
+ assert.equal(calls.length,1);assert.equal(calls[0].consent,true);assert.equal(calls[0].consent_version,'weekly-live-v1');assert.match(calls[0].request_id,/^[0-9a-f-]{36}$/);
+ for(const width of [320,390,768,1440]){await page.setViewportSize({width,height:900});assert.equal(await sheet.evaluate(el=>el.scrollWidth<=el.clientWidth),true);}
+ await page.screenshot({path:'.impeccable/s05-consent-desktop.png',fullPage:true});await page.setViewportSize({width:390,height:844});await page.screenshot({path:'.impeccable/s05-consent-mobile.png',fullPage:true});
+}));
+
+test('S05 an uncertain POST retains its request across remount and replay cannot invent another URL',()=>harness(async page=>{
+ let ids=[],fail=true;
+ await page.route(/\/api\/training-week(?:\?|$)/,r=>r.fulfill({json:{week_start:'2026-09-28',week_end:'2026-10-04',session_count:0,active_days:0,average_rpe:null,rpe_count:0,items:[]}}));
+ await page.route('**/api/training-sessions',r=>r.fulfill({json:{items:[]}}));
+ await page.route('**/api/training-week/shares?*',r=>r.fulfill({json:{items:[{id:'existing',expires_at:'2099-10-11T12:00:00Z'}]}}));
+ await page.route('**/api/training-week/shares',r=>{ids.push(r.request().postDataJSON().request_id);return fail?r.abort('failed'):r.fulfill({status:201,json:{id:'existing',path:null,already_created:true,expires_at:'2099-10-11T12:00:00Z'}})});
+ await page.evaluate(()=>window.setupTraining());await page.locator('.weekly-share-trigger').click();
+ const sheet=page.getByRole('dialog',{name:'Compartir esta semana'});await sheet.getByRole('checkbox').check();await sheet.getByRole('button',{name:'Crear enlace para compartir',exact:true}).click();
+ await page.waitForFunction(()=>!document.querySelector('.weekly-create-link').disabled);assert.equal(ids.length,1);
+ await sheet.getByRole('button',{name:'Cerrar compartir semana'}).click();await page.evaluate(()=>window.setupTraining());
+ fail=false;await page.locator('.weekly-share-trigger').click();await sheet.getByRole('checkbox').check();await sheet.getByRole('button',{name:'Crear enlace para compartir',exact:true}).click();
+ await sheet.getByText('Esta publicación ya se procesó.',{exact:false}).waitFor();assert.deepEqual(ids,[ids[0],ids[0]]);
+ assert.equal(await sheet.locator('.weekly-link-row').count(),1);assert.equal(await sheet.getByRole('link',{name:'Ver semana compartida'}).count(),0);
 }));

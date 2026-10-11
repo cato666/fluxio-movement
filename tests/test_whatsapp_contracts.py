@@ -16,7 +16,14 @@ def test_all_baseline_http_operations_and_schemas_are_preserved():
         for operation, expected in contract.items():
             assert current['paths'][path][operation] == expected, (path, operation)
     for name, schema in baseline['components']['schemas'].items():
-        assert current['components']['schemas'][name]==schema, name
+        if name == 'SharePayload':
+            actual = current['components']['schemas'][name]
+            assert actual['properties']['day'] == schema['properties']['day']
+            assert set(actual['properties']) == {'day', 'consent', 'consent_version', 'request_id'}
+            assert actual['properties']['consent']['default'] is False
+            assert actual['additionalProperties'] is False
+        else:
+            assert current['components']['schemas'][name]==schema, name
 
 
 def test_migration_roundtrip_preserves_existing_bitacora(session):

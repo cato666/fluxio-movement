@@ -4,7 +4,7 @@ import re
 import secrets
 import os
 from urllib.parse import urlsplit
-from uuid import UUID
+from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 from sqlalchemy import select
 from ..models import TrainingSession
@@ -56,6 +56,22 @@ def transition(state, name, payload, vault):
     state.payload_minimized = vault.encrypt(payload)
     state.key_version = vault.version
     state.expires_at = now() + timedelta(hours=24)
+
+
+def public_base():
+    base = os.getenv('PUBLIC_BASE_URL', '').rstrip('/')
+    try:
+        parsed = urlsplit(base)
+        if parsed.scheme == 'https' and parsed.hostname and not any((parsed.username, parsed.password, parsed.query, parsed.fragment)):
+            return base
+    except ValueError:
+        pass
+    return None
+
+
+def sharing_actions(state):
+    return [{'id': f'{state.pending_action}:{operation}', 'title': title}
+        for operation, title in [('share', 'Aceptar y compartir'), ('cancel', 'Cancelar')]]
 
 
 def actions(state):
@@ -144,10 +160,37 @@ def handle_capture(session, inbox, message, athlete_id, vault, provider):
     elif lowered in {'guardar','corregir','cancelar'}:
         operation = {'guardar':'save','corregir':'correct','cancelar':'cancel'}[lowered]
     if operation == 'cancel':
+        sharing = state.state == 'SHARE_CONSENT'
         clear(state)
-        respond(session, inbox, message, athlete_id, vault, 'Cancelado. No guardé cambios en tu bitácora.')
+        respond(session, inbox, message, athlete_id, vault,
+            'Cancelado. No publiqué tu semana.' if sharing else 'Cancelado. No guardé cambios en tu bitácora.')
         return
     data = snapshot(state, vault)
+    if operation == 'share':
+        if state.state != 'SHARE_CONSENT' or not message.action_id:
+            respond(session, inbox, message, athlete_id, vault, 'No hay un consentimiento vigente para compartir.')
+            return
+        from ..services.weekly_summary import WeeklySummaryService, week_start
+        base = public_base()
+        if base is None:
+            clear(state)
+            respond(session, inbox, message, athlete_id, vault, 'No se pudo crear el enlace. Comparte desde la Bitácora web.')
+            return
+        share = WeeklySummaryService(session, athlete_id, commit=False).create_share(
+            date.fromisoformat(data['day']), consent=True, consent_version=data['consent_version'],
+            request_id=data['request_id'], channel='whatsapp', event_id=inbox.id)
+        clear(state)
+        if not share['path']:
+            respond(session, inbox, message, athlete_id, vault, 'Esta publicación ya se procesó. Consulta sus enlaces en la Bitácora web.')
+            return
+        expires = datetime.fromisoformat(share['expires_at']).astimezone(ZoneInfo('America/Santiago')).strftime('%d/%m/%Y %H:%M')
+        respond(session, inbox, message, athlete_id, vault,
+            'Semana compartida: ' + base + share['path'] + '\nVence: ' + expires + ' (Santiago)' +
+            '\nEscribe «revocar semana' + (' pasada' if date.fromisoformat(data['day']) < week_start() else '') + '» para desactivar sus enlaces.')
+        return
+    if state.state == 'SHARE_CONSENT' and not re.fullmatch(r'revocar(?: la| mi)? semana(?: pasada| anterior)?', lowered):
+        respond(session, inbox, message, athlete_id, vault, 'Acepta con el botón para publicar o cancela. No se ha creado ningún enlace.', sharing_actions(state))
+        return
     if operation == 'save':
         if state.state != 'CONFIRM':
             respond(session, inbox, message, athlete_id, vault, 'No hay una propuesta vigente para guardar.')
@@ -220,19 +263,18 @@ def handle_capture(session, inbox, message, athlete_id, vault, provider):
         if lowered.endswith(('pasada', 'anterior')):
             day -= timedelta(days=7)
         if lowered.startswith('compartir'):
-            base = os.getenv('PUBLIC_BASE_URL', '').rstrip('/')
-            parsed = urlsplit(base)
-            if parsed.scheme != 'https' or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment:
+            from ..services.weekly_summary import CONSENT_NOTICE, CONSENT_VERSION
+            if public_base() is None:
                 respond(session, inbox, message, athlete_id, vault, 'No se pudo crear el enlace por WhatsApp. Puedes compartir tu semana desde la Bitácora web.')
                 return
-            share = weekly.create_share(day)
-            expires = datetime.fromisoformat(share['expires_at']).astimezone(ZoneInfo('America/Santiago')).strftime('%d/%m/%Y %H:%M')
+            transition(state, 'SHARE_CONSENT', {'day': day.isoformat(), 'consent_version': CONSENT_VERSION,
+                'request_id': str(uuid4())}, vault)
             respond(session, inbox, message, athlete_id, vault,
-                'Semana compartida: ' + base + share['path'] + '\nVence: ' + expires + ' (Santiago)' +
-                '\nQuien tenga el enlace puede ver entrenamientos, resultados, notas, esfuerzo y fotos. Se actualiza con los cambios de esta semana, incluidas las nuevas fotos. Escribe «revocar semana»' +
-                (' pasada' if day < week_start() else '') + ' para desactivar sus enlaces.')
+                'Compartir semana del ' + day.isoformat() + '.\n' + CONSENT_NOTICE + '\n¿Aceptas publicar esta semana?', sharing_actions(state))
         elif lowered.startswith('revocar'):
             weekly.revoke_week(day)
+            if state.state == 'SHARE_CONSENT':
+                clear(state)
             respond(session, inbox, message, athlete_id, vault, 'Enlaces de esa semana revocados.')
         else:
             respond(session, inbox, message, athlete_id, vault, summary_text(weekly.summary(day)))

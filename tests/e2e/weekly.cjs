@@ -19,6 +19,7 @@ const base = process.env.WEEKLY_E2E_URL || 'http://localhost:18770';
         workout:'5 rondas: 10 sentadillas y 200 m de remo',result_text:'Completado · 50 kg',
         adaptations:'Menor carga en la última ronda',rpe,source_image_id:image.id}})).status(),201);
     }
+    assert.equal((await (await owner.request.get(base+'/api/training-week/shares')).json()).items.length,0);
     await page.goto(base+'/training');
     const week = page.locator('.training-week');
     await week.locator('.weekly-compact-metrics dd').first().filter({hasText:'2'}).waitFor();
@@ -27,7 +28,8 @@ const base = process.env.WEEKLY_E2E_URL || 'http://localhost:18770';
     await week.getByRole('button',{name:'Esta semana',exact:true}).click();
     await week.locator('.weekly-compact-metrics dd').first().filter({hasText:'2'}).waitFor();
     await week.getByRole('button',{name:/Compartir semana/}).click();
-    await week.getByRole('button',{name:'Crear enlace para compartir',exact:true}).click();
+    assert.equal((await (await owner.request.get(base+'/api/training-week/shares')).json()).items.length,0);
+    await week.getByRole('checkbox').check();await week.getByRole('button',{name:'Crear enlace para compartir',exact:true}).click();
     const input = week.getByLabel('Enlace para compartir', {exact:true}); await input.waitFor();
     const url = await input.inputValue();
     assert.match(url,/\/shared\/week\/[A-Za-z0-9_-]{43}$/);
@@ -73,6 +75,7 @@ const base = process.env.WEEKLY_E2E_URL || 'http://localhost:18770';
     await week.getByRole('button',{name:'Revocar enlaces de esta semana',exact:true}).click();
     await week.getByText('Los enlaces de esta semana ya no permiten acceder.',{exact:true}).waitFor();
     assert.equal((await shared.goto(url)).status(),404);
+    assert.equal((await publicContext.request.get(url+'/images/'+image.id)).status(),404);
     assert.deepEqual(errors,[]);
     console.log('Weekly E2E passed: navigation, sharing, anonymous photos, desktop/mobile, revocation.');
   } finally { await browser.close(); }
