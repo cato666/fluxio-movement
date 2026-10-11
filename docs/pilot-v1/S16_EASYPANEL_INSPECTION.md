@@ -1,3 +1,13 @@
+# Actualización de responsabilidades — 2026-10-11
+
+Gastón administra EasyPanel; Codex no necesita acceso SSH ni sesión del panel. GitHub es origen de la versión publicada y GitHub Actions dispara deploy **solo bajo autorización expresa**. Codex prepara código/pruebas/manifiesto y sube exclusivamente refs aprobadas. Gastón aplica variables, obtiene inventario y evidencia redactada API/worker/DB/volúmenes/proxy, realiza backups/restore/rollback autorizados y confirma SHA/digests. Falta de acceso directo de Codex no es bloqueo; falta de evidencia verificable sí.
+
+Workflow existente push main llama al webhook sin checks/gates: S15 permanece pendiente, YAML sin cambios. No push a main, merge, POST ni deploy. S16 sigue BLOCKED por pruebas operativas reales pendientes; continuar localmente con KeePassXC/Resend. Plan vigente: PILOT_A_RELEASE_PLAN.md y DEPLOYMENT_RUNBOOK.md; no solicitar nuevamente SSH para esta etapa.
+
+---
+
+## Historial anterior — instrucciones de acceso directo sustituidas
+
 # S16 — inspección EasyPanel de lectura / alcance verificable
 
 Fecha: 2026-10-11, America/Santiago. Base `7598e38a7a7a6137dd0217bb4efc6bfbb9b0f2d2`. Usuario autorizó exclusivamente lectura, no modificaciones, reinicios, migraciones, copias persistentes ni deploy. **Inspección administrativa BLOCKED por acceso no disponible; S16 BLOCKED.**

@@ -1,3 +1,15 @@
+# Readiness — publicación desde GitHub Actions
+
+Fecha: 2026-10-11. Modelo vigente: Codex desarrolla/prueba/prepara, Gastón aprueba y administra EasyPanel; GitHub es origen y Actions dispara deploy. Código solo se sube con autorización de refs concretas; sin SSH necesario para Codex. Configuración, backups, migraciones y rollback reales corresponden a Gastón y requieren permisos específicos. Estado NO-GO; S16 BLOCKED.
+
+Pendientes: controles predeploy del mismo SHA; workflow hoy solo POST por push main, sin tests/aprobación efectiva; artefacto/commit publicado y paridad API-worker por evidencia de Gastón; backup pre-release/restauración y rollback compatibles; S16/canales/video/coaches/alertas. No declarar listo por cambio documental ni asumir que Actions exitoso prueba deploy.
+
+Continuar localmente custodia KeePassXC y alertas Resend. Inventario redactado aportado por Gastón reemplaza acceso administrativo directo de Codex. No push main, webhook, merge ni deploy ahora. Plan y roles: PILOT_A_RELEASE_PLAN.md y DEPLOYMENT_RUNBOOK.md.
+
+---
+
+## Evidencia histórica — prevalece el modelo vigente
+
 ## Actualización S16 — 2026-10-11
 
 Gastón confirmado como operador. Ensayo R2 sintético **PASS**: AES-256-GCM cliente, upload/download autenticados, DB nueva y cuatro archivos restaurados con hashes/referencias iguales; 3 usuarios, 1 sesión/foto/análisis/review, head 0024. Contenedores propios detenidos. 5,31 s y 92.197 bytes corresponden a muestra pequeña, no RTO operativo. Primer intento falló por expectativa HTTP anónima (400); corrección del harness y repetición aislada documentadas. Privacidad por dominios/r2.dev, configuración de cifrado proveedor, permisos separados, custodia definitiva, restore representativo del producto, scheduler y alertas **pendientes**. S16 sigue parcial y **NO-GO**, sin habilitar limpieza S11. Ver [reporte S16](S16_IMPLEMENTATION_REPORT.md).

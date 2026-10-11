@@ -1,3 +1,49 @@
+# Modelo vigente de release — GitHub Actions / EasyPanel administrado por Gastón
+
+Fecha: 2026-10-11, America/Santiago. Base documental `df4f3ce3a5b9b194116f4363cd76d72e5c441fdb`, rama codex/pilot-v1-stabilization. Esta sección sustituye las instrucciones históricas de acceso/operación directa por Codex. **Pilot A NO-GO; S16 BLOCKED.** No push, merge, webhook, deploy, migración persistente ni envío externo autorizado en esta etapa.
+
+## Responsabilidades y autoridad
+
+| Actividad | Codex | Gastón / GitHub Actions |
+|---|---|---|
+| Desarrollo/pruebas/documentación | Implementa incrementos aprobados en worktree; prepara candidato y evidencia. | Gastón revisa y aprueba cada etapa. |
+| GitHub como origen de release | Prepara commit/branch/manifiesto. Solo sube refs explícitamente autorizadas. | Gastón autoriza ref/SHA y publicación. Subir rama de revisión no autoriza main ni release. |
+| Despliegue | No administra EasyPanel ni necesita SSH. No llama al webhook directamente. | Workflow existente de GitHub Actions dispara EasyPanel bajo autorización de Gastón. |
+| Variables, servicios y volúmenes | Prepara inventario, requisitos y checklist sin valores secretos. | Gastón aplica configuración y entrega evidencia redactada. Ninguna modificación de infraestructura implícita. |
+| Backups/restore y rollback | Prepara/verifica procedimientos y pruebas locales aisladas autorizadas. | Gastón ejecuta operación real autorizada y entrega resultados; Actions solo orquesta lo previamente aprobado. |
+| Paridad y smoke | Compara evidencia fuente/artefacto/pruebas y señala faltantes. | Gastón confirma SHA/digest real de API/worker, revisión DB, configuración y smoke del destino. |
+
+## Secuencia de release autorizada futura
+
+1. Congelar un SHA completo del candidato GitHub y revisar alcance, migraciones/compatibilidad, secretos excluidos y diff. Evidencias antiguas no certifican un SHA nuevo. Registrar commit de pruebas, fecha/comandos/resultados y todas las omisiones justificadas.
+2. Verificar suites obligatorias del candidato: Python con PostgreSQL desechable, JavaScript, E2E privacidad/seguridad/canales y regresiones pertinentes; distinguir pruebas locales simuladas de reales autorizadas. Checks fallidos, ausentes o pendientes obligatorios bloquean publicación.
+3. Gastón revisa variables y configuración a aplicar: APP_ENV producción, SESSION_SECRET, demo seed deshabilitado, orígenes HTTPS y proxies confiables, DATABASE_URL/STORAGE_PATH privados, firmas/claves WhatsApp y weekly sharing compatibles API/worker, cuotas/reservas y costos video, R2, claves backup por secret store y Resend. Confirmar nombres exactos contra candidato; reportar solo presencia/validación y referencias privadas. Codex no aplica cambios.
+4. Completar S16: custodia KeePassXC + copia externa cifrada recuperable, canal Resend real probado, adaptador/capacidad/coherencia y respaldo representativo restaurado. Antes de cada release, Gastón coordina pausa de escritores y backup coherente DB + todos los medios + versiones de claves/config; conserva copia previa con hashes y evidencia. Backup sintético o upload sin restore no cierra este gate. Migraciones persistentes requieren autorización específica y procedimiento de una sola ejecución, no arranque accidental.
+5. Preparar manifiesto anterior y rollback probado. Gastón autoriza expresamente publicación de SHA/ref concreto y ventana. **El workflow actual se activa por push a main**: la autorización de ese push tiene consecuencia de deploy inmediato y debe explicitarla. No push/merge a main mientras falten gates; ningún disparo manual del webhook por Codex.
+6. GitHub Actions es el único disparador previsto. Registrar URL/run ID, evento, github.sha, ref, checks y resultado de trigger; éxito del POST no equivale a deploy terminado. Gastón confirma que EasyPanel tomó ese SHA y que main no cambió durante la selección/build. Release serializada, sin carreras entre publicaciones; no inferir SHA del runtime por el último commit local.
+7. Gastón registra SHA completo y digest de API y worker. Ambos ejecutan **la misma versión fuente aprobada** y dependencias/config compatibles. Si comparten imagen, registrar el mismo digest probado; imágenes distintas solo si aprobadas y trazadas al mismo SHA. Confirmar alembic_version real y smoke/health/heartbeat/privacidad/persistencia. Evidencia sin secretos. Diferencia de SHA, fallo de smoke o ausencia de identidad verificable bloquea GO.
+8. Revisar gates finales y autorización de altas separada. Continuar con tres atletas solo tras GO explícito; no se autoriza crear cuentas reales por aprobar este modelo.
+
+## Riesgo del workflow existente — pendiente real
+
+Inspección .github/workflows/deploy.yml: push main -> un job que POSTea secrets.EASYPANEL_DEPLOY_URL. **No ejecuta pruebas ni fija/verifica SHA de artefactos ni exige aprobación protegida dentro del workflow.** En esta etapa no se modifica el YAML. El cambio de responsabilidades no subsana S15. Antes de publicar, preparar bajo tarea aprobada checks/gate del mismo SHA y un control de autorización efectivo (protección de main/environment según esquema que Gastón apruebe). Probar localmente que fallos no permiten trigger; no invocar EasyPanel como test. Mientras tanto main no se toca y los controles faltantes permanecen BLOCKED.
+
+## Respaldo previo y rollback por el administrador
+
+Gastón conserva set pre-release identificado, revisión DB y manifiesto anterior API/worker/config/claves. Primer recurso: volver a versión binaria anterior compatible, mediante GitHub Actions y configuración controlada por Gastón, con autorización explícita; registrar commit de rollback o artefacto fijado, ejecución y resultado. No force-push ni downgrade automático. Si se usa git revert, se prepara/revisa en rama y su publicación requiere permiso porque vuelve a disparar deploy. No suponer que revert elimina migraciones aplicadas.
+
+Si binario anterior no es compatible, mantener mantenimiento y preparar corrección o restauración coherente **a nueva instancia aislada**; medir pérdida potencial desde snapshot, reconciliar escrituras y pedir permiso de cutover. Nunca restaurar encima de producción ni mezclar DB vieja con storage/claves nuevos. No borrar volúmenes/objetos como rollback. Gastón ejecuta cambios de infraestructura, Codex prepara y valida evidencia.
+
+## Trabajo actual y evidencias necesarias
+
+Continuar únicamente pruebas locales, custodia KeePassXC y alertas Resend. No se requiere SSH ni sesión administrativa para Codex: Gastón proporcionará inventario redactado de servicios, volumes/storage, TLS/proxy, presencia de variables, revisión migraciones y SHA/digest API/worker. Ya no tratar acceso directo de Codex a EasyPanel como requisito de GO; **sí** exigir evidencia verificable del destino.
+
+Bloqueos conservados: S16 operacional; paridad EasyPanel y evidencia de deploy; checks/gates S15; canales reales completos; costos/certificación video y coaches; alertas reales y rollback. E2E S05 integrado local histórico PASS se conserva, sin convertirlo en smoke del destino. No repetir suites por este cambio documental ni marcar como ejecutada ninguna prueba real pendiente.
+
+---
+
+## Evidencia y planes históricos — prevalece el modelo vigente anterior
+
 # Pilot A — plan de release
 
 Validación local final del candidato `03cfd4387a75f70fae60ccd2108a83d24dc57f31`: Python **820 PASS, 1 SKIPPED, 0 FAIL** (257,41 s); JavaScript **77 PASS, 0 FAIL/SKIPPED**. La prueba omitida requiere WEEKLY_RELEASE_PUBLIC_BASE_URL real y queda **NOT RUN**, sin afirmar paridad de dominio. PostgreSQL nuevo tmpfs, red interna nueva, sin puertos Docker publicados ni credenciales de proveedores; migraciones desde cero y worker vacío PASS; contenedores propios detenidos. Evidencia: `C:/Users/desarrollo/AppData/Local/Temp/fluxio-s05-integrated-2e4m_dlq/offline-tests.log` y `environment.json`. Tres advertencias de deprecación no bloquean estas pruebas. Workspace original: 153 rutas verificadas sin cambios.

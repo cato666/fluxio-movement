@@ -1,3 +1,22 @@
+# Go/No-Go — responsabilidades y gates vigentes
+
+Fecha: 2026-10-11. GitHub origen de release; Actions mecanismo de deploy autorizado; Gastón aplica configuración y administra EasyPanel. Codex prepara/tests/manifiesto y sube solo refs aprobadas; no necesita SSH ni acceso directo al panel. **Pilot A NO-GO.**
+
+- [ ] SHA GitHub definitivo aprobado; suites/checks obligatorios de ese SHA completos, evidencia y omisiones revisadas.
+- [ ] Workflow con gate efectivo antes de POST y autorización de publicación: hoy push main -> POST sin pruebas; S15 pendiente. YAML no modificado.
+- [ ] Gastón verifica/aplica variables de seguridad, presupuesto, storage, backup y alertas sin revelar valores.
+- [ ] S16 operacional cerrado: claves KeePassXC/externo recuperables, entrega Resend real, collector/capacidad, backup representativo restaurado y automatización autorizada.
+- [ ] Backup pre-release coherente identificado; rollback binario/config compatible ensayado y responsable confirmado.
+- [ ] Autorización concreta para publicar SHA/ref y ventana; autorizar push main implica deploy automático. No autorización actual.
+- [ ] Run Actions/github.sha y runtime API/worker mismo SHA aprobado, digests identificados, Alembic observado, smoke/persistencia destino PASS.
+- [ ] Canales reales, costos/certificación video, coaches y resto de gates obligatorios cerrados antes de altas autorizadas.
+
+E2E S05 integrado local histórico PASS conservado; no equivale a smoke destino. Ausencia de SSH para Codex no es bloqueo; ausencia de evidencia de Gastón sí. No borrar los pendientes previos. Plan detallado: PILOT_A_RELEASE_PLAN.md / DEPLOYMENT_RUNBOOK.md.
+
+---
+
+## Evidencia histórica — prevalece el modelo vigente
+
 # S16 — decisiones confirmadas y acceso EasyPanel pendiente
 
 Fecha: 2026-10-11. Base 7598e38. Custodia elegida KeePassXC Windows + copia externa cifrada; runtime secrets pendiente. Resend preferido, destinatario/remitente/dominio/API key privados pendientes. Ninguna clave generada/reemplazada y ningún correo enviado.

@@ -1,3 +1,15 @@
+# Manifiesto de release — GitHub Actions / administrador EasyPanel
+
+Modelo vigente 2026-10-11: GitHub origen del release; GitHub Actions dispara el deploy autorizado; Gastón administra EasyPanel; Codex prepara candidato y evidencia, sin SSH ni webhook directo.
+
+Campos obligatorios antes de publicar: repo/ref/SHA completo aprobado; SHA de pruebas/checks y resultados/omisiones; build/digest API y worker; head Alembic esperado/observado; versiones de claves/config por referencias sin valores; ID/hash del backup pre-release y restore aceptado; versión anterior compatible y plan rollback. Tras publicar: run URL/ID/github.sha, resultado Actions y deploy, SHA/digest runtime API/worker confirmados por Gastón, smoke y decisión final.
+
+SHA probado, SHA publicado y fuentes API/worker deben coincidir; un webhook exitoso no prueba esa identidad. Si hay imágenes distintas aprobadas, registrar ambas y trazabilidad al mismo SHA; imagen compartida exige digest igual. No completar campos con última versión local ni con evidencia histórica de otro commit. Campos del destino siguen PENDIENTES; S16 BLOCKED / Pilot NO-GO. Ver PILOT_A_RELEASE_PLAN.md. Sin push/deploy en esta etapa.
+
+---
+
+## Evidencia histórica — prevalece el modelo vigente
+
 ## Actualización S16 — 2026-10-11
 
 Gastón confirmado como operador. Ensayo R2 sintético **PASS**: AES-256-GCM cliente, upload/download autenticados, DB nueva y cuatro archivos restaurados con hashes/referencias iguales; 3 usuarios, 1 sesión/foto/análisis/review, head 0024. Contenedores propios detenidos. 5,31 s y 92.197 bytes corresponden a muestra pequeña, no RTO operativo. Primer intento falló por expectativa HTTP anónima (400); corrección del harness y repetición aislada documentadas. Privacidad por dominios/r2.dev, configuración de cifrado proveedor, permisos separados, custodia definitiva, restore representativo del producto, scheduler y alertas **pendientes**. S16 sigue parcial y **NO-GO**, sin habilitar limpieza S11. Ver [reporte S16](S16_IMPLEMENTATION_REPORT.md).
