@@ -35,7 +35,7 @@
 .weekly-summary-card .weekly-date-control > label { z-index:16; top:40px; }
 .weekly-summary-card svg { width:18px; height:18px; flex:none; }
 .weekly-summary-workouts > h3 { font-size:12px; line-height:14px; font-weight:600; color:var(--muted); margin:0; }
-.weekly-summary-card .weekly-session-preview { display:flex; flex-direction:column; gap:0; max-height:168px; overflow-y:auto; overflow-x:hidden; padding:0; border:0; margin-top:0; scrollbar-width:thin; }
+.weekly-summary-card .weekly-session-preview { display:flex; flex-direction:column; gap:12px; max-height:192px; overflow-y:auto; overflow-x:hidden; padding:0; border:0; margin-top:0; scrollbar-width:thin; }
 .weekly-summary-card .workout-row { display:grid; grid-template-columns:56px minmax(0,1fr) 24px; gap:12px; align-items:center; min-height:56px; flex-shrink:0; padding:0; margin:0; border:0; color:var(--text); text-decoration:none; }
 .weekly-workout-media { width:56px; height:56px; display:grid; place-items:center; background:var(--soft); border-radius:10px; overflow:hidden; }
 .weekly-workout-media img { display:block; width:56px; height:56px; object-fit:cover; }
@@ -79,5 +79,5 @@
  #training-view .weekly-summary-card .weekly-icon-button,#training-view .weekly-summary-card .weekly-ghost-button,.weekly-summary-card .weekly-date-control > summary { min-width:44px; min-height:44px; height:44px; }
  .weekly-summary-card .weekly-navigation { margin-bottom:8px; }
  .weekly-summary-workouts > h3 { margin-bottom:8px; }
- .weekly-summary-card .weekly-session-preview { max-height:168px; }
+ .weekly-summary-card .weekly-session-preview { max-height:192px; }
 }
