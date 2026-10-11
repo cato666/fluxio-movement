@@ -1,6 +1,6 @@
 # Go / No-Go — Pilot v1.0
 
-Estado al 2026-10-10: **NO-GO**. S01–S05 implementadas; S06 validada localmente y pendiente de revisión; 643 pruebas Python y 69 JavaScript aprobadas. Release y destino aún sin certificar. Cada casilla exige evidencia fechada del candidato/destino y firma del responsable; desconocido equivale a pendiente. No usar resultados 09-10 para marcar candidato futuro PASS.
+Estado al 2026-10-11: **NO-GO**. S01–S06 aprobadas técnicamente (S05 conserva aprobación condicionada); S07 validada localmente y pendiente de revisión; 703 pruebas Python y 69 JavaScript aprobadas. Release y destino aún sin certificar. Cada casilla exige evidencia fechada del candidato/destino y firma del responsable; desconocido equivale a pendiente. No usar resultados 09-10 para marcar candidato futuro PASS.
 
 ## Aprobación del plan
 
@@ -15,6 +15,11 @@ Esta aprobación no autoriza llamadas OpenAI, mensajes Kapso, operaciones destru
 ## Pendiente heredado S05
 
 - [ ] **BLOCKED**: E2E integrado navegador/servidor HTTP real. Las pruebas de interfaz simulada y HTTP dentro del contenedor pasaron separadamente; no sustituyen este gate. No ampliar redes Docker para resolverlo sin autorización.
+
+## Otros pendientes heredados de S06
+
+- [ ] **PENDIENTE**: reserva y control verificables de costos adicionales del procesamiento de video (cómputo, almacenamiento y otras operaciones facturables). La configuración/fail-closed simulados no certifican el costo real ni autorizan proveedores.
+- [ ] **PENDIENTE**: paridad con EasyPanel y validaciones reales del candidato, incluyendo dominio HTTPS, Origin, proxy confiable, digest, esquema, app y worker. No ejecutadas; no marcar PASS sin evidencia del destino y autorización.
 
 ## Gate de candidato — QA + seguridad + release owner
 
@@ -53,12 +58,12 @@ Esta aprobación no autoriza llamadas OpenAI, mensajes Kapso, operaciones destru
 | Campo | Valor actual |
 | --- | --- |
 | Decisión | NO-GO; E2E integrado S05 BLOCKED y gates de release pendientes |
-| Candidato / digest | Rama codex/pilot-v1-stabilization; código S06 35bd3c67b2e9d75f73c1d57a994acf31f66849a6 / digest no construido |
+| Candidato / digest | Rama codex/pilot-v1-stabilization; código S07 cccfb90a258800288ea2cdfd6f5923a01df56d25 / digest no construido |
 | SQL destino / head candidato | Destino desconocido / candidato 0023_consumption_reservations; migración persistente no autorizada |
 | QA / seguridad / operador / coach / release owner | Por asignar |
 | Evidencia / excepciones P2 | Baseline histórica documentada; sin excepciones aprobadas |
 | Permisos de pruebas reales / deploy / migración / altas | No otorgados en esta etapa |
-| Próximo paso | Revisión final S06 y resolución del E2E integrado S05 BLOCKED; S07 no iniciada, sin deploy ni gasto |
+| Próximo paso | Revisión final S07 ([reporte](S07_IMPLEMENTATION_REPORT.md)); conservar los tres pendientes heredados; S08 no iniciada, sin deploy ni gasto |
 
 Una firma Go debe enlazar resultados actuales y autorización final. Si falta un gate obligatorio, registrar No-Go y tarea concreta; no declarar listo por health ready ni por cobertura histórica.
 
