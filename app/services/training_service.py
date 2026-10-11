@@ -195,7 +195,8 @@ class TrainingService:
     def list_sessions(self):
         rows = self.session.scalars(select(TrainingSession).where(
             TrainingSession.athlete_id == self.athlete_id).order_by(
-                TrainingSession.trained_on.desc(), TrainingSession.created_at.desc()).limit(200)).all()
+                TrainingSession.trained_on.desc(), TrainingSession.created_at.desc(),
+                TrainingSession.id.desc()).limit(200)).all()
         return [fields(row) for row in rows]
 
     def create(self, payload: SessionPayload):

@@ -275,6 +275,11 @@ window.setupTraining = async function (identifier) {
       const weekly = make('section', '', 'training-week');
       await mountWeek(weekly, items);
       journal.append(weekly); root.insertBefore(journal, root.querySelector('.training-empty'));
+      if (items.length >= 200) {
+        const notice = make('p', 'Esta lista muestra hasta 200 entrenamientos, ordenados por fecha. Los registros anteriores se conservan y puedes consultarlos por semana en el resumen semanal.', 'training-history-limit');
+        notice.setAttribute('role', 'note'); notice.setAttribute('aria-label', 'Límite del listado');
+        journal.append(notice);
+      }
       let group, previousDate;
       for (const item of [...items].sort((a,b) => b.trained_on.localeCompare(a.trained_on))) {
         if (item.trained_on !== previousDate) {

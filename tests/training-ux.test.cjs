@@ -473,3 +473,31 @@ test('S10 explicit nested block edits and unlink remain in the partial PUT paylo
   await page.getByRole('button',{name:'Guardar cambios',exact:true}).click();await page.waitForURL('**/training');
   assert.equal(submitted.blocks[0].title,'Bloque corregido');assert.deepEqual(submitted.video_links,[]);
 }));
+
+for (const total of [199,200,201]) {
+  test(`S17 ${total} records: capped list explains scope and weekly summary stays complete`,()=>harness(async page=>{
+    const date='2026-10-02';
+    const entries=Array.from({length:Math.min(total,200)},(_,index)=>({...draft,id:'history-'+index,
+      trained_on:date,source_image_id:null,video_links:[]}));
+    await page.route('**/api/training-sessions',r=>r.fulfill({json:{items:entries}}));
+    await page.route('**/api/training-week',r=>r.fulfill({json:{week_start:'2026-09-28',week_end:'2026-10-04',
+      session_count:total,active_days:1,average_rpe:8,rpe_count:total,items:[]}}));
+    await page.route('**/api/training-week/shares?*',r=>r.fulfill({json:{items:[]}}));
+    await page.evaluate(()=>window.setupTraining());
+    assert.equal(await page.locator('.training-entry').count(),Math.min(total,200));
+    assert.equal(await page.locator('.training-history-limit').count(),total>=200?1:0);
+    assert.equal(await page.locator('.weekly-compact-metrics dd').first().textContent(),String(total));
+    if(total>=200){
+      const notice=page.getByRole('note',{name:'Límite del listado'});
+      assert.match(await notice.textContent(),/hasta 200/);
+      assert.match(await notice.textContent(),/se conservan/);
+      assert.match(await notice.textContent(),/resumen semanal/);
+      assert.doesNotMatch(await notice.textContent(),/historial completo|201/);
+      for(const width of [320,390,430,1440]){
+        await page.setViewportSize({width,height:900});
+        assert.equal(await notice.isVisible(),true);
+        assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+      }
+    }
+  }));
+}
