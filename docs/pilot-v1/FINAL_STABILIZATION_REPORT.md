@@ -1,67 +1,73 @@
-# Consolidado de estabilización — entrega parcial y parada S10
+# Consolidado parcial de estabilización — S10 cerrada / S11 bloqueada
 
-Fecha: 2026-10-11. **NO-GO. S09 completada; S10 FAIL/BLOCKED; S11–S18 no iniciadas.** No es una certificación final S18 ni autorización de publicación.
+Fecha: 2026-10-11. **NO-GO.** S09 y S10 implementadas y validadas localmente. S11 auditada, sin implementación por política de retención y dependencia S16 pendientes. S12–S18 no iniciadas. No es certificación final S18 ni autorización de publicación.
 
-Rama codex/pilot-v1-stabilization; último código `1d739a86e73d9d1cc5e0c89d80eb809c699f03be`; entrega S09 `f7a70067fc812d4c1248f2c2ccf5eccd6fee777e`. Este commit documental se identifica con git log -1 -- docs/pilot-v1/FINAL_STABILIZATION_REPORT.md.
+Rama: codex/pilot-v1-stabilization. Código actual: `09b4215f5b1aec1e44e77f67e42360ecedfd373c`. Entrega S10: `023736b6429524f5d5cecbc2c8febe738157a9e1`. Commit documental de esta parada: identificar con git log -1 -- docs/pilot-v1/FINAL_STABILIZATION_REPORT.md.
 
-## Estado S01–S18 y commits
+## Estado y commits S01–S18
 
-| Fase | Estado actual / referencia de cierre |
+| Fase | Estado / evidencia |
 |---|---|
-| S01 | Cierre técnico aprobado históricamente; selección a4af305 y validación feadbd2 |
+| S01 | Aprobada históricamente; selección a4af305 / validación feadbd2 |
 | S02 | Aprobada históricamente; código f92487a / entrega b65ddfd |
 | S03 | Aprobada históricamente; código 393699b / entrega 7179c17 |
 | S04 | Aprobada históricamente; código 42d6627 / entrega 4ba63a4 |
 | S05 | Aprobada condicionadamente; código 6ff4547 / entrega 98acac5; E2E integrado BLOCKED |
-| S06 | Aprobada técnicamente; código a3c75a8 + 35bd3c6 / entrega 06ee78c; costo extra real video pendiente |
+| S06 | Aprobada técnicamente; código a3c75a8 + 35bd3c6 / entrega 06ee78c; costos extra reales video pendientes |
 | S07 | Aprobada técnicamente; código cccfb90 / entrega 59bfcbe |
-| S08 | Verificada al inicio: código dfe2f87 / entrega f1a8bf4; XML histórico 749 Python, 46 dirigidas, 69 JS PASS |
-| S09 | Implementada y validada localmente; código 1d739a8 / entrega f7a7006 |
-| S10 | Reproducción 3 FAIL/P1; sin cambios funcionales ni commit de implementación; parada para revisión |
-| S11 | NOT STARTED; política retención y S16 pendientes |
-| S12 | NOT STARTED; depende de S09/S16 |
-| S13 | NOT STARTED; depende de S08/S12 y responsable/canal |
-| S14 | NOT STARTED; digest/scan/identidad no certificados |
-| S15 | NOT STARTED; depende de S14; ningún workflow disparado |
-| S16 | NOT STARTED; depende de S01/S14, retención/RPO/RTO y respaldo |
-| S17 | NOT STARTED; límite 200 permanece; 199/200/201 no certificados |
-| S18 | NOT STARTED; sin clips autorizados/coach real certificado; fixtures no prueban precisión |
+| S08 | Verificada al inicio; código dfe2f87 / entrega f1a8bf4; XML histórico 749 Python/46 dirigidas/69 JS PASS |
+| S09 | Implementada; código 1d739a8 / entrega f7a7006; 769 Python/69 JS PASS |
+| S10 | Implementada tras autorización de reanudación; código 09b4215 / entrega 023736b; 787 Python/72 JS PASS |
+| S11 | Auditada/BLOCKED; política del propietario y S16 pendientes; sin commit funcional |
+| S12 | NOT STARTED; dependencia S09/S16 |
+| S13 | NOT STARTED; S08/S12 y responsable/canal verificables pendientes |
+| S14 | NOT STARTED; digest/scan/identidad final no certificados |
+| S15 | NOT STARTED; depende S14; ningún workflow real ejecutado |
+| S16 | NOT STARTED; S01/S14, política, destino/retención y objetivos de restore pendientes |
+| S17 | NOT STARTED; límite 200 permanece, escenarios propios no certificados |
+| S18 | NOT STARTED; clips autorizados/coach real/capacidad pendientes; fixtures no certifican precisión |
 
-Los estados históricos S01–S08 provienen de sus reportes, autorización del usuario e historia Git; no implican volver a ejecutar sus proveedores o despliegues. Regresiones locales están incluidas en la suite S09.
+S01–S08 son cierres históricos sustentados en informes, autorización del usuario e historia Git. La suite S10 incluye sus regresiones locales; no se reejecutaron proveedores o deploys reales.
 
-## Pruebas y evidencia
+## Resultados actuales
 
-- S09 completa Python: **769 PASS / 0 FAIL / 0 ERROR / 0 SKIPPED**, XML final 233,52 s.
-- S09/S08 dirigidas: **66 PASS**, incluidas en la completa; no sumar.
-- JavaScript completa durante S09: **69 PASS / 0 FAIL / 0 SKIPPED**; backend simulado, sin cambios JS posteriores.
-- S10 nuevas reproducciones: **0 PASS / 3 FAIL / 0 ERROR / 0 SKIPPED**, XML final 1,37 s. No están incluidas en los 769 casos anteriores.
-- Sintaxis 42 módulos y head único Alembic: PASS. Fuente runner/candidato: 186 hashes iguales. No migración nueva S09/S10.
-- S11–S18: NOT RUN, ningún PASS de implementación.
-- E2E integrado S05: **BLOCKED**, no ejecutado.
-- Destino/proveedores/backup real: **NOT RUN / PENDIENTE**; no se cuentan como omisiones exitosas de pytest.
+- Python completa S10: **787 PASS / 0 FAIL / 0 ERROR / 0 SKIPPED**, 238,01 s.
+- Dirigidas integridad/CRUD/WhatsApp/migraciones: **89 PASS**; contratos/migraciones **2 PASS** y nota web/chat/semana adicional **1 PASS**. Subconjuntos de completa, no sumar.
+- JavaScript completa final: **72 PASS / 0 FAIL / 0 SKIPPED**, 24,63 s, API simulada. Incluye arrays anidados/edit y claves estables.
+- Tres reproducciones inicialmente FAIL/P1: ahora **PASS** dentro de la suite final. Se conserva su evidencia anterior; no se oculta ni remedia sobre datos reales.
+- La primera suite de esta reanudación tuvo 786 PASS/1 FAIL por una cabecera opcional no contemplada en la allowlist OpenAPI; corregida únicamente esa extensión, nueva suite completa PASS. El resto del contrato permanece comparado estrictamente.
+- Migraciones desde cero y 0023→0024 con sesión legacy, roundtrip y check de drift: **PASS solo en PostgreSQL desechable**. Head candidato 0024_training_save_requests.
+- Sintaxis 42 módulos y comparación de 188 fuentes: PASS. Último cambio exclusivamente JS comparaba arrays contra una referencia mutable; corregido con copia inicial inmutable y suite JS repetida. Sin cambios Python después de su último PASS.
+- S11: lectura de fuentes/documentación, **pruebas propias NOT RUN**. S12–S18: NOT RUN, ninguna implementación certificada.
 
-Evidencia temporal: C:/Users/desarrollo/AppData/Local/Temp/fluxio-s09-validation-20261011/ y fluxio-s10-validation-20261011/. Capturas JS preservadas fuera del release: fluxio-s09-js-evidence-20261011. Reportes conservan límites de evidencia; la matriz S09_S18_EXECUTION_MATRIX.md explica dependencias y discrepancias históricas.
+Evidencia final S10: C:/Users/desarrollo/AppData/Local/Temp/fluxio-s10-final-validation-20261011/ (XML, resumen, checksums y log JS). Evidencia fallida anterior conservada en fluxio-s10-validation-20261011/. Capturas fuera del candidato: fluxio-s10-js-evidence-20261011/ y fluxio-s10-js-final-evidence-20261011/.
 
-## Bloqueo inmediato y corrección propuesta
+## Resultado funcional S10 y compatibilidad
 
-S10-D01: edición válida con campos opcionales omitidos sustituye result_text/adaptations/rpe/source_text. S10-D02: nota WhatsApp desaparece de la vista tras editar; copia interna sigue presente. S10-D03: replay de creación con la misma clave persiste dos sesiones. **P1 de integridad**, sin excepción aprobada. Métodos CRUD no cambiaron en S09.
+Edición conserva campos omitidos y notas; null/[]/vacíos explícitos permiten limpiar. La web no reenvía campos opcionales sin cambios, pero sí cambios anidados explícitos. Idempotency-Key UUID opcional crea exactamente una sesión por atleta/clave/payload normalizado; otro payload 409 y replay tras delete 404, sin resurrección. Evidencia mínima durable y commit atómico; manual no consume IA/presupuesto. WhatsApp conserva confirmación por identidad/estado/versión/token. Sin deduplicación automática de históricos.
 
-La regla expresa del encargo exige detenerse ante pérdida potencial o prueba obligatoria fallida sin resolver. Se detuvo sin corregir funcionalmente S10 ni iniciar fases siguientes. El reporte S10 contiene reproducción y propuesta concreta: asignación exclude_unset en update con null/[] explícitos; idempotencia persistente por atleta con conflicto ante otro payload y protección tras delete; clave web estable por borrador y pruebas de concurrencia/rollback/reinicio. No se repara información real ni limpia duplicados.
+Los clientes legacy sin clave pueden crear dos registros iguales deliberadamente; no se cambia ese contrato. La nueva tabla no contiene contenido del entrenamiento, teléfonos ni medios. Migración aditiva antes de guardados keyed; rollback debe conservar evidencia y tener bundle Alembic compatible con 0024. Eso no está certificado en destino.
 
-## Cinco gates heredados
+## Bloqueo S11 y propuesta revisable
 
-1. **BLOCKED:** E2E integrado navegador/servidor S05, no ejecutado ni sustituido por mocks.
-2. **PENDIENTE:** control de costos adicionales reales de video.
-3. **PENDIENTE:** paridad de commit/digest/esquema/configuración/worker con EasyPanel.
-4. **PENDIENTE:** validación de proveedores reales, sin autorización de gasto/envíos.
-5. **PENDIENTE:** backup y restauración del destino; prueba temporal no los acredita.
+Existe TTL de 24 h en medios WhatsApp; no hay política aprobada completa de fotos web huérfanas/cuarentena/legacy. El cleanup revisado no verifica explícitamente contexto cifrado vigente y hace unlink antes del commit, riesgos que deben reproducirse/protegerse sin operar archivos reales. No se declara daño real por lectura de código.
 
-## Próximos pasos para publicar
+Se respeta la parada expresa ante decisiones de privacidad pendientes. [Propuesta](S11_RETENTION_POLICY_PROPOSAL.md): conservar fotos referenciadas, 24 h de gracia desde orfandad verificable, cuarentena reversible 7 días, legacies ambiguos conservados, modo dry-run inicial, backups 7 diarios + snapshot pre-release durante 30 días, RPO 24 h/RTO 4 h. **Propuesta no aprobada/no activa.** Destino/operador/restore S16 siguen pendientes. No se implementa borrado efectivo.
 
-1. Revisar los tres P1 y autorizar reanudar su corrección acotada S10. Ejecutar nuevos casos/regresiones/suites, documentar y crear commit limpio.
-2. Aprobar retención de fotos y política de backups/objetivos RPO/RTO; resolver dependencias S11/S16/S14 sin implementar borrado efectivo no aprobado.
-3. Continuar secuencia S11–S18 cuando los gates de cada fase permitan avanzar; asignar responsable/canal de alertas y clips/coach/capacidad reales.
-4. Completar los cinco gates reales con autorización específica. Fijar digest, versión SQL y artefacto aprobado; validar backup/restore y rollback del destino.
-5. Revisión Go/No-Go y autorización independiente antes de cualquier deploy, proveedor real o alta inicial de tres atletas. Ampliación gradual sigue condicionada a operación estable.
+## Cinco gates heredados abiertos
 
-Seguridad: workspace original intacto (153 huellas/status/HEAD verificados), sin push/merge/deploy, cuentas reales, proveedores reales, redes/puertos añadidos ni cambios persistentes. Se preservaron artefactos y evidencia; no se limpiaron imágenes/volúmenes/bases existentes. Los contenedores propios de pruebas se detienen después de copiar evidencia.
+1. **BLOCKED:** E2E integrado navegador/servidor S05. UI simulada y TestClient no lo sustituyen.
+2. **PENDIENTE:** control verificable de costos adicionales reales del procesamiento de video.
+3. **PENDIENTE:** paridad commit/digest/esquema/configuración/worker EasyPanel, incluido head 0024.
+4. **PENDIENTE:** validación de proveedores reales, sin permiso de gasto/envíos.
+5. **PENDIENTE:** backup y restauración del destino; ensayo temporal no lo acredita.
+
+## Orden siguiente
+
+1. Propietario aprueba/ajusta política S11/S16 y define destino/operador de backup sin revelar claves en el reporte.
+2. Preparar documentación/pruebas aisladas de dependencia S16 según autorización del encargo; validar respaldo/restore sin avanzar a modo efectivo por presunción.
+3. Implementar mínimo S11 y pruebas de referencias, legacy, shares, inactividad, worker detenido, carreras, fallo de commit/exportación/restore. Commit independiente y limpio antes de continuar.
+4. Seguir S12–S18 en orden y resolver las decisiones de cada fase, conservando NO-GO cuando falte evidencia real.
+5. Completar cinco gates reales, revisión Go/No-Go y autorización independiente de publicación/altas. Comenzar con tres atletas solo después de autorización; ampliación gradual sigue condicionada.
+
+Seguridad: original intacto (153 huellas/status/HEAD), sin reset/clean/stash destructivo, push/merge/deploy, proveedores/cuentas reales, redes/puertos nuevos ni migraciones persistentes. Se preservaron artefactos y evidencias; solo contenedores propios de runner/DB tmpfs se detienen al terminar. Ninguna política propuesta autoriza borrar archivos/datos reales.

@@ -31,6 +31,6 @@ PILOT_SCOPE, RELEASE_READINESS, TEST_PLAN, PILOT_OPERATIONS y el encabezado de S
 
 Estado de release: **NO-GO**. Restricciones: original intacto, no datos/volÃºmenes persistentes, proveedores reales, altas reales, push/merge/deploy ni webhook EasyPanel. Cada fase registra commit, evidencia, PASS/FAIL/SKIPPED/BLOCKED y worktree limpio antes de avanzar. Una decisiÃ³n de privacidad pendiente detiene el flujo.
 
-## Resultado de esta ejecución
+## Resultado vigente tras reanudación aprobada
 
-S09 completada: código 1d739a86e73d9d1cc5e0c89d80eb809c699f03be, entrega f7a70067fc812d4c1248f2c2ccf5eccd6fee777e; 769 Python / 69 JS PASS. S10 reprodujo tres FAIL/P1 de integridad; se activó la parada expresa antes de cambios funcionales. S11–S18 NOT STARTED. Véase FINAL_STABILIZATION_REPORT.md; los cinco gates heredados siguen abiertos.
+S09: código 1d739a8/entrega f7a7006, 769 Python/69 JS PASS. S10: código 09b4215/entrega 023736b, 787 Python/72 JS PASS; tres defectos P1 corregidos, commit limpio antes de S11. S11 auditada y BLOCKED por política de privacidad/dependencia S16; sin implementación. S12–S18 NOT STARTED. Cinco gates heredados abiertos; véase consolidado y propuesta S11/S16.

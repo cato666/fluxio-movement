@@ -1,26 +1,29 @@
-# Resultados vigentes y pruebas pendientes
+# Evidencia vigente S10 y validaciones pendientes
 
-Estado vigente al 2026-10-11: **NO-GO**. S09 código `1d739a86e73d9d1cc5e0c89d80eb809c699f03be` y entrega `f7a70067fc812d4c1248f2c2ccf5eccd6fee777e` aprobados por pruebas locales; **S10 FAIL/BLOCKED** por tres defectos P1 reproducidos. S11–S18 no iniciadas. Esta adenda prevalece para el estado actual; el contenido anterior se conserva como propuesta/evidencia histórica, sin alterar el alcance aprobado.
+Fecha: 2026-10-11. **S10 cierre técnico local PASS; S11 auditada/BLOCKED por política de retención y dependencia S16. S12–S18 no iniciadas. Pilot NO-GO.** Código actual `09b4215f5b1aec1e44e77f67e42360ecedfd373c`, entrega S10 `023736b6429524f5d5cecbc2c8febe738157a9e1`. Los tres defectos P1 de S10 fueron corregidos y sus reproducciones ahora pasan; la parada anterior S10 fue superada mediante autorización expresa del usuario. El commit documental actual no implementa S11.
 
-| Ejecución | PASS | FAIL | ERROR | SKIPPED | Límite de la evidencia |
+| Ejecución final | PASS | FAIL | ERROR | SKIPPED | Alcance |
 |---|---:|---:|---:|---:|---|
-| S09 Python completa final | 769 | 0 | 0 | 0 | PostgreSQL temporal, proveedores simulados, XML 233,52 s |
-| S09/S08 dirigidas finales | 66 | 0 | 0 | 0 | Subconjunto de la completa; no sumar |
-| JavaScript completa S09 | 69 | 0 | 0 | 0 | API simulada; fuentes JS sin cambios posteriores |
-| S10 reproducciones nuevas | 0 | 3 | 0 | 0 | Fuera de la suite anterior; fallos funcionales verificables; XML 1,37 s |
-| S11–S18 propias | — | — | — | — | NOT RUN; no contar como aprobadas/omitidas por el runner |
+| S10 Python completa | 787 | 0 | 0 | 0 | PostgreSQL tmpfs; proveedores simulados; 238,01 s |
+| S10 dirigidas CRUD/integridad/migración/WhatsApp | 89 | 0 | 0 | 0 | Subconjunto de completa |
+| S10 contratos/migración | 2 | 0 | 0 | 0 | Subconjunto de completa |
+| Nota web/chat/semana adicional | 1 | 0 | 0 | 0 | Subconjunto de completa |
+| S10 JS completa final | 72 | 0 | 0 | 0 | API simulada, incluye copia inmutable/arrays; 24,63 s |
+| S11–S18 propias | — | — | — | — | NOT RUN; auditoría S11 de fuentes no es prueba ejecutada |
 
-S10 pendientes: promoción de reproducciones al candidato tras corrección; valores explícitos null/[], campos omitidos/foto/blocks/video_links, rollback/restart, concurrencia real, replay tras borrado, notas y ownership, doble confirmación WhatsApp/botón vencido y legacy. Suites completas obligatorias antes de cierre.
+No sumar dirigidas a completa. Los tres nuevos casos originalmente FAIL ahora forman parte de los 787 PASS. La primera suite S10 tuvo 786 PASS/1 FAIL por cabecera OpenAPI no incluida en allowlist; se corrigió exclusivamente la extensión opcional y se volvió a ejecutar completa. JavaScript final se repitió tras corregir la comparación de arrays; Python no tuvo cambios posteriores a su último PASS.
 
-Evidencia local: C:/Users/desarrollo/AppData/Local/Temp/fluxio-s09-validation-20261011/ y fluxio-s10-validation-20261011/. Fuente probada coincide en 186 hashes; los tres probes S10 se ejecutaron solo en el runner y se conservaron fuera del producto. No se añadieron casos fallidos al candidato ni se ocultaron como SKIPPED.
+Migraciones: desde cero→0024, roundtrip/check sin drift y 0023→0024 con sesión histórica intacta, únicamente DB movement_test con reset explícito. Replay desde otro proceso, concurrencia, rollback, nota visible, ownership, manual sin presupuesto y conservación de foto/medio probados.
 
-1. **BLOCKED:** E2E integrado navegador/servidor S05, no ejecutado ni sustituido por mocks.
-2. **PENDIENTE:** control de costos adicionales reales de video.
+Evidencia: C:/Users/desarrollo/AppData/Local/Temp/fluxio-s10-final-validation-20261011/ (XML, resumen, log JS y 188 SHA-256). Reproducción fallida inicial permanece en fluxio-s10-validation-20261011/. No se ocultan incidentes anteriores como SKIPPED.
+
+1. **BLOCKED:** E2E integrado navegador/servidor S05; no sustituido por API simulada/TestClient.
+2. **PENDIENTE:** reserva/control de costos adicionales reales de video.
 3. **PENDIENTE:** paridad de commit/digest/esquema/configuración/worker con EasyPanel.
-4. **PENDIENTE:** validación de proveedores reales, sin autorización de gasto/envíos.
-5. **PENDIENTE:** backup y restauración del destino; prueba temporal no los acredita.
+4. **PENDIENTE:** validación de proveedores reales; gasto/envíos no autorizados.
+5. **PENDIENTE:** backup y restauración del destino; prueba temporal no los certifica.
 
-Histórico original a continuación; no atribuir sus E2E a este candidato.
+Plan histórico a continuación; sus E2E no certifican el candidato actual.
 
 ---
 

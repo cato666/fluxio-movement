@@ -1,25 +1,26 @@
-# Decisión vigente — NO-GO por S10 y gates heredados
+# Decisión vigente — NO-GO por S11 y gates de release
 
-Estado vigente al 2026-10-11: **NO-GO**. S09 código `1d739a86e73d9d1cc5e0c89d80eb809c699f03be` y entrega `f7a70067fc812d4c1248f2c2ccf5eccd6fee777e` aprobados por pruebas locales; **S10 FAIL/BLOCKED** por tres defectos P1 reproducidos. S11–S18 no iniciadas. Esta adenda prevalece para el estado actual; el contenido anterior se conserva como propuesta/evidencia histórica, sin alterar el alcance aprobado.
+Fecha: 2026-10-11. **S10 cierre técnico local PASS; S11 auditada/BLOCKED por política de retención y dependencia S16. S12–S18 no iniciadas. Pilot NO-GO.** Código actual `09b4215f5b1aec1e44e77f67e42360ecedfd373c`, entrega S10 `023736b6429524f5d5cecbc2c8febe738157a9e1`. Los tres defectos P1 de S10 fueron corregidos y sus reproducciones ahora pasan; la parada anterior S10 fue superada mediante autorización expresa del usuario. El commit documental actual no implementa S11.
 
-- [x] S08 verificada antes de S09; rama/worktree independiente correctos.
-- [x] S09 implementada, suites ejecutables aprobadas, commit de entrega limpio.
-- [ ] **P1 S10-D01:** conservar campos omitidos al editar; reproducción FAIL.
-- [ ] **P1 S10-D02:** conservar consistencia visible de notas; reproducción FAIL.
-- [ ] **P1 S10-D03:** guardar una vez ante replay; reproducción FAIL.
-- [ ] Cierre S10 con regresiones/commit limpio antes de continuar.
-- [ ] S11–S18 implementadas y validadas; actualmente NOT STARTED.
-- [ ] E2E integrado navegador/servidor S05: **BLOCKED**.
+- [x] Rama/worktree independiente y S08 verificados antes de continuar.
+- [x] S09 implementada, pruebas ejecutables PASS y commits limpios.
+- [x] S10-D01: campos omitidos preservados; reproducción PASS.
+- [x] S10-D02: notas visibles consistentes; reproducción PASS.
+- [x] S10-D03: guardado keyed una vez; replay/concurrencia/reinicio/delete PASS.
+- [x] S10 suites finales: 787 Python y 72 JS PASS; commit independiente y worktree limpio antes del análisis S11.
+- [ ] S11 política de retención aprobada y dependencia S16 resuelta; **BLOCKED**.
+- [ ] S11 limpieza segura/refs/legacy/fallos implementada y probada; actualmente sin código.
+- [ ] S12–S18 implementadas y validadas; **NOT STARTED**.
+- [ ] E2E integrado S05: **BLOCKED**.
 - [ ] Control real de costos adicionales de video: **PENDIENTE**.
-- [ ] Paridad EasyPanel: **PENDIENTE**.
-- [ ] Validación de proveedores reales: **PENDIENTE**, sin autorización de consumo.
-- [ ] Backup/restore del destino: **PENDIENTE**.
-- [ ] Políticas de retención/backup y objetivos RPO/RTO aprobados.
-- [ ] Alertas entregadas a responsable verificable; clips/coach/capacidad certificados.
+- [ ] Paridad EasyPanel, incluido head 0024: **PENDIENTE**.
+- [ ] Proveedores reales: **PENDIENTE**, sin autorización de consumo.
+- [ ] Backup/restore del destino y rollback compatible con 0024: **PENDIENTE**.
+- [ ] Responsables, alertas entregadas y clips/coach/capacidad certificados.
 
-Candidato funcional actual: `1d739a86e73d9d1cc5e0c89d80eb809c699f03be`. Los 769 PASS previos no convierten las tres reproducciones nuevas en PASS. Esta parada documental no autoriza publicar ni sustituye revisión de S10. [Consolidado parcial](FINAL_STABILIZATION_REPORT.md).
+[Propuesta S11/S16 para aprobación](S11_RETENTION_POLICY_PROPOSAL.md) · [Consolidado parcial](FINAL_STABILIZATION_REPORT.md). Ningún PASS local cierra un gate real ni autoriza deploy.
 
-Checklist histórico a continuación: los casilleros pendientes se mantienen abiertos.
+Checklist histórico a continuación; gates pendientes siguen abiertos.
 
 ---
 

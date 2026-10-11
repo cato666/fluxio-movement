@@ -1,25 +1,26 @@
-# Seguimiento vigente de estabilización
+# Seguimiento vigente — S10 PASS / S11 BLOCKED
 
-Estado vigente al 2026-10-11: **NO-GO**. S09 código `1d739a86e73d9d1cc5e0c89d80eb809c699f03be` y entrega `f7a70067fc812d4c1248f2c2ccf5eccd6fee777e` aprobados por pruebas locales; **S10 FAIL/BLOCKED** por tres defectos P1 reproducidos. S11–S18 no iniciadas. Esta adenda prevalece para el estado actual; el contenido anterior se conserva como propuesta/evidencia histórica, sin alterar el alcance aprobado.
+Fecha: 2026-10-11. **S10 cierre técnico local PASS; S11 auditada/BLOCKED por política de retención y dependencia S16. S12–S18 no iniciadas. Pilot NO-GO.** Código actual `09b4215f5b1aec1e44e77f67e42360ecedfd373c`, entrega S10 `023736b6429524f5d5cecbc2c8febe738157a9e1`. Los tres defectos P1 de S10 fueron corregidos y sus reproducciones ahora pasan; la parada anterior S10 fue superada mediante autorización expresa del usuario. El commit documental actual no implementa S11.
 
-| Fase | Estado / evidencia |
+| Fase | Estado |
 |---|---|
-| S01–S08 | Cierres locales históricos documentados; S08 verificada antes de S09; aceptación no equivale a GO |
-| S09 | Implementada; 769 Python / 69 JS PASS; commits 1d739a8 / f7a7006 |
-| S10 | 3 reproducciones FAIL, dos defectos de edición/nota y uno de idempotencia; P1; parada expresa |
-| S11–S18 | NOT STARTED; informes de estado, sin implementación ni pruebas propias |
+| S01–S08 | Cierres locales históricos documentados; S08 verificada antes de S09 |
+| S09 | Implementada; 769 Python/69 JS PASS; 1d739a8/f7a7006 |
+| S10 | Implementada; 787 Python/72 JS PASS; 09b4215/023736b |
+| S11 | Auditada, sin código; falta aprobación de retención y dependencia S16 |
+| S12–S18 | NOT STARTED; ninguna prueba/implementación propia certificada |
 
-S10-D01/D02/D03 requieren corregir asignación de campos omitidos, consistencia visible de notas e idempotencia durable web. La descripción histórica S10/P2 se eleva a **P1** por pérdida/duplicación reproducida según la regla original del backlog. No se ha alterado su alcance para incorporar módulos nuevos.
+S10-D01/D02/D03 fueron P1 por pérdida/duplicación reproducida y están corregidos; las pruebas fallidas iniciales se conservan como evidencia histórica, no como estado final. La severidad P2 de la tabla original es planificación previa, no una excepción aceptada al P1.
 
-Pendientes de aprobación futuros: retención S11 y backups/RPO/RTO S16, responsable/canal S13, clips/coach/capacidad S18. No decidirlos por defecto.
+La propuesta S11/S16 es no vinculante hasta aprobación: [política propuesta](S11_RETENTION_POLICY_PROPOSAL.md). Responsable/canal S13, destino de backup y clips/coach/capacidad S18 siguen por definir.
 
-1. **BLOCKED:** E2E integrado navegador/servidor S05, no ejecutado ni sustituido por mocks.
-2. **PENDIENTE:** control de costos adicionales reales de video.
+1. **BLOCKED:** E2E integrado navegador/servidor S05; no sustituido por API simulada/TestClient.
+2. **PENDIENTE:** reserva/control de costos adicionales reales de video.
 3. **PENDIENTE:** paridad de commit/digest/esquema/configuración/worker con EasyPanel.
-4. **PENDIENTE:** validación de proveedores reales, sin autorización de gasto/envíos.
-5. **PENDIENTE:** backup y restauración del destino; prueba temporal no los acredita.
+4. **PENDIENTE:** validación de proveedores reales; gasto/envíos no autorizados.
+5. **PENDIENTE:** backup y restauración del destino; prueba temporal no los certifica.
 
-La tabla siguiente conserva las descripciones y dependencias originales, no declara las tareas todavía sin iniciar.
+La tabla siguiente conserva tareas/dependencias y estimaciones originales.
 
 ---
 

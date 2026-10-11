@@ -1,22 +1,22 @@
-# Preparación vigente — parada por integridad S10
+# Preparación vigente — S10 cerrada, política S11 pendiente
 
-Estado vigente al 2026-10-11: **NO-GO**. S09 código `1d739a86e73d9d1cc5e0c89d80eb809c699f03be` y entrega `f7a70067fc812d4c1248f2c2ccf5eccd6fee777e` aprobados por pruebas locales; **S10 FAIL/BLOCKED** por tres defectos P1 reproducidos. S11–S18 no iniciadas. Esta adenda prevalece para el estado actual; el contenido anterior se conserva como propuesta/evidencia histórica, sin alterar el alcance aprobado.
+Fecha: 2026-10-11. **S10 cierre técnico local PASS; S11 auditada/BLOCKED por política de retención y dependencia S16. S12–S18 no iniciadas. Pilot NO-GO.** Código actual `09b4215f5b1aec1e44e77f67e42360ecedfd373c`, entrega S10 `023736b6429524f5d5cecbc2c8febe738157a9e1`. Los tres defectos P1 de S10 fueron corregidos y sus reproducciones ahora pasan; la parada anterior S10 fue superada mediante autorización expresa del usuario. El commit documental actual no implementa S11.
 
-Listo para revisión técnica local: S09 preflight, liberación probada/idempotente y reutilización de audio cifrado; S02–S08 permanecen cubiertas por regresiones locales. No equivale a autorización de publicación.
+Listo para revisión técnica local: preservación de campos/notas, idempotencia durable por atleta, respuesta a replay sin duplicación y migración aditiva 0024; 787 Python/72 JS PASS, 188 fuentes verificadas, original intacto. No se deduplicaron ni repararon datos reales.
 
-Bloqueo inmediato: PUT válido omitiendo campos sobrescribe resultado/adaptaciones/RPE/fuente; una nota WhatsApp desaparece de la vista; replay POST con la misma clave genera dos sesiones. Severidad P1. [Detalle y corrección propuesta](S10_IMPLEMENTATION_REPORT.md).
+Bloqueo inmediato: falta política aprobada para fotos web huérfanas/cuarentena/legacy y dependencia S16. Riesgos de cleanup por contexto vigente y unlink antes del commit requieren ensayos/corrección S11; no se declara daño real. [Propuesta para decisión](S11_RETENTION_POLICY_PROPOSAL.md).
 
-Orden recomendado: revisar/autorizar reanudación S10 → corregir preservación e idempotencia → pruebas/commit limpio → resolver políticas/dependencias S11/S16 antes de borrado → continuar secuencia. No se han ejecutado fases posteriores para eludir la parada.
+Orden: aprobar/ajustar retención y respaldo → preparar pruebas de dependencia S16 en entorno aislado → implementar/validar S11 sin borrado real → continuar secuencia si gates pasan. S12–S18 permanecen sin iniciar, no se eluden dependencias.
 
-## Gates reales abiertos
+## Cinco gates heredados
 
-1. **BLOCKED:** E2E integrado navegador/servidor S05, no ejecutado ni sustituido por mocks.
-2. **PENDIENTE:** control de costos adicionales reales de video.
+1. **BLOCKED:** E2E integrado navegador/servidor S05; no sustituido por API simulada/TestClient.
+2. **PENDIENTE:** reserva/control de costos adicionales reales de video.
 3. **PENDIENTE:** paridad de commit/digest/esquema/configuración/worker con EasyPanel.
-4. **PENDIENTE:** validación de proveedores reales, sin autorización de gasto/envíos.
-5. **PENDIENTE:** backup y restauración del destino; prueba temporal no los acredita.
+4. **PENDIENTE:** validación de proveedores reales; gasto/envíos no autorizados.
+5. **PENDIENTE:** backup y restauración del destino; prueba temporal no los certifica.
 
-No existe excepción aprobada para estos P1. [Consolidado parcial](FINAL_STABILIZATION_REPORT.md). La sección siguiente refleja la auditoría histórica, no el estado de ejecución actual.
+[Consolidado parcial](FINAL_STABILIZATION_REPORT.md). A continuación se conserva la propuesta histórica del 10-10; no representa ejecución actual.
 
 ---
 
