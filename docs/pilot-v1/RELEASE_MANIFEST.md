@@ -1,3 +1,25 @@
+# Estado vigente — cierre final Pilot A
+
+Validación local final del candidato `03cfd4387a75f70fae60ccd2108a83d24dc57f31`: Python **820 PASS, 1 SKIPPED, 0 FAIL** (257,41 s); JavaScript **77 PASS, 0 FAIL/SKIPPED**. La prueba omitida requiere WEEKLY_RELEASE_PUBLIC_BASE_URL real y queda **NOT RUN**, sin afirmar paridad de dominio. PostgreSQL nuevo tmpfs, red interna nueva, sin puertos Docker publicados ni credenciales de proveedores; migraciones desde cero y worker vacío PASS; contenedores propios detenidos. Evidencia: `C:/Users/desarrollo/AppData/Local/Temp/fluxio-s05-integrated-2e4m_dlq/offline-tests.log` y `environment.json`. Tres advertencias de deprecación no bloquean estas pruebas. Workspace original: 153 rutas verificadas sin cambios.
+
+Fecha: 2026-10-11, America/Santiago. Rama: codex/pilot-v1-stabilization. Candidato auditado: `03cfd4387a75f70fae60ccd2108a83d24dc57f31`. **Pilot A NO-GO**. Alcance obligatorio: bitácora + WhatsApp + video certificado + coach titular/suplente, 3–5 atletas, 30 días. Esta entrega no autoriza proveedores, infraestructura persistente ni publicación.
+
+Estados: PASS = evidencia ejecutada y limitada a su entorno; FAIL = defecto/evaluación fallida demostrada; BLOCKED = falta autorización, acceso, responsable o dependencia; NOT RUN = sin ejecución. Resultados históricos no certifican el candidato final ni el destino.
+
+## Identidad vigente
+
+Fuente auditada: 03cfd4387a75f70fae60ccd2108a83d24dc57f31. Rama codex/pilot-v1-stabilization; worktree independiente. Inventario SHA-256: PILOT_A_SOURCE_HASHES.json (141 archivos rastreados de app/migraciones/scripts y construcción). No incluye herramientas QA no rastreadas ni credenciales. Head Alembic: 0024_training_save_requests, padre 0023_consumption_reservations. Migración persistente NOT RUN.
+
+Imagen final/digest/SBOM/scan/API-worker parity: NOT RUN. EasyPanel commit/digest/schema/config: BLOCKED. Metadatos del QA anterior contienen hash antiguo y worker_running=false; no certifican candidato 03cfd43. Cambios posteriores a S17 incluyen token semanal cifrado, script modal same-origin CSP, manifest/iconos y ajustes de resumen; claves de recuperación deberán ser iguales API/worker.
+
+Archivos locales fuera de release: .impeccable/, docs/pilot-v1/WHATSAPP_SANDBOX_LOCAL_CHECKLIST.md, scripts/pilot_whatsapp_gateway.py, scripts/pilot_whatsapp_worker.py, scripts/test_whatsapp_pilot_preflight.py. No se eliminan ni se incorporan.
+
+Consultar [readiness final](PILOT_A_FINAL_READINESS.md), [video](PILOT_A_VIDEO_CERTIFICATION.md), [WhatsApp](PILOT_A_WHATSAPP_VALIDATION.md) y [release](PILOT_A_RELEASE_PLAN.md).
+
+---
+
+## Evidencia histórica conservada — no sustituye estado vigente
+
 # Estado vigente — S17 cierre técnico local PASS, pendiente de revisión
 
 Fecha: 2026-10-11. Base c5d1764 verificada, original intacto. S08–S10 cerradas localmente; S11 parcial; S16 preparación documental completada, validación operativa pendiente. S12/S13/S15/S18 conservan dependencias abiertas; S14 necesita build/identidad/scan local verificables. Se completó **solo S17** con mitigación explícita y recursos desechables existentes: **803 Python / 75 JavaScript PASS**; 57 dirigidas son subconjunto, no sumables; sin FAIL/ERROR/SKIPPED en la suite Python. El commit único se identifica mediante git log del reporte S17; no se repiten cierres anteriores. Auditoría completa, cambios y resultados en [reporte S17](S17_IMPLEMENTATION_REPORT.md).

@@ -1,3 +1,23 @@
+# Estado vigente — cierre final Pilot A
+
+Validación local final del candidato `03cfd4387a75f70fae60ccd2108a83d24dc57f31`: Python **820 PASS, 1 SKIPPED, 0 FAIL** (257,41 s); JavaScript **77 PASS, 0 FAIL/SKIPPED**. La prueba omitida requiere WEEKLY_RELEASE_PUBLIC_BASE_URL real y queda **NOT RUN**, sin afirmar paridad de dominio. PostgreSQL nuevo tmpfs, red interna nueva, sin puertos Docker publicados ni credenciales de proveedores; migraciones desde cero y worker vacío PASS; contenedores propios detenidos. Evidencia: `C:/Users/desarrollo/AppData/Local/Temp/fluxio-s05-integrated-2e4m_dlq/offline-tests.log` y `environment.json`. Tres advertencias de deprecación no bloquean estas pruebas. Workspace original: 153 rutas verificadas sin cambios.
+
+Fecha: 2026-10-11, America/Santiago. Rama: codex/pilot-v1-stabilization. Candidato auditado: `03cfd4387a75f70fae60ccd2108a83d24dc57f31`. **Pilot A NO-GO**. Alcance obligatorio: bitácora + WhatsApp + video certificado + coach titular/suplente, 3–5 atletas, 30 días. Esta entrega no autoriza proveedores, infraestructura persistente ni publicación.
+
+Estados: PASS = evidencia ejecutada y limitada a su entorno; FAIL = defecto/evaluación fallida demostrada; BLOCKED = falta autorización, acceso, responsable o dependencia; NOT RUN = sin ejecución. Resultados históricos no certifican el candidato final ni el destino.
+
+## Validación vigente
+
+Tres niveles separados: simulada/unitaria; navegador/API/PostgreSQL/storage sintéticos locales; pruebas reales de canales y destino autorizadas. No sumar suites superpuestas ni afirmar factura por reservas. Matrices específicas en PILOT_A_WHATSAPP_VALIDATION.md y PILOT_A_VIDEO_CERTIFICATION.md. Suites finales locales concluidas; resultados abajo.
+
+Obligatorios: permisos dos atletas/dos coaches/admin; S02–S10 y 200 registros; consentimiento/replay/revoke/expiración y fotos; recuperación cifrada owner/claves/rotación; modal/foco/CSP; registro foto/audio real; video clips/abstención/costo/reinicio; revisión completa; restore/rollback; alertas; smoke EasyPanel. E2E S05 histórico PASS permanece; revalidación final/destino NOT RUN.
+
+Consultar [readiness final](PILOT_A_FINAL_READINESS.md), [video](PILOT_A_VIDEO_CERTIFICATION.md), [WhatsApp](PILOT_A_WHATSAPP_VALIDATION.md) y [release](PILOT_A_RELEASE_PLAN.md).
+
+---
+
+## Evidencia histórica conservada — no sustituye estado vigente
+
 # Actualización vigente — E2E integrado S05 / Pilot A
 
 Fecha: 2026-10-11. Candidato funcional 8db5544. Validación definitiva integrada S05 **PASS: nueve casos, cero FAIL/SKIPPED; tres guards adicionales PASS** sobre navegador real, FastAPI/HTTP real, PostgreSQL tmpfs y storage tmpfs, con red Docker nueva interna y transporte loopback temporal sin puertos Docker publicados. Nueve casos obligatorios y evidencia reproducible en [adenda S05](S05_IMPLEMENTATION_REPORT.md). No se sustituyen por mocks o TestClient; no se cambió código funcional.

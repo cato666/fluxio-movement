@@ -1,3 +1,36 @@
+# Estado vigente — cierre final Pilot A
+
+Validación local final del candidato `03cfd4387a75f70fae60ccd2108a83d24dc57f31`: Python **820 PASS, 1 SKIPPED, 0 FAIL** (257,41 s); JavaScript **77 PASS, 0 FAIL/SKIPPED**. La prueba omitida requiere WEEKLY_RELEASE_PUBLIC_BASE_URL real y queda **NOT RUN**, sin afirmar paridad de dominio. PostgreSQL nuevo tmpfs, red interna nueva, sin puertos Docker publicados ni credenciales de proveedores; migraciones desde cero y worker vacío PASS; contenedores propios detenidos. Evidencia: `C:/Users/desarrollo/AppData/Local/Temp/fluxio-s05-integrated-2e4m_dlq/offline-tests.log` y `environment.json`. Tres advertencias de deprecación no bloquean estas pruebas. Workspace original: 153 rutas verificadas sin cambios.
+
+Fecha: 2026-10-11, America/Santiago. Rama: codex/pilot-v1-stabilization. Candidato auditado: `03cfd4387a75f70fae60ccd2108a83d24dc57f31`. **Pilot A NO-GO**. Alcance obligatorio: bitácora + WhatsApp + video certificado + coach titular/suplente, 3–5 atletas, 30 días. Esta entrega no autoriza proveedores, infraestructura persistente ni publicación.
+
+Estados: PASS = evidencia ejecutada y limitada a su entorno; FAIL = defecto/evaluación fallida demostrada; BLOCKED = falta autorización, acceso, responsable o dependencia; NOT RUN = sin ejecución. Resultados históricos no certifican el candidato final ni el destino.
+
+## Gates vigentes de Pilot A
+
+- [x] S01–S10 y S17 implementados y validados localmente en cierres históricos.
+- [x] E2E integrado S05 histórico: nueve casos + tres guards PASS; conservar evidencia, sin certificar cambios posteriores/destino.
+- [ ] Seguridad/aislamiento y consentimiento comprobados en artefacto final y destino.
+- [ ] S16: backup R2 y restore DB/storage/claves verificables.
+- [ ] Texto, fotografía y audio web/WhatsApp reales aprobados, presupuesto conciliado.
+- [ ] Video certificado por ejercicio/vista y costos adicionales medidos/controlados.
+- [ ] Coach titular y suplente disponibles y flujo completo certificado.
+- [ ] Alertas efectivamente recibidas, disco/storage y heartbeat verificados.
+- [ ] Imagen final escaneada, API/worker mismo digest/head/config.
+- [ ] Gate CI y aprobación manual antes de POST EasyPanel.
+- [ ] EasyPanel versión/configuración/HTTPS/proxy/volúmenes identificados.
+- [ ] Rollback y restauración ensayados en aislado.
+- [ ] Suites finales del artefacto y smoke destino PASS.
+- [ ] Autorizaciones de publicación y alta de tres atletas.
+
+NO-GO. Una suite local aprobada no cierra gates externos.
+
+Consultar [readiness final](PILOT_A_FINAL_READINESS.md), [video](PILOT_A_VIDEO_CERTIFICATION.md), [WhatsApp](PILOT_A_WHATSAPP_VALIDATION.md) y [release](PILOT_A_RELEASE_PLAN.md).
+
+---
+
+## Evidencia histórica conservada — no sustituye estado vigente
+
 # Actualización vigente — E2E integrado S05 / Pilot A
 
 Fecha: 2026-10-11. Candidato funcional 8db5544. Validación definitiva integrada S05 **PASS: nueve casos, cero FAIL/SKIPPED; tres guards adicionales PASS** sobre navegador real, FastAPI/HTTP real, PostgreSQL tmpfs y storage tmpfs, con red Docker nueva interna y transporte loopback temporal sin puertos Docker publicados. Nueve casos obligatorios y evidencia reproducible en [adenda S05](S05_IMPLEMENTATION_REPORT.md). No se sustituyen por mocks o TestClient; no se cambió código funcional.

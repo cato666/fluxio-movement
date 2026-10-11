@@ -13,14 +13,16 @@
   "destination": {
     "allowed_providers": [
       "s3_compatible",
-      "azure_blob"
+      "azure_blob",
+      "cloudflare_r2"
     ],
-    "selected_provider": null,
+    "selected_provider": "cloudflare_r2",
     "endpoint_https": null,
-    "bucket_or_container": null,
+    "bucket_or_container": "fluxio-movement-backups",
     "prefix": null,
     "independent_of_easypanel_vps": null,
-    "private_access_verified": false
+    "private_access_verified": false,
+    "identification_source": "owner_reported_not_verified"
   },
   "encryption": {
     "at_rest_required": "AES-256",
@@ -51,7 +53,10 @@
       "WHATSAPP_ENCRYPTION_KEYS",
       "WHATSAPP_ENCRYPTION_KEY",
       "WHATSAPP_KEY_VERSION",
-      "PHONE_HASH_KEY"
+      "PHONE_HASH_KEY",
+      "WEEKLY_SHARE_ENCRYPTION_KEYS",
+      "WEEKLY_SHARE_ENCRYPTION_KEY",
+      "WEEKLY_SHARE_KEY_VERSION"
     ],
     "all_required_versions_verified": false,
     "application_configuration_reference": null
@@ -76,7 +81,7 @@
     "automatic_deletion_enabled": false
   },
   "ownership": {
-    "primary_role": "propietario técnico del proyecto",
+    "primary_role": "propietario tÃƒÂ©cnico del proyecto",
     "confirmed_operational_owner": null,
     "restore_approver": null
   },
