@@ -1,3 +1,7 @@
+## Actualización S16 — 2026-10-11
+
+Gastón confirmado como operador. Ensayo R2 sintético **PASS**: AES-256-GCM cliente, upload/download autenticados, DB nueva y cuatro archivos restaurados con hashes/referencias iguales; 3 usuarios, 1 sesión/foto/análisis/review, head 0024. Contenedores propios detenidos. 5,31 s y 92.197 bytes corresponden a muestra pequeña, no RTO operativo. Primer intento falló por expectativa HTTP anónima (400); corrección del harness y repetición aislada documentadas. Privacidad por dominios/r2.dev, configuración de cifrado proveedor, permisos separados, custodia definitiva, restore representativo del producto, scheduler y alertas **pendientes**. S16 sigue parcial y **NO-GO**, sin habilitar limpieza S11. Ver [reporte S16](S16_IMPLEMENTATION_REPORT.md).
+
 # Pilot A — Configuración y procedimiento de respaldo/restauración
 
 Estado: preparación documental, sin ejecución. Política aprobada por el propietario; proveedor, bucket/contenedor y responsable operativo no confirmados. La aprobación de esta política no autoriza infraestructura persistente, respaldo real, migración o despliegue. Plantilla: [BACKUP_CONFIGURATION.example.json](BACKUP_CONFIGURATION.example.json). Ningún componente de la aplicación consume esta plantilla; no es un job instalado ni una validación runtime.

@@ -1,0 +1,39 @@
+{
+  "upload_http": 200,
+  "authenticated_download": "PASS",
+  "anonymous_s3_access_http": 400,
+  "wrong_key_denied": "PASS",
+  "status": "PASS_SYNTHETIC_ONLY",
+  "cipher": "AES-256-GCM",
+  "transport": "HTTPS_TLS_VERIFIED",
+  "object_key": "synthetic-validation/eb25e70ccc31/backup.tar.aes256gcm",
+  "encrypted_bytes": 92197,
+  "encrypted_sha256": "028beb7fba7412ec1e8c27c5e1a71023f772f411ed3e3090475fe231821c863f",
+  "restored_counts": {
+    "users": 3,
+    "sessions": 1,
+    "images": 1,
+    "analyses": 1,
+    "reviews": 1,
+    "head": "0024_training_save_requests"
+  },
+  "storage_files": 4,
+  "integrity": "PASS",
+  "db_storage_references": "PASS",
+  "restore_new_empty_database": "PASS",
+  "measured_total_seconds": 5.31,
+  "snapshot_to_verified_restore_seconds": 3.62,
+  "provider_at_rest_configuration": "NOT_VERIFIED",
+  "custom_domain_and_r2_dev_public_access": "NOT_VERIFIED",
+  "production_backup_restore": "NOT_RUN",
+  "scheduler_alerts": "NOT_RUN",
+  "key_custody": "LOCAL_PRIVATE_SYNTHETIC_KEY_ONLY",
+  "deletion_performed": false,
+  "candidate_commit": "1f250ddc82e7dd9292c656d856c89073493f379d",
+  "containers_stopped": true,
+  "scripts_sha256": {
+    "fluxio-r2-trial-harness.py": "38a11209e4d36cb6ca2992858cd96cd6304dcaeb0e9397f35eccd4632cdd9b00",
+    "fluxio_r2_synthetic_trial.py": "5726cb1f2765ebf279a2fe1a7c92989d6f63c5396e9800d149ff5174c082cf50"
+  },
+  "scope": "synthetic_only_no_production_certification"
+}

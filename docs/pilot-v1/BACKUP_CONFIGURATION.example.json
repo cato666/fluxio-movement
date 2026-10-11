@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "pilot": "Fluxio Movement Pilot A",
-  "status": "configuration_target_only",
+  "status": "synthetic_trial_pass_operational_configuration_pending",
   "execution_enabled": false,
   "scheduler_enabled": false,
   "effective_photo_cleanup_enabled": false,
@@ -22,7 +22,7 @@
     "prefix": null,
     "independent_of_easypanel_vps": null,
     "private_access_verified": false,
-    "identification_source": "owner_reported_not_verified"
+    "identification_source": "owner_reported_authenticated_synthetic_upload_download_verified"
   },
   "encryption": {
     "at_rest_required": "AES-256",
@@ -81,8 +81,8 @@
     "automatic_deletion_enabled": false
   },
   "ownership": {
-    "primary_role": "propietario tÃƒÂ©cnico del proyecto",
-    "confirmed_operational_owner": null,
+    "primary_role": "propietario técnico del proyecto",
+    "confirmed_operational_owner": "Gastón",
     "restore_approver": null
   },
   "alerts": {
@@ -105,6 +105,7 @@
     "alembic_head_expected": "0024_training_save_requests",
     "backup_set_id": null,
     "integrity_manifest_reference": null,
-    "isolated_restore_evidence_reference": null
+    "isolated_restore_evidence_reference": null,
+    "synthetic_trial_evidence_reference": "S16_SYNTHETIC_R2_EVIDENCE.json"
   }
 }
