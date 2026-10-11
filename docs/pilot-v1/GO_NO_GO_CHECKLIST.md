@@ -1,6 +1,6 @@
 # Go / No-Go — Pilot v1.0
 
-Estado al 2026-10-11: **NO-GO**. S01–S06 aprobadas técnicamente (S05 conserva aprobación condicionada); S07 validada localmente y pendiente de revisión; 703 pruebas Python y 69 JavaScript aprobadas. Release y destino aún sin certificar. Cada casilla exige evidencia fechada del candidato/destino y firma del responsable; desconocido equivale a pendiente. No usar resultados 09-10 para marcar candidato futuro PASS.
+Estado al 2026-10-11: **NO-GO**. S01–S07 aprobadas técnicamente (S05 conserva aprobación condicionada); S08 validada localmente y pendiente de revisión; 749 pruebas Python y 69 JavaScript aprobadas. Release y destino aún sin certificar. Cada casilla exige evidencia fechada del candidato/destino y firma del responsable; desconocido equivale a pendiente. No usar resultados 09-10 para marcar candidato futuro PASS.
 
 ## Aprobación del plan
 
@@ -58,12 +58,12 @@ Esta aprobación no autoriza llamadas OpenAI, mensajes Kapso, operaciones destru
 | Campo | Valor actual |
 | --- | --- |
 | Decisión | NO-GO; E2E integrado S05 BLOCKED y gates de release pendientes |
-| Candidato / digest | Rama codex/pilot-v1-stabilization; código S07 cccfb90a258800288ea2cdfd6f5923a01df56d25 / digest no construido |
+| Candidato / digest | Rama codex/pilot-v1-stabilization; código S08 dfe2f870ba6e2aad277de478838cbea78d95fc3d / digest no construido |
 | SQL destino / head candidato | Destino desconocido / candidato 0023_consumption_reservations; migración persistente no autorizada |
 | QA / seguridad / operador / coach / release owner | Por asignar |
 | Evidencia / excepciones P2 | Baseline histórica documentada; sin excepciones aprobadas |
 | Permisos de pruebas reales / deploy / migración / altas | No otorgados en esta etapa |
-| Próximo paso | Revisión final S07 ([reporte](S07_IMPLEMENTATION_REPORT.md)); conservar los tres pendientes heredados; S08 no iniciada, sin deploy ni gasto |
+| Próximo paso | Revisión final S08 ([reporte](S08_IMPLEMENTATION_REPORT.md)); conservar los tres pendientes heredados; S09 no iniciada, sin deploy ni gasto |
 
 Una firma Go debe enlazar resultados actuales y autorización final. Si falta un gate obligatorio, registrar No-Go y tarea concreta; no declarar listo por health ready ni por cobertura histórica.
 
