@@ -5,6 +5,10 @@ import logging
 import time
 from sqlalchemy import or_, select, text
 from sqlalchemy.orm import Session
+from ..security_config import validate_security
+
+validate_security()
+
 from ..database import SessionLocal, engine
 from ..models import TrainingImage, TrainingSession
 from .identity import now
@@ -106,6 +110,7 @@ def cleanup(session):
 
 
 def run_once(provider=None, vault=None):
+    validate_security()
     provider, vault = provider or KapsoWhatsAppProvider(), vault or Vault()
     incoming = process_one(provider, vault)
     with SessionLocal() as session:

@@ -21,7 +21,8 @@ services:
     environment: &app_environment
       APP_ENV: ${APP_ENV:-production}
       SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env}
-      DEMO_PASSWORD: ${DEMO_PASSWORD:-demo1234}
+      ENABLE_DEMO_SEED: ${ENABLE_DEMO_SEED:-false}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:-}
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
       STORAGE_PATH: /data/storage
       MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-250}
@@ -74,7 +75,7 @@ services:
     command:
       - /bin/sh
       - -c
-      - 'if [ "$$WHATSAPP_ENABLED" = "true" ]; then exec python -m app.whatsapp.worker; else exec sleep infinity; fi'
+      - 'python -m app.security_config && if [ "$$WHATSAPP_ENABLED" = "true" ]; then exec python -m app.whatsapp.worker; else exec sleep infinity; fi'
     volumes:
       - app_storage:/data/storage
     depends_on:

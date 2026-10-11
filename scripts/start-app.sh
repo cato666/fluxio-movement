@@ -1,6 +1,9 @@
 #!/bin/sh
 set -eu
 
+# Validate before any database access or migration.
+python -m app.security_config
+
 python - <<'PY'
 import time
 from sqlalchemy import text
@@ -18,5 +21,7 @@ for attempt in range(60):
 PY
 
 alembic upgrade head
-python -m app.seed
-exec uvicorn app.main:app --host 0.0.0.0 --port 8000
+if [ "${ENABLE_DEMO_SEED:-false}" = "true" ]; then
+    python -m app.seed
+fi
+exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-access-log

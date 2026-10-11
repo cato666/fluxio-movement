@@ -22,6 +22,10 @@ from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from .security_config import environment, session_secret
+
+SESSION_SECRET = session_secret()
+
 from .database import SessionLocal, get_session
 from .models import AIObservation, AIObservationDecision, AIReasoningRun, AIReviewMoment, Analysis, Annotation, Athlete, Coach, CoachAnnotation, CoachReview, Repetition, User
 from .seed import DEMO_ATHLETE_ID
@@ -60,7 +64,7 @@ SCHEMA_HEADS = set(ScriptDirectory.from_config(Config(str(ROOT / 'alembic.ini'))
 
 @app.exception_handler(SQLAlchemyError)
 async def persistence_unavailable(request: Request, exc: SQLAlchemyError):
-    logger.error('Persistence unavailable on %s', request.url.path)
+    logger.error('Persistence unavailable; request details suppressed')
     return JSONResponse(status_code=503, content={'detail': 'Persistencia no disponible'})
 app.mount('/static', StaticFiles(directory=str(ROOT / 'app' / 'static')), name='static')
 app.mount('/results', StaticFiles(directory=str(RESULTS)), name='results')
@@ -82,7 +86,7 @@ def _guard_user(request: Request, session: Session) -> User | None:
     if not cookie:
         return None
     try:
-        raw = TimestampSigner(os.environ.get('SESSION_SECRET', 'local-development-change-me')).unsign(cookie, max_age=60 * 60 * 24 * 14)
+        raw = TimestampSigner(SESSION_SECRET).unsign(cookie, max_age=60 * 60 * 24 * 14)
         payload = json.loads(base64.b64decode(raw))
         user_id = payload.get('user_id')
     except (BadSignature, ValueError, TypeError, json.JSONDecodeError):
@@ -204,7 +208,7 @@ async def protect_application_routes(request: Request, call_next):
 
 
 # Added after the route guard so the session is available to it on each request.
-app.add_middleware(SessionMiddleware, secret_key=os.environ.get('SESSION_SECRET', 'local-development-change-me'), https_only=os.environ.get('APP_ENV') == 'production', same_site='lax')
+app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET, https_only=environment() == 'production', same_site='lax')
 
 
 @app.on_event('startup')
@@ -430,7 +434,7 @@ def _run_analysis(
         session.commit()
     except SQLAlchemyError:
         session.rollback()
-        logger.exception('Cannot create analysis')
+        logger.error('Cannot create analysis')
         raise HTTPException(503, 'Persistencia no disponible')
 
     try:
@@ -475,7 +479,7 @@ def _run_analysis(
         return result
     except Exception as exc:
         session.rollback()
-        logger.exception('Analysis %s failed', job)
+        logger.error('Analysis %s failed', job)
         try:
             saved = session.get(Analysis, job)
             saved.status = 'FAILED'
@@ -484,7 +488,7 @@ def _run_analysis(
             session.commit()
         except SQLAlchemyError:
             session.rollback()
-            logger.exception('Cannot persist failure for %s', job)
+            logger.error('Cannot persist failure for %s', job)
         if legacy_response:
             raise HTTPException(500, 'Error de análisis; revisa los registros del servidor')
         if isinstance(exc, UploadTooLarge):
@@ -501,7 +505,7 @@ def _thumbnail(original: Path, target: Path, duration_s: float | None) -> bool:
         '-vf', 'scale=480:-2', '-q:v', '4', str(target),
     ], capture_output=True, text=True)
     if result.returncode or not target.exists() or not target.stat().st_size:
-        logger.warning('Thumbnail failed for %s: %s', original.name, result.stderr[-300:])
+        logger.warning('Thumbnail failed for %s', original.name)
         target.unlink(missing_ok=True)
         return False
     return True
@@ -559,7 +563,7 @@ def _process_analysis(job: str, exercise: str, view: str):
                 session.commit()
         except Exception as exc:
             session.rollback()
-            logger.exception('Async analysis %s failed', job)
+            logger.error('Async analysis %s failed', job)
             row = session.get(Analysis, job)
             if row is not None:
                 row.status, row.stage = 'FAILED', None
@@ -620,7 +624,7 @@ def _generate_review_moments_safely(analysis_id: str, result: dict):
     try:
         _generate_review_moments(analysis_id, result)
     except Exception:
-        logger.warning('Could not generate review moments for analysis %s', analysis_id, exc_info=True)
+        logger.warning('Could not generate review moments for analysis %s', analysis_id)
 
 
 def _generate_review_moments(analysis_id: str, result: dict):
@@ -860,7 +864,7 @@ def reanalyze_analysis(
         session.commit()
     except SQLAlchemyError:
         session.rollback()
-        logger.exception('Cannot create reanalysis for %s', analysis_id)
+        logger.error('Cannot create reanalysis for %s', analysis_id)
         raise HTTPException(503, 'Persistencia no disponible')
     background_tasks.add_task(_process_analysis, row.id, exercise, view)
     session.expire_all()
@@ -932,7 +936,7 @@ def delete_analysis(analysis_id: str, athlete: User = Depends(require_athlete), 
         try:
             target.unlink(missing_ok=True)
         except OSError:
-            logger.exception('Cannot remove file for deleted analysis %s', analysis_id)
+            logger.error('Cannot remove file for deleted analysis %s', analysis_id)
 
 
 @app.get('/api/coaches')
@@ -975,7 +979,7 @@ def request_review(
         raise HTTPException(409, 'Ya existe una solicitud activa para este coach y análisis')
     except SQLAlchemyError:
         session.rollback()
-        logger.exception('Cannot create review request for %s', analysis_id)
+        logger.error('Cannot create review request for %s', analysis_id)
         raise HTTPException(503, 'Persistencia no disponible')
     return _review_fields(review, coach, user)
 
@@ -1076,7 +1080,7 @@ def start_coach_review(
             session.commit()
         except SQLAlchemyError:
             session.rollback()
-            logger.exception('Cannot start review %s', review_id)
+            logger.error('Cannot start review %s', review_id)
             raise HTTPException(503, 'Persistencia no disponible')
         payload['status'] = review.status
     return payload
@@ -1182,7 +1186,7 @@ def create_coach_annotation(
         session.commit()
     except SQLAlchemyError:
         session.rollback()
-        logger.exception('Cannot create annotation for review %s', review_id)
+        logger.error('Cannot create annotation for review %s', review_id)
         raise HTTPException(503, 'Persistencia no disponible')
     return _annotation_fields(annotation)
 
@@ -1215,7 +1219,7 @@ def update_coach_annotation(
         session.commit()
     except SQLAlchemyError:
         session.rollback()
-        logger.exception('Cannot update annotation %s', annotation_id)
+        logger.error('Cannot update annotation %s', annotation_id)
         raise HTTPException(503, 'Persistencia no disponible')
     return _annotation_fields(annotation)
 
@@ -1238,7 +1242,7 @@ def delete_coach_annotation(
         session.commit()
     except SQLAlchemyError:
         session.rollback()
-        logger.exception('Cannot delete annotation %s', annotation_id)
+        logger.error('Cannot delete annotation %s', annotation_id)
         raise HTTPException(503, 'Persistencia no disponible')
 
 
@@ -1296,7 +1300,7 @@ def decide_ai_observation(
         session.commit()
     except SQLAlchemyError:
         session.rollback()
-        logger.exception('Cannot decide AI observation %s', observation_id)
+        logger.error('Cannot decide AI observation %s', observation_id)
         raise HTTPException(503, 'Persistencia no disponible')
     return _ai_observation_fields(observation, decision.decision)
 
@@ -1350,7 +1354,7 @@ def classify_review_repetition(
         session.commit()
     except SQLAlchemyError:
         session.rollback()
-        logger.exception('Cannot classify repetition %s', repetition_id)
+        logger.error('Cannot classify repetition %s', repetition_id)
         raise HTTPException(503, 'Persistencia no disponible')
     return {
         'repetition_id': repetition.id,
@@ -1388,7 +1392,7 @@ def create_manual_repetition(
         session.commit()
     except SQLAlchemyError:
         session.rollback()
-        logger.exception('Cannot add manual repetition to %s', review_id)
+        logger.error('Cannot add manual repetition to %s', review_id)
         raise HTTPException(503, 'Persistencia no disponible')
     return {'id': repetition.id, 'number': repetition.number, 'source': repetition.source,
             'correction_status': repetition.correction_status, 'start_s': repetition.start_s,
@@ -1413,7 +1417,7 @@ def update_coach_review_summary(
         session.commit()
     except SQLAlchemyError:
         session.rollback()
-        logger.exception('Cannot update review summary %s', review_id)
+        logger.error('Cannot update review summary %s', review_id)
         raise HTTPException(503, 'Persistencia no disponible')
     return {
         'strengths': review.strengths, 'main_focus': review.main_focus,
@@ -1443,7 +1447,7 @@ def complete_coach_review(
         session.commit()
     except SQLAlchemyError:
         session.rollback()
-        logger.exception('Cannot complete review %s', review_id)
+        logger.error('Cannot complete review %s', review_id)
         raise HTTPException(503, 'Persistencia no disponible')
     return {'id': review.id, 'status': review.status, 'completed_at': review.completed_at}
 

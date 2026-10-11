@@ -1,5 +1,9 @@
 import os
 
+os.environ.setdefault('APP_ENV', 'development')
+os.environ.setdefault('ENABLE_DEMO_SEED', 'true')
+os.environ.setdefault('DEMO_PASSWORD', 'demo1234')
+
 import pytest
 from alembic import command
 from alembic.config import Config

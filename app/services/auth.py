@@ -6,6 +6,8 @@ import hashlib
 import hmac
 import os
 
+from ..security_config import environment
+
 
 def hash_password(password: str, salt: bytes | None = None) -> str:
     salt = salt or os.urandom(16)
@@ -14,6 +16,9 @@ def hash_password(password: str, salt: bytes | None = None) -> str:
 
 
 def verify_password(password: str, stored: str | None) -> bool:
+    # Reject the legacy demo credential without rewriting any stored hash.
+    if environment() == 'production' and password == 'demo1234':
+        return False
     if not stored:
         return False
     try:
