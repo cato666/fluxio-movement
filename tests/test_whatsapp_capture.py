@@ -530,3 +530,18 @@ def test_long_block_preview_fragments_preserve_details_and_final_actions(client,
     assert all(message['actions'] is None for message in messages[:-1])
     assert [action['title'] for action in messages[-1]['actions']] == ['Guardar', 'Corregir', 'Cancelar']
     assert count(session) == initial
+
+
+@pytest.mark.parametrize('title', ['', 'Borrador de entrenamiento', '  BORRADOR DE ENTRENAMIENTO  ', 'Borrador de programación de pizarra', 'AMRAP 10 minutos'])
+def test_saved_title_is_not_a_generic_draft(client, channel, session, monkeypatch, title):
+    def interpreter(text, image=None):
+        value = draft()
+        value['title'] = title
+        return value
+    monkeypatch.setattr('app.services.training_service.interpret', interpreter)
+    step(client, channel, 'El 2 de octubre de 2026 hice 4 rondas en 12 minutos')
+    expected = 'AMRAP 10 minutos' if title == 'AMRAP 10 minutos' else 'Entrenamiento · 02/10/2026'
+    assert snapshot(state(session), Vault())['draft']['title'] == expected
+    confirm(client, channel, session)
+    saved = session.scalar(select(TrainingSession).order_by(TrainingSession.created_at.desc()))
+    assert saved.title == expected

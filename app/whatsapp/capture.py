@@ -132,7 +132,10 @@ def interpret(session, inbox, message, athlete_id, state, data, vault):
         question = draft['questions'][0] if draft['questions'] else '¿Qué ejercicios, series o rondas hiciste?'
         respond(session, inbox, message, athlete_id, vault, question[:500])
         return
-    proposed = SessionPayload(trained_on=data['date'], title=draft['title'].strip() or 'Entrenamiento',
+    title = draft['title'].strip()
+    if title.casefold() in {'', 'borrador de entrenamiento', 'borrador de programación de pizarra'}:
+        title = 'Entrenamiento · ' + date.fromisoformat(data['date']).strftime('%d/%m/%Y')
+    proposed = SessionPayload(trained_on=data['date'], title=title,
         source_text=source, workout=draft['workout'], result_text=draft['result_text'],
         adaptations=draft['adaptations'], rpe=draft['rpe'], blocks=draft['blocks'], source_image_id=data.get('image_id'))
     data['questions'] = draft['questions']

@@ -526,3 +526,17 @@ for (const total of [199,200,201]) {
     }
   }));
 }
+
+
+test('historical generic draft titles display as a dated training without modifying stored data',()=>harness(async page=>{
+  const item={...draft,id:'historical-title',title:'Borrador de entrenamiento',trained_on:'2026-10-02',video_links:[],source_image_id:null};
+  let writes=0;
+  await page.route('**/api/training-sessions/historical-title',route=>{
+    if(route.request().method()!=='GET') writes++;
+    return route.fulfill({json:item});
+  });
+  await page.evaluate(()=>window.setupTraining('historical-title'));
+  await page.getByRole('heading',{name:'Entrenamiento · 02/10/2026',exact:true}).waitFor();
+  assert.equal(await page.getByText('Borrador de entrenamiento',{exact:true}).count(),0);
+  assert.equal(writes,0);
+}));

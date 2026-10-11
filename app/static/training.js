@@ -24,6 +24,10 @@ window.setupTraining = async function (identifier) {
   function displayName(item) {
     const dated = new Intl.DateTimeFormat('es-CL', {weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(calendarDate(item.trained_on));
     const title = (item.title || '').trim();
+    if (['', 'borrador de entrenamiento', 'borrador de programación de pizarra'].includes(title.toLocaleLowerCase('es-CL'))) {
+      const date = new Intl.DateTimeFormat('es-CL', {day:'2-digit',month:'2-digit',year:'numeric'}).format(calendarDate(item.trained_on)).replaceAll('-', '/');
+      return `Entrenamiento · ${date}`;
+    }
     return [dated,dateLabel(item.trained_on)].some(value => value.toLocaleLowerCase('es-CL') === title.toLocaleLowerCase('es-CL'))
       ? (item.blocks?.map(block => block.title).filter(Boolean).join(' · ') || 'Entrenamiento') : title;
   }
