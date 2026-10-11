@@ -229,3 +229,18 @@ def test_shared_recap_activity_uses_seven_days_and_counts_duplicates():
     assert '5 de octubre de 2026: 0 entrenamientos' in html
     data.update(items=[], session_count=0, active_days=0)
     assert 'data-active="true"' not in recap(data, 'a' * 43)
+
+
+def test_repeated_movements_are_highlights_without_duplicate_last_session():
+    from app.weekly import recap
+    data = {'week_start':'2026-10-05','week_end':'2026-10-11', 'session_count':2,
+            'active_days':2,'average_rpe':8,'rpe_count':2,
+            'items':[{'trained_on':day,'title':'AMRAP','workout':'10 burpees',
+                      'result_text':'7 rondas','adaptations':None,'rpe':8}
+                     for day in ['2026-10-09','2026-10-11']]}
+    html = recap(data, 'a'*43)
+    assert 'Última sesión' not in html
+    assert html.count('Movimientos que se repitieron') == 1
+    assert html.index('Movimientos que se repitieron') < html.index('Tu semana día a día')
+    assert 'Burpee</strong><span>En 2 entrenamientos' in html
+    assert html.count('class="recap-entry"') == 2

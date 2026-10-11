@@ -126,8 +126,13 @@ def recap(data, token):
     if featured:
         parts.append(f'<figure class="recap-feature"><details class="recap-feature-photo"><summary><span class="recap-photo-show">Ver foto de la pizarra</span><span class="recap-photo-hide">Cerrar foto <span aria-hidden="true">×</span></span></summary><img class="weekly-photo" src="/shared/week/{token}/images/{featured["source_image_id"]}" alt="Foto del entrenamiento" loading="lazy"></details><figcaption><span>La sesión más reciente con foto · {readable_date(featured["trained_on"])}</span><strong>{escape(featured["title"])}</strong></figcaption></figure>')
     parts.append('</div>')
+    # Count explicit exercise names already present in the authorized workout;
+    # never infer technique, personal records or performance from them.
+    movements = [('Sentadilla',r'\bsentadillas?\b'),('Thruster',r'\bthrusters?\b'),('Clean',r'\bcleans?\b'),('Remo',r'\bremo\b'),('Burpee',r'\bburpees?\b'),('Pull-up',r'\bpull[ -]?ups?\b'),('Air squat',r'\bair squats?\b'),('Deadlift',r'\bdeadlifts?\b')]
+    frequencies = sorted([(name,sum(bool(re.search(pattern,item['workout'],re.I)) for item in items)) for name,pattern in movements],key=lambda pair:pair[1],reverse=True)
+    repeated = [(name,count) for name,count in frequencies if count > 1][:3]
     if items:
-        highlights = [('Última sesión', items[0]['title'], items[0]['result_text'] or 'Resultado sin registrar')]
+        highlights = []
         efforts = [item for item in items if item['rpe'] is not None]
         if efforts:
             hardest = max(efforts, key=lambda item: item['rpe'])
@@ -138,7 +143,15 @@ def recap(data, token):
         parts.append('<section class="recap-highlights"><h2>Tu semana, en pocas palabras</h2><div class="recap-highlight-grid">')
         for label, title, value in highlights:
             parts.append(f'<article><p class="recap-highlight-label">{label}</p><h3>{escape(title)}</h3><p>{escape(value)}</p></article>')
-        parts.append('</div></section>')
+        parts.append('<article class="recap-repeated-summary"><p class="recap-highlight-label">Movimientos que se repitieron</p>')
+        if repeated:
+            parts.append('<ul>')
+            for name, count in repeated:
+                parts.append(f'<li><strong>{name}</strong><span>En {count} entrenamientos</span></li>')
+            parts.append('</ul>')
+        else:
+            parts.append('<p>No hay movimientos repetidos identificados en los registros de esta semana.</p>')
+        parts.append('</article></div></section>')
     parts.append('<section class="recap-timeline" aria-label="Entrenamientos de la semana"><h2 class="recap-timeline-title">Tu semana día a día</h2>')
     if not items:
         parts.append('<p class="recap-empty">No hay entrenamientos registrados en esta semana.</p>')
@@ -156,16 +169,6 @@ def recap(data, token):
             parts.append(f'<details class="recap-workout"><summary>Ver entrenamiento</summary><p class="weekly-copy">{escape(item["workout"])}</p></details>')
         parts.append('</article>')
     parts.append('</section>')
-    # Count explicit exercise names already present in the authorized workout;
-    # never infer technique, personal records or performance from them.
-    movements = [('Sentadilla',r'\bsentadillas?\b'),('Thruster',r'\bthrusters?\b'),('Clean',r'\bcleans?\b'),('Remo',r'\bremo\b'),('Burpee',r'\bburpees?\b'),('Pull-up',r'\bpull[ -]?ups?\b'),('Air squat',r'\bair squats?\b'),('Deadlift',r'\bdeadlifts?\b')]
-    frequencies = sorted([(name,sum(bool(re.search(pattern,item['workout'],re.I)) for item in items)) for name,pattern in movements],key=lambda pair:pair[1],reverse=True)
-    repeated = [(name,count) for name,count in frequencies if count > 1][:3]
-    if repeated:
-        parts.append('<section class="recap-repeated"><h2>Movimientos que se repitieron</h2><div>')
-        for name,count in repeated:
-            parts.append(f'<article><strong>{name}</strong><span>En {count} entrenamientos</span></article>')
-        parts.append('</div></section>')
     parts.append('<footer class="recap-footer"><strong>Compartido desde Fluxio Movement</strong><p>Esta semana se actualiza al agregar, editar o eliminar entrenamientos. Recarga el enlace para ver los cambios.</p></footer>')
     return ''.join(parts)
 

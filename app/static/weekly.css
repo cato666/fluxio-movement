@@ -181,3 +181,7 @@ body.weekly-public main.weekly-shared{position:relative;max-width:1000px;padding
 .weekly-photo-modal > img { display:block; width:100%; height:auto; max-height:calc(90dvh - 100px); object-fit:contain; }
 .weekly-photo-modal > img[hidden] { display:none; }
 body:has(.weekly-photo-modal[open]) { overflow:hidden; }
+
+.recap-repeated-summary ul { list-style:none; padding:0; margin:8px 0 0; }
+.recap-repeated-summary li { display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px 12px; padding:6px 0; }
+.recap-repeated-summary li span { color:var(--muted); font-size:12px; }
