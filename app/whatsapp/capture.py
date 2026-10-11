@@ -96,6 +96,16 @@ def propose(session, inbox, message, athlete_id, state, data, vault):
     else:
         draft = data['draft']
         text = f"Detecté:\nFecha: {date.fromisoformat(data['date']).strftime('%d/%m/%Y')}\n{draft['title']}\n{draft['workout']}"
+        if draft.get('blocks'):
+            text += '\n\nBloques reconocidos (borrador):'
+            for block in draft['blocks']:
+                text += '\n\n' + block['title']
+                if block.get('prescription'):
+                    text += '\n' + block['prescription']
+                for movement in block.get('movements', []):
+                    text += '\n• ' + movement['name']
+                    if movement.get('prescription'):
+                        text += ': ' + movement['prescription']
         if draft.get('result_text'):
             text += '\nResultado: ' + draft['result_text']
         if draft.get('adaptations'):

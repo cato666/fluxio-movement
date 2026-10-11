@@ -463,3 +463,70 @@ def test_invalid_explicit_date_not_silently_replaced():
     from app.whatsapp.capture import stated_date
     with pytest.raises(TrainingInvalid):
         stated_date('Fue el 31 de febrero', date(2026, 10, 3))
+
+
+def test_photo_preview_shows_structured_blocks_before_save(client, channel, session, monkeypatch):
+    blocks = [
+        {'title': 'Bloque C', 'format': 'amrap',
+         'prescription': 'AMRAP; duración por confirmar.',
+         'movements': [{'name': 'DB hang jerk', 'prescription': '8 repeticiones'},
+                       {'name': 'Box jump', 'prescription': '10; altura por confirmar'}]},
+        {'title': 'Bloque D', 'format': 'amrap',
+         'prescription': 'Esquema 40-36-24-16-8 por confirmar.',
+         'movements': [{'name': 'Wall ball', 'prescription': 'Repeticiones por confirmar'}]},
+    ]
+    def interpreter(text, image=None):
+        assert image is not None
+        value = draft()
+        value.update(workout='Programación parcialmente legible.', blocks=blocks,
+                     result_text=None, questions=['¿Cuál es la duración del bloque C?'])
+        return value
+    monkeypatch.setattr('app.services.training_service.interpret', interpreter)
+    image = BytesIO(); Image.new('RGB', (30, 30), 'white').save(image, 'PNG')
+    channel[0].media = DownloadedMedia(image.getvalue(), 'image/png')
+    initial = count(session)
+    step(client, channel, '', kind='image')
+    rows = list(session.scalars(select(WhatsAppOutbox).order_by(WhatsAppOutbox.dedupe_key)))
+    messages = [Vault().decrypt(row.payload_encrypted, row.key_version) for row in rows]
+    text = ''.join(message['text'] for message in messages)
+    assert 'Bloques reconocidos (borrador)' in text
+    assert text.index('Bloque C') < text.index('Bloque D')
+    assert 'DB hang jerk: 8 repeticiones' in text
+    assert 'Box jump: 10; altura por confirmar' in text
+    assert 'AMRAP; duración por confirmar.' in text
+    assert 'Esquema 40-36-24-16-8 por confirmar.' in text
+    assert '¿Cuál es la duración del bloque C?' in text
+    assert '\nResultado:' not in text
+    assert count(session) == initial
+    assert snapshot(state(session), Vault())['draft']['blocks'] == blocks
+    confirm(client, channel, session)
+    saved = session.scalar(select(TrainingSession).order_by(TrainingSession.created_at.desc()))
+    assert count(session) == initial + 1
+    assert saved.blocks == blocks and saved.source_image_id is not None
+
+
+def test_long_block_preview_fragments_preserve_details_and_final_actions(client, channel, session, monkeypatch):
+    blocks = [{'title': f'Bloque {index}', 'format': 'other',
+               'prescription': ('Detalle por confirmar. ' * 65) + f'FINAL-{index}',
+               'movements': [{'name': f'Movimiento {index}', 'prescription': 'Dosis por confirmar'}]}
+              for index in range(3)]
+    def interpreter(text, image=None):
+        value = draft()
+        value.update(blocks=blocks, questions=['¿Puedes confirmar los detalles?'])
+        return value
+    monkeypatch.setattr('app.services.training_service.interpret', interpreter)
+    initial = count(session)
+    step(client, channel)
+    rows = list(session.scalars(select(WhatsAppOutbox).order_by(WhatsAppOutbox.dedupe_key)))
+    messages = [Vault().decrypt(row.payload_encrypted, row.key_version) for row in rows]
+    assert len(messages) > 1
+    text = ''.join(message['text'] for message in messages)
+    for block in blocks:
+        assert block['prescription'] in text
+        assert block['title'] in text
+    assert '¿Puedes confirmar los detalles?' in text
+    assert text.endswith('¿Quieres guardarlo?')
+    assert all(len(message['text']) <= 1000 for message in messages)
+    assert all(message['actions'] is None for message in messages[:-1])
+    assert [action['title'] for action in messages[-1]['actions']] == ['Guardar', 'Corregir', 'Cancelar']
+    assert count(session) == initial
