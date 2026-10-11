@@ -173,3 +173,11 @@ body.weekly-public main.weekly-shared{position:relative;max-width:1000px;padding
  .recap-activity { margin-top:12px; }
  .recap-feature { padding-bottom:16px; }
 }
+
+.weekly-photo-open { display:block; width:100%; padding:0; border:0; background:transparent; cursor:zoom-in; margin-top:8px; }
+.weekly-photo-modal { width:min(960px,calc(100% - 24px)); max-height:90vh; max-height:90dvh; padding:16px; border:0; border-radius:14px; background:var(--surface); overflow:auto; }
+.weekly-photo-modal::backdrop { background:rgba(8,37,30,.8); }
+.weekly-photo-modal > button { display:block; margin:0 0 12px auto; min-height:44px; }
+.weekly-photo-modal > img { display:block; width:100%; height:auto; max-height:calc(90dvh - 100px); object-fit:contain; }
+.weekly-photo-modal > img[hidden] { display:none; }
+body:has(.weekly-photo-modal[open]) { overflow:hidden; }

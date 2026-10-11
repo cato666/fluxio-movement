@@ -67,7 +67,7 @@ def router(require_athlete):
     def shared(token: str, session: Session = Depends(get_session)):
         from .services.training_errors import TrainingNotFound
         headers = PRIVATE_HEADERS | {'Content-Security-Policy':
-            "default-src 'none'; style-src 'self'; font-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'"}
+            "default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'"}
         try:
             data = read_share(session, token)
         except TrainingNotFound as error:
@@ -171,4 +171,4 @@ def recap(data, token):
 
 
 def page(body):
-    return '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#08251e"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><title>Semana compartida · Fluxio</title><link rel="stylesheet" href="/static/styles.css"><link rel="stylesheet" href="/static/visual-v2.css?v=2"><link rel="stylesheet" href="/static/weekly.css?v=5"></head><body class="weekly-public"><main class="weekly-shared">' + body + '</main></body></html>'
+    return '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#08251e"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><title>Semana compartida · Fluxio</title><link rel="stylesheet" href="/static/styles.css"><link rel="stylesheet" href="/static/visual-v2.css?v=2"><link rel="stylesheet" href="/static/weekly.css?v=5"></head><body class="weekly-public"><main class="weekly-shared">' + body + '</main><script src="/static/weekly-photo.js" defer></script></body></html>'
