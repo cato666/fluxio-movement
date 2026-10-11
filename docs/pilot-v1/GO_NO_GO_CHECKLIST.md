@@ -1,3 +1,17 @@
+# Actualización vigente — E2E integrado S05 / Pilot A
+
+Fecha: 2026-10-11. Candidato funcional 8db5544. Validación definitiva integrada S05 **PASS: nueve casos, cero FAIL/SKIPPED; tres guards adicionales PASS** sobre navegador real, FastAPI/HTTP real, PostgreSQL tmpfs y storage tmpfs, con red Docker nueva interna y transporte loopback temporal sin puertos Docker publicados. Nueve casos obligatorios y evidencia reproducible en [adenda S05](S05_IMPLEMENTATION_REPORT.md). No se sustituyen por mocks o TestClient; no se cambió código funcional.
+
+- [x] E2E integrado local S05: nueve casos PASS; runtime coincide por hash (94 fuentes); entorno propio detenido. Evidencia: results.json/environment.json/guards.json y hashes en C:/Users/desarrollo/AppData/Local/Temp/fluxio-s05-integrated-3hghvp_c/. No certifica destino productivo.
+- [ ] Restauración real de respaldos: PENDIENTE.
+- [ ] Costos adicionales de video: PENDIENTE.
+- [ ] Paridad con EasyPanel: PENDIENTE.
+- [ ] Pruebas reales de canales habilitados: PENDIENTE; sin autorización de proveedores/gasto.
+
+**Pilot NO-GO**. S11 parcial y S16 preparación documental no se cierran por esta prueba. No se inicia otra tarea; detenerse para revisión. Los encabezados siguientes preservan estados históricos y resultados S17, no sustituyen esta decisión vigente.
+
+---
+
 # Estado vigente — S17 cierre técnico local PASS, pendiente de revisión
 
 Fecha: 2026-10-11. Base c5d1764 verificada, original intacto. S08–S10 cerradas localmente; S11 parcial; S16 preparación documental completada, validación operativa pendiente. S12/S13/S15/S18 conservan dependencias abiertas; S14 necesita build/identidad/scan local verificables. Se completó **solo S17** con mitigación explícita y recursos desechables existentes: **803 Python / 75 JavaScript PASS**; 57 dirigidas son subconjunto, no sumables; sin FAIL/ERROR/SKIPPED en la suite Python. El commit único se identifica mediante git log del reporte S17; no se repiten cierres anteriores. Auditoría completa, cambios y resultados en [reporte S17](S17_IMPLEMENTATION_REPORT.md).

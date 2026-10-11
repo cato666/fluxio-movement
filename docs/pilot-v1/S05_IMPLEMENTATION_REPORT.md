@@ -1,3 +1,52 @@
+# Adenda vigente — cierre del E2E integrado S05 (Pilot A)
+
+Fecha: 2026-10-11. Rama codex/pilot-v1-stabilization; candidato funcional base `8db554430687147208c4f63170072dcb7a534d3e`, S17 técnicamente validada. Único objetivo: nueve casos integrados de consentimiento/privacidad. Estado de ejecución definitiva: **PASS — nueve casos obligatorios, cero FAIL/SKIPPED; tres guards adicionales PASS. El bloqueo E2E integrado local S05 queda cerrado con evidencia verificable.** **Sin cambios funcionales** en app, modelos, contratos o migraciones.
+
+## Entorno seguro y reproducción
+
+- Red Docker nueva, Internal=true, sin conexión a redes preexistentes. Segmento RFC1918 /28 previamente comprobado contra IPAM Docker y rutas Windows/WSL; no se expande ni modifica una red existente.
+- PostgreSQL 17.6 de imagen local cacheada, base exclusiva movement_e2e_s05, PGDATA tmpfs y ningún mount/puerto persistente. Migración desde cero a 0024 exclusivamente en esa base temporal. Dos cuentas sintéticas creadas explícitamente; seed demo deshabilitado.
+- Runtime local cacheado de pruebas con root read-only, source bind read-only y `/tmp` tmpfs (DB/files sin volúmenes). 94 archivos app comparados por SHA-256 con el candidato dentro del runtime real; imagen de pruebas no se representa como digest de release productivo S14.
+- Backend FastAPI/uvicorn real; sesión/cookies/Origin existentes, origen loopback explícito de prueba y proxies no confiables. IA/transcripción/WhatsApp deshabilitados, claves de proveedor vacías, worker no arrancado. Navegador Playwright nuevo, perfiles/contextos efímeros y zona America/Santiago, sin datos reales.
+- Sin puertos Docker publicados. Un puente HTTP stdlib temporal en 127.0.0.1 transporta solicitudes/respuestas por Docker stdin/stdout hacia HTTP TCP real 127.0.0.1:8000 del contenedor. Preserva cookies/Origin/cuerpos/headers de seguridad; no fabrica respuestas ni altera rutas. Navegador, servidor, PostgreSQL y archivos participan conjuntamente; no se usa TestClient ni route.fulfill. Única intercepción del navegador: abortar solicitudes externas, continuar toda solicitud de origen local al servidor real.
+- Access logs HTTP deshabilitados y puente sin log de paths; errores del ensayo redactados. Tokens no salen en informes/logs/JSON. Fotos y captura visual exclusivamente sintéticas.
+
+Reproducción: disponer de Docker, las imágenes locales cacheadas postgres:17.6-bookworm y fluxio-whatsapp-tests:phase2, Node/Playwright/Chromium locales; configurar NODE_PATH según instalación local. Desde el worktree de estabilización, ejecutar `python scripts/test_s05_integrated.py --node <ruta-node-local> --subnet <segmento-RFC1918-libre-/24-a-/28>`. El script rechaza otra rama, solapamientos de red/rutas, mounts inesperados, DB persistente, source writable o red ajena. Nunca pull/build/apt/pip/descarga modelo, proveedores, cuentas reales o DB ajenas. El script no permite indicar una base existente. Su evidencia sale a un directorio temporal nuevo fuera del repo.
+
+Los únicos contenedores creados por instancia se detienen al terminar mediante comprobación de label; tmpfs pierde sus datos. No se borran imágenes/contenedores/volúmenes existentes. Nuevos contenedores detenidos y redes internas se conservan para inspección; no guardan datos DB/storage persistentes. El puente y el navegador se cierran; no queda listener publicado.
+
+## Casos obligatorios y evidencia
+
+| Caso | Comprobación integrada | Estado definitivo |
+|---|---|---|
+| 1 Guardar sin publicar | Login web, carga de PNG, normalización, completar/guardar manual vía UI; DB una sesión/una imagen/file, cero shares | PASS |
+| 2 Consentimiento previo | Abrir sin publicar, aviso alcance vivo, checkbox explícito, crear vía UI; recibo DB; HTML/foto anónimos reales y pixels cargados | PASS |
+| 3 Rechazar | Checkbox desmarcado no POST/publicación; POST consent=false rechazado 422; marcar y cancelar mantiene cero shares | PASS |
+| 4 Revocar enlace | Revocación UI; nueva navegación HTML anónima devuelve 404 | PASS |
+| 5 Foto revocada | GET real de imagen mediante token revocado devuelve 404; archivo privado se conserva | PASS |
+| 6 Vencimiento | Segunda publicación consentida; expiry modificado solo en fixture guardada DB temporal; HTML/foto devuelven 404 | PASS |
+| 7 Cuenta desactivada | Tercera publicación consentida; desactivar solo cuenta sintética en DB temporal; HTML/foto 404 y cookie previa sin acceso privado 401 | PASS |
+| 8 Información ajena | Segundo atleta: detalle/foto/revocación ajenos 404; listado/semana propios vacíos; body athlete_id rechazado 422; anónimo privado 401 | PASS |
+| 9 Duplicados | Doble clic UI genera una fila; dos POST simultáneos reales con mismo request_id devuelven replay sin path nuevo y DB sigue una fila | PASS |
+
+Los tres shares finales son intencionales y corresponden a tres consentimientos separados para revocar/vencer/desactivar; no son duplicados. Se verifica conservación de sesión/imagen/archivo y consumo cero PlanInteraction/inbox/outbox. Nueve escenarios de un ensayo integrado, no nueve pruebas añadidas a pytest ni a la suite JS unitaria.
+
+Evidencia definitiva: `C:/Users/desarrollo/AppData/Local/Temp/fluxio-s05-integrated-3hghvp_c/` con environment.json (fuentes/digests de pruebas/aislamiento), results.json (escenarios/contadores), execution.log redactado y journal-private.png. Hashes archivados en harness-checksums.json y evidence-checksums.json. Runtime source matches candidate=true; 94 archivos comprobados; own_containers_stopped=true. No HAR, cookies exportadas o trazas con tokens.
+
+Preparación anterior conservada: vgwoxykd BLOCKED por pools Docker agotados; 5ctkwgpq BLOCKED porque red interna no asigna puerto publicado en Docker Desktop; a9wg_ra_ 8 PASS y 1 FAIL en harness, sin marcar cierre; qar5pwq4 9 PASS tras esperar respuesta de publicación nueva en lugar de reutilizar input previo; 00mc8gva BLOCKED por escape incorrecto del chequeo adicional de hashes, corregido y comandos embebidos parseados antes de ejecución final. No se relajaron controles ni se cambió código funcional para resolver problemas del ensayo.
+
+## Pruebas adicionales, límites y decisión
+
+Sintaxis Python de las tres herramientas y comandos embebidos PASS; Node --check PASS. Guards negativos PASS (sin opt-in, DB persistente y clave de proveedor): rechazo previo a import/conexión DB; guards.json. Fingerprint original PASS: 153 paths y estado/rama/HEAD intactos; diff --check PASS; ningún cambio en app/Compose/migraciones. Escaneo acotado de patrones de credenciales/artefactos locales sin coincidencias; no sustituye S14. Suites generales: SKIPPED en esta tarea porque no cambia código funcional; últimos resultados históricos S17 803 Python/75 JS PASS, no se presentan como reejecución de este E2E. Migraciones persistentes, destino EasyPanel y proveedores reales: NOT RUN.
+
+Este ensayo local no certifica HTTPS/cookie Secure/proxy reales de EasyPanel ni OpenAI/Kapso, video/costos o restore de backups. Cierra el gate integrado local S05 tras nueve resultados finales PASS; no cierra S11/S16 ni otras fases.
+
+Commit único de validación: obtener SHA con `git log -1 --format=%H -- docs/pilot-v1/S05_IMPLEMENTATION_REPORT.md`; se comunica al entregar. **Pilot NO-GO**: restauración real de respaldos, costos adicionales de video, paridad EasyPanel y pruebas reales de canales habilitados siguen pendientes. No se inicia automáticamente la siguiente tarea. Workspace original conservado, sin push/merge/deploy ni gasto.
+
+El reporte siguiente conserva evidencia histórica S05; su bloqueo ambiental anterior no sustituye la decisión de esta adenda vigente.
+
+---
+
 # S05 — Consentimiento explícito para compartir semanas
 
 Fecha: 2026-10-10. Alcance: exclusivamente S05; S06 no iniciada.
