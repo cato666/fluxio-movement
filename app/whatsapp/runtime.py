@@ -16,8 +16,12 @@ def handle(session, inbox, message, vault, provider):
         if row:
             ranks = {'SENT': 1, 'DELIVERED': 2, 'READ': 3}
             state = message.event.upper()
-            if state == 'FAILED' or ranks.get(state, 0) > ranks.get(row.state, 0):
-                row.state = state
+            if state == 'FAILED':
+                # Late contradictory failure must not erase confirmed delivery/read.
+                if row.state not in ('DELIVERED', 'READ'):
+                    row.state, row.error_code = 'FAILED', 'provider_delivery_failed'
+            elif ranks.get(state, 0) > ranks.get(row.state, 0):
+                row.state, row.error_code = state, None
         return
     if message.phone is None:
         inbox.error_code = 'unresolved_identity'

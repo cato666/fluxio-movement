@@ -36,6 +36,7 @@ from .services.review_moments import rank_review_moments
 from .services.auth import hash_password, verify_password
 from .services.login_security import admit as admit_login
 from .web_security import WebSecurityMiddleware
+from .whatsapp.operations import router as whatsapp_operations_router
 from .training import router as training_router
 from .weekly import router as weekly_router
 from .services.training_usage import extend_usage
@@ -139,6 +140,7 @@ def require_admin(request: Request, session: Session = Depends(get_session)):
     return user
 
 app.include_router(admin_router(require_admin, authenticated))
+app.include_router(whatsapp_operations_router(require_admin))
 
 
 @app.middleware('http')

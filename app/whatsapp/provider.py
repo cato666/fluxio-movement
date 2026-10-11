@@ -31,10 +31,12 @@ class DownloadedMedia:
 
 
 class ProviderError(ChannelError):
-    def __init__(self, code, *, safe_retry=False, uncertain=False):
+    def __init__(self, code, *, safe_retry=False, uncertain=False, not_sent=False, retry_after=0):
         super().__init__(code)
         self.safe_retry = safe_retry
         self.uncertain = uncertain
+        self.not_sent = not_sent
+        self.retry_after = retry_after
 
 
 class WhatsAppProvider(Protocol):

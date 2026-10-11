@@ -14,8 +14,8 @@ from .security import normalize_phone
 
 
 class NoRedirect(HTTPRedirectHandler):
-    def redirect_request(self, *args, **kwargs):
-        raise ProviderError('provider_redirect_rejected')
+    def redirect_request(self, request, *args, **kwargs):
+        raise ProviderError('provider_redirect_rejected', uncertain=request.data is not None)
 
 
 class KapsoWhatsAppProvider:
@@ -96,9 +96,9 @@ class KapsoWhatsAppProvider:
     def _read(self, url, *, body=None, authenticated=True, limit=1024 * 1024):
         parsed = urlsplit(url)
         if parsed.scheme != 'https' or parsed.hostname != 'api.kapso.ai' or parsed.port not in (None, 443) or parsed.username:
-            raise ProviderError('provider_url_rejected')
+            raise ProviderError('provider_url_rejected', not_sent=True)
         if authenticated and not self.key:
-            raise ProviderError('provider_not_configured')
+            raise ProviderError('provider_not_configured', not_sent=True)
         headers = {'Content-Type': 'application/json'}
         if authenticated:
             headers['X-API-Key'] = self.key
@@ -111,21 +111,32 @@ class KapsoWhatsAppProvider:
         except ProviderError:
             raise
         except HTTPError as error:
-            raise ProviderError('provider_http_error', safe_retry=error.code == 429,
-                                uncertain=body is not None and error.code >= 500) from None
+            # Never read/log the provider error body; status is sufficient.
+            if error.code == 402:
+                raise ProviderError('insufficient_credits', not_sent=True) from None
+            if error.code == 429:
+                delay = 0
+                try:
+                    delay = max(0, min(86400, int((error.headers or {}).get('Retry-After', '0'))))
+                except (ValueError, TypeError):
+                    pass
+                raise ProviderError('rate_limited', safe_retry=True, not_sent=True, retry_after=delay) from None
+            raise ProviderError('provider_http_error', uncertain=body is not None and (error.code >= 500 or error.code in (408, 409)),
+                                not_sent=error.code < 500 and error.code not in (408, 409)) from None
         except URLError as error:
-            raise ProviderError('provider_transport_error', safe_retry=isinstance(error.reason, socket.gaierror),
-                                uncertain=body is not None and not isinstance(error.reason, socket.gaierror)) from None
+            raise ProviderError('provider_transport_error', safe_retry=isinstance(error.reason, (socket.gaierror, ConnectionRefusedError)),
+                                not_sent=isinstance(error.reason, (socket.gaierror, ConnectionRefusedError)),
+                                uncertain=body is not None and not isinstance(error.reason, (socket.gaierror, ConnectionRefusedError))) from None
         except Exception:
             raise ProviderError('provider_transport_error', uncertain=body is not None) from None
 
     def send(self, phone, text, actions=None):
         if not self.number_id:
-            raise ProviderError('provider_not_configured')
+            raise ProviderError('provider_not_configured', not_sent=True)
         payload = {'messaging_product': 'whatsapp', 'recipient_type': 'individual', 'to': normalize_phone(phone)[1:]}
         if actions:
             if len(actions) > 3:
-                raise ProviderError('invalid_outbound_actions')
+                raise ProviderError('invalid_outbound_actions', not_sent=True)
             payload.update(type='interactive', interactive={'type': 'button', 'body': {'text': text},
                 'action': {'buttons': [{'type': 'reply', 'reply': {'id': a['id'], 'title': a['title']}} for a in actions]}})
         else:
@@ -143,7 +154,7 @@ class KapsoWhatsAppProvider:
         if not re.fullmatch(r'[A-Za-z0-9_.-]{1,160}', reference):
             raise ProviderError('invalid_media_reference')
         if not self.number_id:
-            raise ProviderError('provider_not_configured')
+            raise ProviderError('provider_not_configured', not_sent=True)
         raw, _ = self._read(f'{self.base}/{quote(reference, safe="")}?phone_number_id={quote(self.number_id, safe="")}')
         try:
             info = json.loads(raw)
