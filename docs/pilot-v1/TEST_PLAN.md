@@ -1,3 +1,29 @@
+# Resultados vigentes y pruebas pendientes
+
+Estado vigente al 2026-10-11: **NO-GO**. S09 código `1d739a86e73d9d1cc5e0c89d80eb809c699f03be` y entrega `f7a70067fc812d4c1248f2c2ccf5eccd6fee777e` aprobados por pruebas locales; **S10 FAIL/BLOCKED** por tres defectos P1 reproducidos. S11–S18 no iniciadas. Esta adenda prevalece para el estado actual; el contenido anterior se conserva como propuesta/evidencia histórica, sin alterar el alcance aprobado.
+
+| Ejecución | PASS | FAIL | ERROR | SKIPPED | Límite de la evidencia |
+|---|---:|---:|---:|---:|---|
+| S09 Python completa final | 769 | 0 | 0 | 0 | PostgreSQL temporal, proveedores simulados, XML 233,52 s |
+| S09/S08 dirigidas finales | 66 | 0 | 0 | 0 | Subconjunto de la completa; no sumar |
+| JavaScript completa S09 | 69 | 0 | 0 | 0 | API simulada; fuentes JS sin cambios posteriores |
+| S10 reproducciones nuevas | 0 | 3 | 0 | 0 | Fuera de la suite anterior; fallos funcionales verificables; XML 1,37 s |
+| S11–S18 propias | — | — | — | — | NOT RUN; no contar como aprobadas/omitidas por el runner |
+
+S10 pendientes: promoción de reproducciones al candidato tras corrección; valores explícitos null/[], campos omitidos/foto/blocks/video_links, rollback/restart, concurrencia real, replay tras borrado, notas y ownership, doble confirmación WhatsApp/botón vencido y legacy. Suites completas obligatorias antes de cierre.
+
+Evidencia local: C:/Users/desarrollo/AppData/Local/Temp/fluxio-s09-validation-20261011/ y fluxio-s10-validation-20261011/. Fuente probada coincide en 186 hashes; los tres probes S10 se ejecutaron solo en el runner y se conservaron fuera del producto. No se añadieron casos fallidos al candidato ni se ocultaron como SKIPPED.
+
+1. **BLOCKED:** E2E integrado navegador/servidor S05, no ejecutado ni sustituido por mocks.
+2. **PENDIENTE:** control de costos adicionales reales de video.
+3. **PENDIENTE:** paridad de commit/digest/esquema/configuración/worker con EasyPanel.
+4. **PENDIENTE:** validación de proveedores reales, sin autorización de gasto/envíos.
+5. **PENDIENTE:** backup y restauración del destino; prueba temporal no los acredita.
+
+Histórico original a continuación; no atribuir sus E2E a este candidato.
+
+---
+
 # Plan de validación del piloto
 
 Estado: propuesto, no ejecutado el 10-10. QA owner registra fecha, commit/digest, revisión SQL, ambiente, fixture, expected/actual, capturas redactadas y PASS/FAIL/BLOCKED. Un caso sin evidencia permanece BLOCKED; no cuenta como PASS. Resultados históricos en RELEASE_READINESS son baseline, no certificación del candidato.

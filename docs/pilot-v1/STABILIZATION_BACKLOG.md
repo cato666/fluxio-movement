@@ -1,3 +1,28 @@
+# Seguimiento vigente de estabilización
+
+Estado vigente al 2026-10-11: **NO-GO**. S09 código `1d739a86e73d9d1cc5e0c89d80eb809c699f03be` y entrega `f7a70067fc812d4c1248f2c2ccf5eccd6fee777e` aprobados por pruebas locales; **S10 FAIL/BLOCKED** por tres defectos P1 reproducidos. S11–S18 no iniciadas. Esta adenda prevalece para el estado actual; el contenido anterior se conserva como propuesta/evidencia histórica, sin alterar el alcance aprobado.
+
+| Fase | Estado / evidencia |
+|---|---|
+| S01–S08 | Cierres locales históricos documentados; S08 verificada antes de S09; aceptación no equivale a GO |
+| S09 | Implementada; 769 Python / 69 JS PASS; commits 1d739a8 / f7a7006 |
+| S10 | 3 reproducciones FAIL, dos defectos de edición/nota y uno de idempotencia; P1; parada expresa |
+| S11–S18 | NOT STARTED; informes de estado, sin implementación ni pruebas propias |
+
+S10-D01/D02/D03 requieren corregir asignación de campos omitidos, consistencia visible de notas e idempotencia durable web. La descripción histórica S10/P2 se eleva a **P1** por pérdida/duplicación reproducida según la regla original del backlog. No se ha alterado su alcance para incorporar módulos nuevos.
+
+Pendientes de aprobación futuros: retención S11 y backups/RPO/RTO S16, responsable/canal S13, clips/coach/capacidad S18. No decidirlos por defecto.
+
+1. **BLOCKED:** E2E integrado navegador/servidor S05, no ejecutado ni sustituido por mocks.
+2. **PENDIENTE:** control de costos adicionales reales de video.
+3. **PENDIENTE:** paridad de commit/digest/esquema/configuración/worker con EasyPanel.
+4. **PENDIENTE:** validación de proveedores reales, sin autorización de gasto/envíos.
+5. **PENDIENTE:** backup y restauración del destino; prueba temporal no los acredita.
+
+La tabla siguiente conserva las descripciones y dependencias originales, no declara las tareas todavía sin iniciar.
+
+---
+
 # Backlog de estabilización
 
 Propuesta; ninguna tarea implementada. P1 bloquea release; P2 exige cierre o mitigación firmada con prueba. Esfuerzo relativo S=un cambio acotado, M=varios puntos y regresión, L=contrato/concurrencia/operación; no estimación de días. QA verifica aceptación y release owner registra evidencia por commit/digest. Dependencias por ID; el orden ejecutivo está en RELEASE_READINESS.

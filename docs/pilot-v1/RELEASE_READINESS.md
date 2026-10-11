@@ -1,3 +1,25 @@
+# Preparación vigente — parada por integridad S10
+
+Estado vigente al 2026-10-11: **NO-GO**. S09 código `1d739a86e73d9d1cc5e0c89d80eb809c699f03be` y entrega `f7a70067fc812d4c1248f2c2ccf5eccd6fee777e` aprobados por pruebas locales; **S10 FAIL/BLOCKED** por tres defectos P1 reproducidos. S11–S18 no iniciadas. Esta adenda prevalece para el estado actual; el contenido anterior se conserva como propuesta/evidencia histórica, sin alterar el alcance aprobado.
+
+Listo para revisión técnica local: S09 preflight, liberación probada/idempotente y reutilización de audio cifrado; S02–S08 permanecen cubiertas por regresiones locales. No equivale a autorización de publicación.
+
+Bloqueo inmediato: PUT válido omitiendo campos sobrescribe resultado/adaptaciones/RPE/fuente; una nota WhatsApp desaparece de la vista; replay POST con la misma clave genera dos sesiones. Severidad P1. [Detalle y corrección propuesta](S10_IMPLEMENTATION_REPORT.md).
+
+Orden recomendado: revisar/autorizar reanudación S10 → corregir preservación e idempotencia → pruebas/commit limpio → resolver políticas/dependencias S11/S16 antes de borrado → continuar secuencia. No se han ejecutado fases posteriores para eludir la parada.
+
+## Gates reales abiertos
+
+1. **BLOCKED:** E2E integrado navegador/servidor S05, no ejecutado ni sustituido por mocks.
+2. **PENDIENTE:** control de costos adicionales reales de video.
+3. **PENDIENTE:** paridad de commit/digest/esquema/configuración/worker con EasyPanel.
+4. **PENDIENTE:** validación de proveedores reales, sin autorización de gasto/envíos.
+5. **PENDIENTE:** backup y restauración del destino; prueba temporal no los acredita.
+
+No existe excepción aprobada para estos P1. [Consolidado parcial](FINAL_STABILIZATION_REPORT.md). La sección siguiente refleja la auditoría histórica, no el estado de ejecución actual.
+
+---
+
 # Preparación de release y resumen ejecutivo
 
 Fecha: 2026-10-10, America/Santiago. **NO-GO: plan completo sujeto a revisión; ninguna capacidad certificada hoy para publicación.**

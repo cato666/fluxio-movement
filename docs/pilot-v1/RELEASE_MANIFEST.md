@@ -1,3 +1,50 @@
+# Manifiesto actual — cierre parcial S09 / parada S10
+
+Estado vigente al 2026-10-11: **NO-GO**. S09 código `1d739a86e73d9d1cc5e0c89d80eb809c699f03be` y entrega `f7a70067fc812d4c1248f2c2ccf5eccd6fee777e` aprobados por pruebas locales; **S10 FAIL/BLOCKED** por tres defectos P1 reproducidos. S11–S18 no iniciadas. Esta adenda prevalece para el estado actual; el contenido anterior se conserva como propuesta/evidencia histórica, sin alterar el alcance aprobado.
+
+| Campo | Evidencia actual |
+|---|---|
+| Rama / worktree | codex/pilot-v1-stabilization / C:/Users/desarrollo/.codex/worktrees/pilot-v1-stabilization/fluxio-movement-mvp |
+| Último código funcional | 1d739a86e73d9d1cc5e0c89d80eb809c699f03be; no código S10 aplicado |
+| Commit de entrega S09 | f7a70067fc812d4c1248f2c2ccf5eccd6fee777e |
+| Documentación de parada | Resolver git log -1 -- docs/pilot-v1/FINAL_STABILIZATION_REPORT.md; no implica implementación S10 |
+| Alembic candidato | 0023_consumption_reservations, head único; sin migración S09/S10 |
+| Imagen / digest final API y worker | PENDIENTE S14; imagen de test fluxio-whatsapp-tests:phase2 no es imagen certificada del release |
+| Fuente ejecutada | 186 SHA-256 idénticos candidato/runner; evidencia fuente y XML temporal registrada en reporte S09 |
+| Dependencias / modelo | Sin cambios S09; identidad/scan/digest finales pendientes S14/S18 |
+| Pruebas S09 | 769 Python PASS; 66 dirigidas incluidas; 69 JavaScript PASS |
+| Nuevas reproducciones S10 | 3 FAIL; no forman parte de la ejecución anterior 769 PASS |
+| Locales / secretos | Scan de archivos seleccionados sin hallazgos; original 153 huellas intactas |
+| Infraestructura / gasto | Sin push/merge/deploy, puertos/redes adicionales, DB persistente ni OpenAI/Kapso reales |
+
+## Checksums de cambios funcionales S09
+
+| Archivo | SHA-256 |
+|---|---|
+| app/main.py | 699c1d037cd9b2c5965d9f4de57cd5279e0a208790faac4425f31397a1269d22 |
+| app/services/consumption_limits.py | 137b4bc4f6d1689e6df7e67383b43f895bb9b574ef2b2185f5b1d109a4ed16bc |
+| app/services/training_service.py | bba591bea7881db45f04ed4eb1dbdeac74e00db3b2c0157843b60fd5b9c10581 |
+| app/services/training_transcription.py | 0863263da0db54932d5c47d4bea1c149c801a9b18239a8feca48ecc71f6f0f40 |
+| app/services/workout_interpretation.py | f7addf6390a10863d9066d182d9022871c09a5c95f6ffd2f4a462d8c1d65bc8f |
+| app/whatsapp/capture.py | f066c975a91c730350391128cb1ba10820077a5d9cd3ed94b3120168ecf8fef4 |
+| app/whatsapp/kapso.py | 4e2fe924378293f0738617f6a46b633ca6e3b6043022f6a488464b55d48d04c5 |
+| app/whatsapp/media.py | 402e7987e102520c0edfbd1b1f5c5df78b8470500ce55a33eef4318c9325d4bc |
+| app/whatsapp/queue.py | be1e986bb22a88bf0ab94323cc4e5390367c9fdfbf07a5c51b1a944f7ed9c479 |
+| tests/test_consumption_limits.py | 29f8add25179acd36a980a1e7d02bf7d0f8938ff1662a06842e3736f233c5d8c |
+| tests/test_consumption_preflight.py | 7a86a093624619c70e6df0e36557c04b3141781d0abd3af7501d990cfd497344 |
+
+## Gates heredados
+
+1. **BLOCKED:** E2E integrado navegador/servidor S05, no ejecutado ni sustituido por mocks.
+2. **PENDIENTE:** control de costos adicionales reales de video.
+3. **PENDIENTE:** paridad de commit/digest/esquema/configuración/worker con EasyPanel.
+4. **PENDIENTE:** validación de proveedores reales, sin autorización de gasto/envíos.
+5. **PENDIENTE:** backup y restauración del destino; prueba temporal no los acredita.
+
+---
+
+## Manifiesto S01 histórico (sin reemplazar evidencia)
+
 # Manifiesto de candidato S01
 
 Fecha: 2026-10-10, America/Santiago.

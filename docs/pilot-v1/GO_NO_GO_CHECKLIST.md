@@ -1,3 +1,28 @@
+# Decisión vigente — NO-GO por S10 y gates heredados
+
+Estado vigente al 2026-10-11: **NO-GO**. S09 código `1d739a86e73d9d1cc5e0c89d80eb809c699f03be` y entrega `f7a70067fc812d4c1248f2c2ccf5eccd6fee777e` aprobados por pruebas locales; **S10 FAIL/BLOCKED** por tres defectos P1 reproducidos. S11–S18 no iniciadas. Esta adenda prevalece para el estado actual; el contenido anterior se conserva como propuesta/evidencia histórica, sin alterar el alcance aprobado.
+
+- [x] S08 verificada antes de S09; rama/worktree independiente correctos.
+- [x] S09 implementada, suites ejecutables aprobadas, commit de entrega limpio.
+- [ ] **P1 S10-D01:** conservar campos omitidos al editar; reproducción FAIL.
+- [ ] **P1 S10-D02:** conservar consistencia visible de notas; reproducción FAIL.
+- [ ] **P1 S10-D03:** guardar una vez ante replay; reproducción FAIL.
+- [ ] Cierre S10 con regresiones/commit limpio antes de continuar.
+- [ ] S11–S18 implementadas y validadas; actualmente NOT STARTED.
+- [ ] E2E integrado navegador/servidor S05: **BLOCKED**.
+- [ ] Control real de costos adicionales de video: **PENDIENTE**.
+- [ ] Paridad EasyPanel: **PENDIENTE**.
+- [ ] Validación de proveedores reales: **PENDIENTE**, sin autorización de consumo.
+- [ ] Backup/restore del destino: **PENDIENTE**.
+- [ ] Políticas de retención/backup y objetivos RPO/RTO aprobados.
+- [ ] Alertas entregadas a responsable verificable; clips/coach/capacidad certificados.
+
+Candidato funcional actual: `1d739a86e73d9d1cc5e0c89d80eb809c699f03be`. Los 769 PASS previos no convierten las tres reproducciones nuevas en PASS. Esta parada documental no autoriza publicar ni sustituye revisión de S10. [Consolidado parcial](FINAL_STABILIZATION_REPORT.md).
+
+Checklist histórico a continuación: los casilleros pendientes se mantienen abiertos.
+
+---
+
 # Go / No-Go — Pilot v1.0
 
 Estado al 2026-10-11: **NO-GO**. S01–S07 aprobadas técnicamente (S05 conserva aprobación condicionada); S08 validada localmente y pendiente de revisión; 749 pruebas Python y 69 JavaScript aprobadas. Release y destino aún sin certificar. Cada casilla exige evidencia fechada del candidato/destino y firma del responsable; desconocido equivale a pendiente. No usar resultados 09-10 para marcar candidato futuro PASS.
