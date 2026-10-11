@@ -213,9 +213,9 @@ window.setupTraining = async function (identifier) {
         text.append(make('small',createdAt ? 'Creado '+new Intl.DateTimeFormat('es-CL',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'America/Santiago'}).format(new Date(createdAt))+' · Santiago' : 'Fecha de creación no disponible'));
         if(item.consent_required)text.append(make('small','Sin evidencia de consentimiento. Crea un enlace nuevo después de confirmar.'));
         row.append(icon('M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2'),text);
-        const actions=make('div','','weekly-link-actions'); const url=localLinks.get(item.id);
-        if(url){const copy=compactButton('Copiar enlace','M9 9h12v12H9ZM15 9V3H3v12h6');copy.onclick=()=>copyLink(url,copy);actions.append(copy);}
-        else text.append(make('small','URL original no disponible en este dispositivo.'));
+        const actions=make('div','','weekly-link-actions'); const url=item.consent_required ? null : (item.path?.startsWith('/shared/week/') ? new URL(item.path,location.origin).href : localLinks.get(item.id));
+        if(url){const open=link('Ver enlace',url);open.target='_blank';open.rel='noopener noreferrer';actions.append(open);const copy=compactButton('Copiar enlace','M9 9h12v12H9ZM15 9V3H3v12h6');copy.onclick=()=>copyLink(url,copy);actions.append(copy);}
+        else text.append(make('small','Este enlace no se puede recuperar. Revócalo y crea uno nuevo con consentimiento.'));
         const remove=compactButton('Revocar enlace','M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6');remove.onclick=async()=>{
           if(busy)return;lock(true);sheetStatus.textContent='Revocando enlace…';
           try{await api('/api/training-week/shares/'+encodeURIComponent(item.id),{method:'DELETE'});activeShares=activeShares.filter(row=>row.id!==item.id);localLinks.delete(item.id);output.replaceChildren();renderShares();sheetStatus.textContent='Enlace revocado. Ya no permite acceder.';}

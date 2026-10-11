@@ -540,3 +540,24 @@ test('historical generic draft titles display as a dated training without modify
   assert.equal(await page.getByText('Borrador de entrenamiento',{exact:true}).count(),0);
   assert.equal(writes,0);
 }));
+
+
+test('owner can open and copy a recovered link after remount without publishing again',()=>harness(async page=>{
+  const share={id:'recovered',path:'/shared/week/'+'a'.repeat(43),expires_at:'2099-10-11T12:00:00Z'};
+  let writes=0;
+  await page.route('**/api/training-sessions',r=>r.fulfill({json:{items:[]}}));
+  await page.route(/\/api\/training-week(?:\?|$)/,r=>r.fulfill({json:{week_start:'2026-10-05',week_end:'2026-10-11',session_count:0,active_days:0,average_rpe:null,items:[]}}));
+  await page.route('**/api/training-week/shares?*',r=>r.fulfill({json:{items:[share]}}));
+  await page.route('**/api/training-week/shares',r=>{writes++;return r.fulfill({json:{}})});
+  await page.evaluate(()=>{Object.defineProperty(navigator,'clipboard',{value:{writeText:async()=>{throw Error('denied')}}});});
+  await page.evaluate(()=>window.setupTraining());
+  await page.locator('.weekly-share-trigger').click();
+  const sheet=page.getByRole('dialog',{name:'Compartir esta semana'});
+  assert.equal(await sheet.getByRole('link',{name:'Ver enlace',exact:true}).getAttribute('href'),'http://localhost:18767'+share.path);
+  await sheet.getByRole('button',{name:'Copiar enlace',exact:true}).click();
+  assert.equal(await page.getByRole('textbox',{name:'Enlace para compartir',exact:true}).inputValue(),'http://localhost:18767'+share.path);
+  await page.keyboard.press('Escape');
+  await page.evaluate(()=>window.setupTraining());await page.locator('.weekly-share-trigger').click();
+  assert.equal(await sheet.getByRole('button',{name:'Copiar enlace',exact:true}).count(),1);
+  assert.equal(writes,0);
+}));

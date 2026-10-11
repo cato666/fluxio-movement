@@ -1,14 +1,16 @@
 """Calendar summaries and revocable live weeks shared across web and WhatsApp."""
+import json
 import hashlib
 import os
 import re
 import secrets
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
+from cryptography.fernet import Fernet
 from uuid import UUID
 from sqlalchemy import select, update
 from ..models import TrainingSession, WeeklyShare, User
-from .training_errors import TrainingNotFound, TrainingInvalid
+from .training_errors import TrainingNotFound, TrainingInvalid, TrainingUnavailable
 
 
 CONSENT_VERSION = 'weekly-live-v1'
@@ -41,6 +43,42 @@ def week_start(day=None):
 
 def token_hash(token):
     return hashlib.sha256(token.encode()).hexdigest()
+
+
+def link_keys():
+    try:
+        keys = json.loads(os.getenv('WEEKLY_SHARE_ENCRYPTION_KEYS', '{}'))
+        version = os.getenv('WEEKLY_SHARE_KEY_VERSION', '1')
+        if os.getenv('WEEKLY_SHARE_ENCRYPTION_KEY'):
+            keys[version] = os.environ['WEEKLY_SHARE_ENCRYPTION_KEY']
+        return version, {name: Fernet(value.encode()) for name, value in keys.items()}
+    except Exception:
+        raise TrainingUnavailable('Cifrado de enlaces no disponible') from None
+
+
+def protected_link(token, athlete_id):
+    version, keys = link_keys()
+    if version not in keys:
+        raise TrainingUnavailable('Cifrado de enlaces no disponible')
+    payload = json.dumps({'token': token, 'athlete_id': str(athlete_id)}).encode()
+    return {'version': version, 'ciphertext': keys[version].encrypt(payload).decode()}
+
+
+def recovered_path(row):
+    if row.revoked_at is not None or row.expires_at <= now() or not consent_verified(row):
+        return None
+    try:
+        protected = row.snapshot['protected_link']
+        _, keys = link_keys()
+        payload = json.loads(keys[protected['version']].decrypt(protected['ciphertext'].encode()))
+        token = payload['token']
+        if payload['athlete_id'] != str(row.athlete_id) or not re.fullmatch(r'[A-Za-z0-9_-]{43}', token):
+            return None
+        if not secrets.compare_digest(token_hash(token), row.token_hash):
+            return None
+        return '/shared/week/' + token
+    except Exception:
+        return None
 
 
 class WeeklySummaryService:
@@ -94,7 +132,7 @@ class WeeklySummaryService:
         if existing:
             if existing.week_start != start:
                 raise TrainingInvalid('El consentimiento corresponde a otra semana')
-            # The raw token is never persisted/recovered. A replay creates nothing and
+            # A replay creates nothing and
             # never revives an expired/revoked grant, even if the first response was lost.
             self.persist()
             return {'id': str(existing.id), 'path': None, 'expires_at': existing.expires_at.isoformat(),
@@ -108,7 +146,7 @@ class WeeklySummaryService:
         token = secrets.token_urlsafe(32)
         accepted_at = now()
         row = WeeklyShare(athlete_id=self.athlete_id, token_hash=token_hash(token),
-            week_start=start, snapshot={'consent': {'version': CONSENT_VERSION,
+            week_start=start, snapshot={'protected_link': protected_link(token, self.athlete_id), 'consent': {'version': CONSENT_VERSION,
                 'accepted': True, 'channel': channel, 'request_id': request_id, 'accepted_at': accepted_at.isoformat(),
                 **({'event_id': event_id} if channel == 'whatsapp' else {})}},
             expires_at=accepted_at + timedelta(hours=ttl))
@@ -118,9 +156,10 @@ class WeeklySummaryService:
             'expires_at': row.expires_at.isoformat()}
 
     def list_shares(self, day=None):
-        return [{'id': str(row.id), 'expires_at': row.expires_at.isoformat(), 'consent_required': not consent_verified(row)}
-            for row in self.session.scalars(select(WeeklyShare).where(
-                WeeklyShare.athlete_id == self.athlete_id, WeeklyShare.week_start == week_start(day),
+        return [{'id': str(row.id), 'expires_at': row.expires_at.isoformat(), 'consent_required': not consent_verified(row), 'path': recovered_path(row),
+            'created_at': row.created_at.isoformat()}
+            for row in self.session.scalars(select(WeeklyShare).join(User, User.id == WeeklyShare.athlete_id).where(
+                User.is_active.is_(True), User.role == 'ATHLETE', WeeklyShare.athlete_id == self.athlete_id, WeeklyShare.week_start == week_start(day),
                 WeeklyShare.revoked_at.is_(None), WeeklyShare.expires_at > now()))]
 
     def revoke(self, identifier):

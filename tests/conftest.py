@@ -27,6 +27,10 @@ def migrated_database():
 
 @pytest.fixture(autouse=True)
 def clean_database(migrated_database, monkeypatch):
+    from cryptography.fernet import Fernet
+    monkeypatch.setenv('WEEKLY_SHARE_ENCRYPTION_KEY', Fernet.generate_key().decode())
+    monkeypatch.setenv('WEEKLY_SHARE_KEY_VERSION', '1')
+    monkeypatch.delenv('WEEKLY_SHARE_ENCRYPTION_KEYS', raising=False)
     monkeypatch.setenv('LOGIN_ACCOUNT_LIMIT', '1000')
     monkeypatch.setenv('LOGIN_PEER_LIMIT', '1000')
     from app.services.consumption_limits import DEFAULTS

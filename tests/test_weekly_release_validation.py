@@ -137,7 +137,7 @@ def test_public_content_and_security_matrix(athlete_client, session, monkeypatch
         assert image.headers['x-content-type-options'] == 'nosniff'
         Image.open(BytesIO(image.content)).verify()
         assert photo in page.text
-        assert set(row.snapshot) == {'consent'}
+        assert set(row.snapshot) == {'consent', 'protected_link'}
         assert row.snapshot['consent']['version'] == 'weekly-live-v1'
         assert 'AUTHORIZED_WORKOUT' not in json.dumps(row.snapshot)
     else:

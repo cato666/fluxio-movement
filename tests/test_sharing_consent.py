@@ -60,7 +60,7 @@ def test_acceptance_receipt_is_minimal_and_replays_do_not_publish(athlete_client
     assert repeated['id'] == link['id'] and repeated['path'] is None and repeated['already_created']
     assert shares(session) == 1
     row = session.get(WeeklyShare, UUID(link['id']))
-    assert set(row.snapshot) == {'consent'}
+    assert set(row.snapshot) == {'consent', 'protected_link'}
     assert row.snapshot['consent'] == {'version': 'weekly-live-v1', 'accepted': True,
         'channel': 'web', 'request_id': data['request_id'], 'accepted_at': row.snapshot['consent']['accepted_at']}
     assert datetime.fromisoformat(row.snapshot['consent']['accepted_at']).tzinfo is not None
@@ -240,3 +240,56 @@ def test_invalid_expiry_configuration_never_publishes(athlete_client, session, m
     monkeypatch.setenv('WEEKLY_SHARE_TOKEN_TTL_HOURS', ttl)
     assert athlete_client.post('/api/training-week/shares', json=consent_payload()).status_code == 422
     assert shares(session) == 0
+
+
+def test_owner_recovers_encrypted_link_after_new_request(athlete_client, session, caplog):
+    result = athlete_client.post('/api/training-week/shares', json=consent_payload('2026-10-02')).json()
+    row = session.get(WeeklyShare, UUID(result['id']))
+    assert result['path'].split('/')[-1] not in str(row.snapshot)
+    response = athlete_client.get('/api/training-week/shares?day=2026-10-02')
+    assert response.json()['items'][0]['path'] == result['path']
+    assert response.headers['cache-control'] == 'no-store'
+    assert result['path'].split('/')[-1] not in caplog.text
+    assert WeeklySummaryService(session, uuid4()).list_shares(date(2026, 10, 2)) == []
+    athlete_client.delete('/api/training-week/shares/' + result['id'])
+    assert athlete_client.get('/api/training-week/shares?day=2026-10-02').json()['items'] == []
+
+
+@pytest.mark.parametrize('failure', ['missing', 'invalid', 'tampered', 'expired', 'inactive', 'historical'])
+def test_link_recovery_fails_closed(athlete_client, session, monkeypatch, failure):
+    result = athlete_client.post('/api/training-week/shares', json=consent_payload('2026-10-02')).json()
+    row = session.get(WeeklyShare, UUID(result['id']))
+    if failure == 'missing': monkeypatch.delenv('WEEKLY_SHARE_ENCRYPTION_KEY')
+    elif failure == 'invalid': monkeypatch.setenv('WEEKLY_SHARE_ENCRYPTION_KEY', 'invalid')
+    elif failure == 'tampered': row.snapshot = row.snapshot | {'protected_link': {'version': '1', 'ciphertext': 'invalid'}}
+    elif failure == 'expired': row.expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+    elif failure == 'inactive': session.get(User, DEMO_ATHLETE_ID).is_active = False
+    elif failure == 'historical': row.snapshot = {'consent': row.snapshot['consent']}
+    session.commit()
+    items = WeeklySummaryService(session, DEMO_ATHLETE_ID).list_shares(date(2026, 10, 2))
+    assert not items or items[0]['path'] is None
+
+
+def test_missing_link_key_prevents_new_publication(athlete_client, session, monkeypatch):
+    monkeypatch.delenv('WEEKLY_SHARE_ENCRYPTION_KEY')
+    response = athlete_client.post('/api/training-week/shares', json=consent_payload())
+    assert response.status_code == 503
+    assert shares(session) == 0
+
+
+def test_link_key_rotation_preserves_old_links_and_binds_owner(athlete_client, session, monkeypatch):
+    import json, os
+    from cryptography.fernet import Fernet
+    from app.services.weekly_summary import recovered_path
+    old_key = os.environ['WEEKLY_SHARE_ENCRYPTION_KEY']
+    result = athlete_client.post('/api/training-week/shares', json=consent_payload('2026-10-02')).json()
+    row = session.get(WeeklyShare, UUID(result['id']))
+    monkeypatch.delenv('WEEKLY_SHARE_ENCRYPTION_KEY')
+    monkeypatch.setenv('WEEKLY_SHARE_KEY_VERSION', '2')
+    monkeypatch.setenv('WEEKLY_SHARE_ENCRYPTION_KEYS', json.dumps({'1': old_key, '2': Fernet.generate_key().decode()}))
+    assert recovered_path(row) == result['path']
+    another = athlete_client.post('/api/training-week/shares', json=consent_payload('2026-10-02')).json()
+    assert session.get(WeeklyShare, UUID(another['id'])).snapshot['protected_link']['version'] == '2'
+    row.athlete_id = uuid4()
+    assert recovered_path(row) is None
+    session.rollback()
