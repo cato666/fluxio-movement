@@ -1,3 +1,20 @@
+# Procedimiento vigente — autorización manual antes del push
+
+Fecha: 2026-10-11. Decisión explícita de Gastón: mantener .github/workflows/deploy.yml existente, sin modificar S15 ni agregar gates automáticos en esta etapa. **Ausencia de gates CI: riesgo aceptado temporalmente**, con control manual. S15 NO se considera completamente implementada. Esta aceptación no autoriza pruebas fallidas/bloqueadas, publicación o push por sí sola.
+
+1. Codex prepara un commit candidato concreto y selección exacta de cambios, excluyendo secretos, herramientas locales y artefactos privados.
+2. Antes de cada push ejecuta las pruebas obligatorias sobre ese commit y registra PASS/FAIL/SKIPPED/BLOCKED, entorno/evidencia, SHA completo y cambios incluidos. No sustituir evidencia del candidato por suites de otro SHA. Para commit exclusivamente documental, justificar pruebas funcionales no aplicables y realizar controles documentales; aceptación de excepciones corresponde a Gastón. Si se modifica el candidato después de validar, identificar nuevo SHA y revalidar lo afectado antes de solicitar push.
+3. Informar resultados, riesgos y omisiones. Una prueba obligatoria FAIL/BLOCKED impide push salvo aceptación **expresa y específica** de Gastón. SKIPPED obligatorio no equivale a PASS y requiere revisión/aceptación. Aceptación temporal del riesgo CI no cubre estas excepciones.
+4. Solicitar aprobación del push indicando repo/ref/SHA y efecto. Si ref es main, advertir que el workflow existente dispara deploy automático a EasyPanel. Gastón revisa y autoriza explícitamente. No inferir permiso de merge o de otros refs; no push/merge sin confirmación.
+5. Tras autorización, GitHub Actions conserva el despliegue automático existente cuando corresponda. Codex no invoca directamente el webhook; Gastón administra EasyPanel y entrega evidencia de versión/API-worker, migraciones, configuración y smoke. Autorización de push no reemplaza permisos específicos de backup, migración, datos reales o gasto.
+6. Registrar run/github.sha y commit/digests publicados; confirmar API y worker mismo SHA aprobado. Gastón aplica variables y opera backup previo y rollback con autorizaciones correspondientes. Mantener backup/restore operativo, privacidad, canales, video/costos, coaches y resto de gates obligatorios; NO-GO mientras falten.
+
+Ya no exigir implementar un pipeline nuevo ni un gate automático como condición de esta etapa. Las exigencias históricas que contradicen esta decisión quedan sustituidas por este procedimiento manual. S15 permanece pendiente/parcial con riesgo aceptado, no PASS de implementación. Sin push, merge, cambios YAML ni deploy ahora. Continuar S16 localmente: custodia KeePassXC, alertas Resend y evidencias aportadas por Gastón.
+
+---
+
+## Histórico — prevalece la decisión manual vigente
+
 # Manifiesto de release — GitHub Actions / administrador EasyPanel
 
 Modelo vigente 2026-10-11: GitHub origen del release; GitHub Actions dispara el deploy autorizado; Gastón administra EasyPanel; Codex prepara candidato y evidencia, sin SSH ni webhook directo.
