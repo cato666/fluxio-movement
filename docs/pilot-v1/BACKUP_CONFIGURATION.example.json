@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "pilot": "Fluxio Movement Pilot A",
+  "status": "configuration_target_only",
+  "execution_enabled": false,
+  "scheduler_enabled": false,
+  "effective_photo_cleanup_enabled": false,
+  "approval": {
+    "policy_approved": true,
+    "infrastructure_approved": false,
+    "restore_accepted": false
+  },
+  "destination": {
+    "allowed_providers": [
+      "s3_compatible",
+      "azure_blob"
+    ],
+    "selected_provider": null,
+    "endpoint_https": null,
+    "bucket_or_container": null,
+    "prefix": null,
+    "independent_of_easypanel_vps": null,
+    "private_access_verified": false
+  },
+  "encryption": {
+    "at_rest_required": "AES-256",
+    "transport_required": "TLS",
+    "provider_enforcement_verified": false,
+    "backup_key_reference": null
+  },
+  "sources": {
+    "postgres_database_reference": null,
+    "postgres_major": 17,
+    "dump_format": "custom",
+    "storage_root_reference": "STORAGE_PATH",
+    "required_storage_subdirectories": [
+      "training-images",
+      "original",
+      "annotated",
+      "analysis"
+    ],
+    "additional_persistent_paths_verified": false,
+    "exclude_only_verified_temporary_paths": [
+      "temp"
+    ],
+    "coherence_strategy": "approved_maintenance_window_with_all_writers_quiesced"
+  },
+  "recovery_secrets": {
+    "separate_access_controlled_store_reference": null,
+    "required_key_names": [
+      "WHATSAPP_ENCRYPTION_KEYS",
+      "WHATSAPP_ENCRYPTION_KEY",
+      "WHATSAPP_KEY_VERSION",
+      "PHONE_HASH_KEY"
+    ],
+    "all_required_versions_verified": false,
+    "application_configuration_reference": null
+  },
+  "credentials": {
+    "backup_writer_secret_reference": null,
+    "restore_reader_secret_reference": null,
+    "retention_operator_secret_reference": null,
+    "least_privilege_verified": false
+  },
+  "schedule": {
+    "daily": true,
+    "before_each_deployment": true,
+    "daily_time": null,
+    "timezone": null
+  },
+  "retention": {
+    "daily_generations": 7,
+    "pre_release_keep_through_pilot": true,
+    "pilot_start": null,
+    "pilot_end": null,
+    "automatic_deletion_enabled": false
+  },
+  "ownership": {
+    "primary_role": "propietario técnico del proyecto",
+    "confirmed_operational_owner": null,
+    "restore_approver": null
+  },
+  "alerts": {
+    "on_failure": true,
+    "on_stale": true,
+    "stale_after_hours_proposed": 24,
+    "confirmed_channel_reference": null,
+    "delivery_verified": false
+  },
+  "recovery_targets": {
+    "rpo_hours": 24,
+    "rto_hours": 4,
+    "measured_rpo_hours": null,
+    "measured_rto_hours": null
+  },
+  "acceptance": {
+    "candidate_commit": null,
+    "api_image_digest": null,
+    "worker_image_digest": null,
+    "alembic_head_expected": "0024_training_save_requests",
+    "backup_set_id": null,
+    "integrity_manifest_reference": null,
+    "isolated_restore_evidence_reference": null
+  }
+}

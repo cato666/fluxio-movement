@@ -1,3 +1,11 @@
+# Actualización Pilot A — política de respaldo aprobada, ejecución deshabilitada
+
+El propietario aprueba objetivo privado S3 compatible/Azure Blob independiente del VPS, AES-256/TLS, PostgreSQL+archivos privados, frecuencia diaria/predeploy, siete copias diarias y copia pre-release durante piloto, rol propietario técnico, restore aislado y credenciales mínimas/alertas. **Proveedor, bucket/contenedor y responsable operativo formal no confirmados.** Preparados [configuración inerte](BACKUP_CONFIGURATION.example.json), [procedimiento](BACKUP_RESTORE_RUNBOOK.md) y [reporte S16](S16_IMPLEMENTATION_REPORT.md). Sin job instalado, respaldo, restore, migración, deploy ni infraestructura persistente.
+
+S16 preparación documental, cierre BLOCKED; S11 parcial, limpieza efectiva BLOCKED. El inventario/guard S11 sigue siendo código vigente. S12–S15/S17–S18 no iniciadas; S14/digest pendiente. Retención y objetivos están aprobados, no medidos. Pilot **NO-GO**: E2E S05, costos extra video, paridad EasyPanel, proveedores reales y backup/restore destino permanecen pendientes. La evidencia histórica siguiente no sustituye este estado vigente.
+
+---
+
 # Runbook de despliegue Pilot v1.0
 
 **Procedimiento propuesto, no ejecutado ni autorizado.** No desplegar, migrar bases persistentes, crear cuentas ni enviar mensajes por aprobar solamente este plan. Release owner solicita aprobación sobre commit/digest, backup, cambios SQL, destino, ventana y gasto concretos cuando estén listos.
