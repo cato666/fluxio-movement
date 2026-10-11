@@ -1,6 +1,6 @@
 {
-  "status": "resend_preferred_private_addresses_domain_and_adapter_pending",
-  "transport": "resend_https_api_proposed_not_implemented",
+  "status": "adapter_offline_tested_private_configuration_and_real_send_pending",
+  "transport": "resend_https_api_prepared_not_activated",
   "recipient": null,
   "sender": null,
   "smtp_host": "smtp.resend.com",
@@ -29,8 +29,10 @@
     "RESEND_API_KEY",
     "BACKUP_ALERT_FROM",
     "BACKUP_ALERT_TO",
-    "BACKUP_ALERTS_ENABLED"
+    "BACKUP_ALERTS_ENABLED",
+    "BACKUP_ALERT_DOMAIN_VERIFIED"
   ],
   "alternative_transport": "SMTP TLS using API key as password; integration not implemented",
-  "idempotency_policy": "persist stable event/request ID; same event and payload reuse key; uncertain send no blind resend; provider retention window must be respected"
+  "idempotency_policy": "persist stable event/request ID; same event and payload reuse key; uncertain send no blind resend; provider retention window must be respected",
+  "adapter_reference": "scripts/pilot_resend_alerts.py"
 }

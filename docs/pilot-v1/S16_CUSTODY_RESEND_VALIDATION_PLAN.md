@@ -1,3 +1,21 @@
+# S16 — adaptador Resend preparado, validación offline
+
+Fecha: 2026-10-11. Política de release vigente: control manual de tests/resultados/SHA y aprobación explícita antes de push; riesgo de ausencia de gates CI aceptado temporalmente, S15 no completada. Workflow sin cambios.
+
+Implementación acotada: scripts/pilot_resend_alerts.py, scripts/test_pilot_resend_alerts.py y plantilla de correo. No modifica app ni autenticación, backup collector, CI, infraestructura o claves. El módulo no envía al importar ni tiene CLI de envío. Requiere autorización explícita en llamada, BACKUP_ALERTS_ENABLED=true, BACKUP_ALERT_DOMAIN_VERIFIED=true, RESEND_API_KEY y FROM/TO privados. Ningún envío real autorizado/ejecutado.
+
+Validación offline: **16 PASS, 0 FAIL/SKIPPED**, transportes falsos siempre. Casos: autorización/flags/config, dominio, aceptación distinta de recepción, duplicados, payload distinto con misma ID, timeout/5xx/429 sin retry, crash incierto, contenido/headers rechazados, privacidad de recibos y redirects bloqueados. Estados ACCEPTED/REJECTED/UNCERTAIN; receipt_confirmed siempre false hasta evidencia real separada del operador. Intento durable previo al proveedor, ID y payload estables; replay no vuelve a enviar aun con resultado ambiguo. No redirecciones de Authorization a otros destinos. Excepciones/respuestas privadas no se imprimen ni persisten; recibos sin direcciones ni API key. Estado local debe protegerse y persistir entre reinicios; no borrar ledger para recuperar un envío sin decisión individual.
+
+El adaptador standalone todavía no está conectado al job de servidor; debe completar callback de entrega y política de deduplicación/recordatorios antes de activar. No convierte ACK API en correo recibido. No se habilitó scheduler, Resend o DNS. Antes de un eventual push se deben ejecutar las pruebas obligatorias sobre el SHA definitivo y presentar resultados/omisiones para aprobación; estos tests dirigidos no sustituyen ese gate manual.
+
+**S16 BLOCKED / Pilot A NO-GO:** pendiente configuración privada Resend (remitente/destinatario/dominio/API key) y autorización individual para correo real, recuperación desde KeePassXC/dispositivo externo y secreto runtime, evidencia EasyPanel por Gastón, collector/capacidad y backup/restore representativo autorizado. No pedir SSH a Codex ni modificar S15. No se repiten ensayos sintéticos previos.
+
+Commit: consultar git log -1 -- scripts/pilot_resend_alerts.py. Detenerse para revisión del incremento antes de continuar o subir código.
+
+---
+
+## Histórico
+
 # Actualización de responsabilidades — 2026-10-11
 
 Gastón administra EasyPanel; Codex no necesita acceso SSH ni sesión del panel. GitHub es origen de la versión publicada y GitHub Actions dispara deploy **solo bajo autorización expresa**. Codex prepara código/pruebas/manifiesto y sube exclusivamente refs aprobadas. Gastón aplica variables, obtiene inventario y evidencia redactada API/worker/DB/volúmenes/proxy, realiza backups/restore/rollback autorizados y confirma SHA/digests. Falta de acceso directo de Codex no es bloqueo; falta de evidencia verificable sí.
