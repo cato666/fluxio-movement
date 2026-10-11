@@ -185,3 +185,10 @@ body:has(.weekly-photo-modal[open]) { overflow:hidden; }
 .recap-repeated-summary ul { list-style:none; padding:0; margin:8px 0 0; }
 .recap-repeated-summary li { display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px 12px; padding:6px 0; }
 .recap-repeated-summary li span { color:var(--muted); font-size:12px; }
+
+/* Weekly highlights share one compact card. */
+.recap-highlight-grid { display:block; background:var(--surface); border-radius:12px; overflow:hidden; }
+.recap-highlight-grid > article { background:transparent; border:0; border-radius:0; margin:0; padding:16px; }
+.recap-highlight-grid > article + article { border-top:1px solid var(--border); }
+.recap-highlight-grid .recap-repeated-summary ul { margin-top:4px; }
+.recap-highlight-grid .recap-repeated-summary li { padding:4px 0; }
