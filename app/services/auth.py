@@ -17,13 +17,13 @@ def hash_password(password: str, salt: bytes | None = None) -> str:
 
 def verify_password(password: str, stored: str | None) -> bool:
     # Reject the legacy demo credential without rewriting any stored hash.
-    if environment() == 'production' and password == 'demo1234':
-        return False
-    if not stored:
-        return False
     try:
-        _, salt, digest = stored.split('$', 2)
+        algorithm, salt, digest = (stored or '').split('$', 2)
+        if algorithm != 'scrypt':
+            raise ValueError
         candidate = hash_password(password, base64.b64decode(salt))
     except (ValueError, TypeError):
+        hash_password(password, bytes(16))
         return False
-    return hmac.compare_digest(candidate, stored)
+    matched = hmac.compare_digest(candidate, stored)
+    return matched and not (environment() == 'production' and password == 'demo1234')

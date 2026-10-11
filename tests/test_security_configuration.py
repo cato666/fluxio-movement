@@ -23,6 +23,8 @@ from app.whatsapp.security import Vault
 
 def production(monkeypatch, whatsapp=False):
     monkeypatch.delenv('POSTGRES_PASSWORD', raising=False)
+    monkeypatch.setenv('WEB_ALLOWED_ORIGINS', 'https://pilot.invalid')
+    monkeypatch.setenv('FORWARDED_ALLOW_IPS', '')
     monkeypatch.setenv('APP_ENV', 'production')
     monkeypatch.setenv('ENABLE_DEMO_SEED', 'false')
     monkeypatch.delenv('DEMO_PASSWORD', raising=False)
@@ -238,6 +240,8 @@ def test_sql_parameters_are_hidden_and_app_logs_suppress_exception_body(client, 
 
 def test_production_rejects_legacy_demo_login_but_preserves_changed_account(client, session, monkeypatch):
     production(monkeypatch)
+    client.base_url = 'https://pilot.invalid'
+    client.headers['Origin'] = 'https://pilot.invalid'
     assert client.post('/api/auth/login', json={'username': 'gaston', 'password': 'demo1234'}).status_code == 401
     user = session.get(User, DEMO_ATHLETE_ID)
     password = secrets.token_urlsafe(40)

@@ -34,6 +34,8 @@ from .services.ai_reasoning import run_reasoning
 from .services.exercise_validation import validate_video_exercise
 from .services.review_moments import rank_review_moments
 from .services.auth import hash_password, verify_password
+from .services.login_security import admit as admit_login
+from .web_security import WebSecurityMiddleware
 from .training import router as training_router
 from .weekly import router as weekly_router
 from .services.training_usage import extend_usage
@@ -209,6 +211,7 @@ async def protect_application_routes(request: Request, call_next):
 
 # Added after the route guard so the session is available to it on each request.
 app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET, https_only=environment() == 'production', same_site='lax')
+app.add_middleware(WebSecurityMiddleware)
 
 
 @app.on_event('startup')
@@ -252,6 +255,10 @@ def home():
     return HTMLResponse(document, headers={'Cache-Control': 'no-store'})
 
 
+# Same scrypt work for absent/inactive accounts; synthetic value never grants access.
+LOGIN_DUMMY_HASH = hash_password(os.urandom(32).hex())
+
+
 class LoginPayload(BaseModel):
     username: str
     password: str
@@ -260,11 +267,14 @@ class LoginPayload(BaseModel):
 @app.post('/api/auth/login')
 def login(payload: LoginPayload, request: Request, session: Session = Depends(get_session)):
     username = payload.username.strip().casefold()
+    admit_login('account', username)
     user = session.scalar(select(User).where((User.demo_key == username) | (func.lower(User.name) == username)))
-    if user is None or not user.is_active or not verify_password(payload.password, user.password_hash):
+    verified = verify_password(payload.password, user.password_hash if user and user.is_active and user.password_hash else LOGIN_DUMMY_HASH)
+    if user is None or not user.is_active or not verified:
         raise HTTPException(401, 'Credenciales inválidas')
     user.last_login_at = datetime.now(timezone.utc)
     session.commit()
+    request.session.clear()
     request.session['user_id'] = str(user.id)
     next_path = '/training' if user.role == 'ATHLETE' else '/coach/reviews' if user.role == 'COACH' else '/admin'
     return {'id': user.id, 'name': user.name, 'role': user.role, 'is_internal': user.is_internal, 'next': next_path}

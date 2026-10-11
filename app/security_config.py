@@ -70,9 +70,12 @@ def decoded_key(name, value):
 def validate_security():
     env = environment()
     demo_seed_enabled()
+    if env == 'production':
+        session_secret()
+    from .web_security import validate_web_security
+    validate_web_security()
     if env != 'production':
         return
-    session_secret()
     if os.getenv('DEMO_PASSWORD', ''):
         reject('DEMO_PASSWORD')
     try:
@@ -124,6 +127,8 @@ def validate_security():
 
 
 if __name__ == '__main__':
+    # Use one module identity for preflight exceptions imported by validators.
+    from app.security_config import validate_security, SecurityConfigurationError
     try:
         validate_security()
     except SecurityConfigurationError as exc:

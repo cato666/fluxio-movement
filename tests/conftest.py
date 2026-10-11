@@ -27,6 +27,8 @@ def migrated_database():
 
 @pytest.fixture(autouse=True)
 def clean_database(migrated_database, monkeypatch):
+    monkeypatch.setenv('LOGIN_ACCOUNT_LIMIT', '1000')
+    monkeypatch.setenv('LOGIN_PEER_LIMIT', '1000')
     from app.services.consumption_limits import DEFAULTS
     for name, value in DEFAULTS.items():
         monkeypatch.setenv('USAGE_' + name, str(value))
