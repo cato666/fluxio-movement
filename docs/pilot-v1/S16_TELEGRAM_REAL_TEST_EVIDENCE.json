@@ -1,0 +1,11 @@
+{
+  "status": "PASS_SINGLE_REAL_TEST",
+  "request_id": "ceeee8393ce3409691ccc424d5492543",
+  "http_status": 200,
+  "provider_message_id": 5,
+  "receipt_confirmed": true,
+  "confirmation_source": "explicit_user_confirmation",
+  "confirmed_at": "2026-10-11T23:42:56.242280+00:00",
+  "automatic_retries": false,
+  "periodic_alerts_enabled": false
+}

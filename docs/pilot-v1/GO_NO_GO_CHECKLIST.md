@@ -1,3 +1,13 @@
+# S16 — prueba real Telegram recibida
+
+Fecha: 2026-10-11, America/Santiago. **PASS del canal en una prueba manual:** un sendMessage autorizado aceptado HTTP 200 y recepción confirmada expresamente por el responsable. Evidencia redactada en S16_TELEGRAM_REAL_TEST_EVIDENCE.json, sin token, Chat ID, teléfono ni contenido privado. Ningún segundo envío ni retry. Esta confirmación no autoriza mensajes futuros.
+
+**S16 sigue BLOCKED; Pilot A NO-GO.** Pendientes: recuperación real KeePassXC y copia externa, secreto runtime, backup/restore representativo EasyPanel, collector coherente/capacidad y activación autorizada de alertas/health watchdog. No se probaron aún alertas automáticas de backup/restore/worker ni fallos reales del monitor; no confundir recepción de prueba con operación continua validada. Scheduler y configuración de envíos permanecen deshabilitados; no push/deploy/CI ni escrituras al workspace original. Solo evidencia local y documentación actualizadas.
+
+---
+
+## Histórico — reemplazado únicamente el pendiente de recepción del mensaje manual
+
 # S16 — Telegram reemplaza Resend
 
 2026-10-11. Adaptador saliente Telegram preparado con reutilización de recibos/validación, timeout, rate limit persistente y callback seguro para backup. **31 tests simulados PASS + 16 regresiones PASS**. Sin Telegram real ni webhooks. Resend desactivado como canal; intento previo Resend HTTP 403 conservado como histórico, no repetir.

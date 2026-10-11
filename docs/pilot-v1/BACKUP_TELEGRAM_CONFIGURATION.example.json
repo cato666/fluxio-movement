@@ -1,10 +1,10 @@
 {
-  "status": "offline_tested_disabled_real_receipt_pending",
+  "status": "single_real_test_received_periodic_operation_pending",
   "provider": "telegram",
   "outbound_method": "sendMessage",
   "webhooks_enabled": false,
   "send_authorized": false,
-  "receipt_verified": false,
+  "receipt_verified": true,
   "token_secret_reference": null,
   "chat_secret_reference": null,
   "state_directory_private_reference": null,
@@ -18,5 +18,6 @@
   },
   "adapter": "scripts/pilot_telegram_alerts.py",
   "automatic_retries": false,
-  "rate_limited_notifications": "failed notification must remain recorded; watchdog requires approved recovery/escalation"
+  "rate_limited_notifications": "failed notification must remain recorded; watchdog requires approved recovery/escalation",
+  "real_test_evidence_reference": "S16_TELEGRAM_REAL_TEST_EVIDENCE.json"
 }

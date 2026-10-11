@@ -105,9 +105,11 @@
     "on_stale": true,
     "stale_after_hours_proposed": 24,
     "confirmed_channel_reference": null,
-    "delivery_verified": false,
+    "delivery_verified": true,
     "preferred_provider": "Telegram",
-    "configuration_reference": "BACKUP_TELEGRAM_CONFIGURATION.example.json"
+    "configuration_reference": "BACKUP_TELEGRAM_CONFIGURATION.example.json",
+    "verification_scope": "one_manual_test_received_by_responsible_not_automated_monitoring",
+    "evidence_reference": "S16_TELEGRAM_REAL_TEST_EVIDENCE.json"
   },
   "recovery_targets": {
     "rpo_hours": 24,
