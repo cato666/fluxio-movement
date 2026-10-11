@@ -1,3 +1,22 @@
+# S16 — actualización operativa 2026-10-11
+
+**S16 BLOCKED / Pilot A NO-GO.** Preparación local y restore sintético PASS no cierran gate operacional. Evidencia: [reporte S16](S16_IMPLEMENTATION_REPORT.md), [JSON](S16_OPERATIONAL_EVIDENCE.json).
+
+- [x] Gastón confirmado; retención manual de objetos sintéticos durante piloto aprobada.
+- [x] Helper AES-256-GCM compatible, integridad y recibos/lock, health missing/stale/incomplete, plan siete daily + pre-release sin borrado. Config y cron inertes.
+- [x] 28 tests Linux PASS; restore local con 29 tablas, PNG/MP4 y referencias PASS; contenedores propios detenidos. Receptor de alerta solo simulado.
+- [ ] R2 r2.dev/custom domains/Workers públicos deshabilitados, alcance exclusivo y separación de credenciales de medios comprobados.
+- [ ] Custodia independiente seleccionada, claves/versiones recuperables por Gastón desde fuera de EasyPanel.
+- [ ] Canal de alertas elegido y autorizado; entrega real comprobada; horario/fechas y suplencia definidos.
+- [ ] Adaptador de recolección coherente/transport/key-store/alerts aprobado, capacidad del conjunto real validada, automatización instalada bajo autorización.
+- [ ] Autorización específica e inventario EasyPanel; respaldo real completo y restore representativo aislado aceptado, RTO/RPO reales medidos.
+
+E2E S05 integrado local histórico PASS conservado; siguen pendientes paridad/destino, canales reales completos, video/costos, coaches, alertas/CI/artefacto/rollback. S11 sin limpieza efectiva. No GO ni nueva fase.
+
+---
+
+## Estados históricos conservados
+
 ## Actualización S16 — 2026-10-11
 
 Gastón confirmado como operador. Ensayo R2 sintético **PASS**: AES-256-GCM cliente, upload/download autenticados, DB nueva y cuatro archivos restaurados con hashes/referencias iguales; 3 usuarios, 1 sesión/foto/análisis/review, head 0024. Contenedores propios detenidos. 5,31 s y 92.197 bytes corresponden a muestra pequeña, no RTO operativo. Primer intento falló por expectativa HTTP anónima (400); corrección del harness y repetición aislada documentadas. Privacidad por dominios/r2.dev, configuración de cifrado proveedor, permisos separados, custodia definitiva, restore representativo del producto, scheduler y alertas **pendientes**. S16 sigue parcial y **NO-GO**, sin habilitar limpieza S11. Ver [reporte S16](S16_IMPLEMENTATION_REPORT.md).

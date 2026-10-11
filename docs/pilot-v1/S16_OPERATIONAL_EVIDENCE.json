@@ -1,0 +1,31 @@
+{
+  "status": "PASS_LOCAL_SYNTHETIC",
+  "unit_tests_pass": 28,
+  "unit_tests_skipped": 0,
+  "source_restored_counts": {
+    "tables": 29,
+    "users": 3,
+    "sessions": 1,
+    "images": 1,
+    "analyses": 1,
+    "reviews": 1,
+    "head": "0024_training_save_requests"
+  },
+  "private_files": 4,
+  "image_decode": "PASS",
+  "original_annotated_video_decode": "PASS_FFPROBE",
+  "db_storage_references": "PASS",
+  "custody_simulation": "PASS_ONLY_LOCAL_SIMULATION",
+  "real_key_store": "BLOCKED",
+  "real_operator_alert": "BLOCKED",
+  "real_easypanel_restore": "NOT_RUN",
+  "r2_operations": 0,
+  "total_seconds_including_unit_tests": 7.58,
+  "restored_schema_no_migration_after_restore": true,
+  "own_containers_stopped": true,
+  "evidence_directory": "C:\\Users\\desarrollo\\AppData\\Local\\Temp\\fluxio-s05-integrated-qybhgju9",
+  "implementation_sha256": {
+    "pilot_backup_ops.py": "34fdc703e3dfe3b960e8ea67af918e32f3388baf030c227bf3e7ed1ba9efcdda",
+    "test_pilot_backup_ops.py": "80550fc42e8c819b2de0da5692d26ba6fcd524665c5966def1f90c5f26a3a24c"
+  }
+}

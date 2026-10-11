@@ -1,3 +1,43 @@
+# S16 — preparación operativa y validación local vigente
+
+Fecha: 2026-10-11, America/Santiago. Base `84ad8a992a6f78d36ba8844abf24777308202c24`, rama codex/pilot-v1-stabilization. **Preparación local PASS; cierre operativo S16 BLOCKED; Pilot A NO-GO.** Esta etapa no repitió el upload/restore R2 validado previamente: cero operaciones nuevas R2, cero Kapso/OpenAI, cero EasyPanel, ningún job instalado, ningún objeto borrado.
+
+## Matriz de aceptación
+
+| Condición | Resultado y evidencia | Responsable / siguiente acción |
+|---|---|---|
+| Bucket privado, dominios y r2.dev | BLOCKED: .env.example solo contiene R2_ENDPOINT/BUCKET/ACCESS_KEY_ID/SECRET_ACCESS_KEY/REGION, sin API token Cloudflare de administración. HTTP anónimo 400 previo no prueba privacidad. | Gastón: proporcionar lectura del panel o API Workers R2 Storage Read; confirmar r2.dev disabled y cero dominios públicos habilitados. |
+| Alcance exclusivo de credenciales, separación de medios | BLOCKED: S3 funciona pero no prueba scope/token policy ni configuración del almacenamiento deportivo de EasyPanel. | Gastón: evidencia token limitado exclusivamente fluxio-movement-backups; writer/reader separados; token de medios distinto o medios en filesystem sin ese token. No probar acceso a buckets ajenos por enumeración. |
+| Secretos actuales en candidato/HEAD | PASS limitado: 311 archivos rastreados y HEAD sin coincidencias con ID/secret R2 actuales; nuevos scripts/docs/evidencia y logs sintéticos revisados. No es auditoría de todo historial, tokens revocados o infraestructura. | Gastón: retirar secretos del .env.example original mediante acción autorizada independiente; agente no lo modifica. |
+| Retención de objetos sintéticos | PASS de aprobación: usuario confirmó conservar ambos durante el piloto y eliminación manual posterior. No lifecycle ni DELETE. Fechas finales pendientes. | Gastón: aprobar eliminación individual posterior; mantener claves sintéticas mientras se conserven los objetos. |
+| Custodia independiente | BLOCKED: claves anteriores en recovery-key-private local con ACL, fuera de R2/Git/EasyPanel; solo ensayo. Recuperación sintética con clave correcta PASS, incorrecta rechazada. No demuestra acceso de otro operador ni pérdida real del host. | Gastón: confirmar almacén externo de claves y acceso de recuperación; propuesta en runbook. |
+| Diario / pre-release | PASS del helper offline; BLOCKED instalación/adapter destino. run_job conserva formato AES-256-GCM validado, lock contra solapamiento, recibos atómicos y verificación local/remota. Daily/pre-release separados. Configuración inerte impide ejecución; adaptador aprobado por SHA-256 obligatorio. | Gastón: collector coherente de EasyPanel, transporte y key-store/alert adapter, horario y autorización de instalación. |
+| Integridad y retención | PASS: corrupción, clave incorrecta, membresía y hashes, symlinks y traversal rechazados; directorios tar del ensayo anterior compatibles. Plan siete diarios completos y todos los pre-release, sin función de borrado. | Operador: revisar plan manualmente; límite conservador 128 MiB requiere capacidad representativa antes de activar. |
+| Alertas | PASS sintético: fallo alcanza receptor local inyectado con ACK; entrega fallida queda registrada. Missing/stale/incomplete detectados; watcher independiente preparado, no instalado. **BLOCKED entrega a Gastón**, canal sin confirmar y no autorizado para envío. | Gastón: elegir canal y autorizar prueba individual; verificar recepción real y respuesta. |
+| Restauración local con medios válidos | PASS: esquema completo 29 tablas, 3 usuarios, sesión con nota/foto, análisis y review; cuatro archivos, PNG verificado por PIL, MP4 original/annotated leídos por FFprobe, hashes/referencias iguales, nueva DB vacía, head 0024 conservado sin migrar después de restore. | QA: medios artificiales y análisis/review precargados; no certifica semántica biomecánica ni flujo web/coach restaurado. |
+| Recuperación representativa de EasyPanel | BLOCKED/NOT RUN: no acceso/inventario ni autorización del conjunto real. 7,58 s de ensayo sintético incluye tests del helper y transferencia local, no un RTO/RPO real. | Gastón: inspección autorizada de destino, ventana coherente, backup real autorizado y restore aislado; aprobación separada previa a cualquier acción real. |
+
+## Implementación y pruebas
+
+Archivos nuevos: scripts/pilot_backup_ops.py; scripts/test_pilot_backup_ops.py; docs/pilot-v1/BACKUP_AUTOMATION.cron.example; S16_OPERATIONAL_EVIDENCE.json. Actualizados los tres entregables pedidos y BACKUP_CONFIGURATION.example.json. Sin cambios en app, modelos, migraciones, Compose, workflow o contratos del producto. No dependencias nuevas: cryptography existente y stdlib.
+
+- Windows: 27 PASS / 1 SKIPPED (permiso symlink). Linux: **28 PASS, cero FAIL/SKIPPED** con el helper definitivo. Son las mismas pruebas, no sumar totales.
+- Integrado: PostgreSQL 17.6 y storage tmpfs nuevos, red interna exclusiva 10.253.9.0/28, sin publicar puertos Docker ni incorporar redes existentes. Fuente copiada a tmpfs; proveedores apagados. Estado restaurado validado y contenedores propios detenidos.
+- Evidencia final: `C:/Users/desarrollo/AppData/Local/Temp/fluxio-s05-integrated-qybhgju9/` (environment.json, ops-tests.log, operational-results.json), hashes públicos en S16_OPERATIONAL_EVIDENCE.json. Suites completas históricas 820 Python + 77 JS corresponden a fuentes app previas; no se afirman reejecutadas aquí. Cambios acotados ops tienen suite propia y restore integrado, no cierre final del piloto.
+- Intentos previos del harness: fallo de docker cp con ruta Windows y fallo transitorio al inspeccionar una red Docker. Corregida transferencia por stdin, sin debilitar guardas; nuevo entorno para la repetición. Sin errores del producto. Una prueba integrada anterior con 26 tests pasó antes de añadir dos regresiones tar; sustituida por evidencia final de 28.
+- Comprobación del original: 153 rutas fingerprint sin cambios; Git original muestra .env.example modificado por configuración del usuario. No hubo escrituras del agente allí.
+- La revisión automática bloqueó la primera búsqueda por riesgo de imprimir secretos; se sustituyó por lectura de nombres/presencia y escaneo sin valores. No permanece bloqueo de esa operación segura.
+
+## Riesgos y cierre
+
+No considerar preparado un cron como instalado ni un receptor simulado como notificación recibida por Gastón. El adaptador está pendiente: debe recoger pg_dump completo y todos los archivos bajo mantenimiento real comprobado, recuperar clave desde custodia aprobada, ejecutar TLS/S3 y notificar al canal confirmado. Flags JSON no demuestran quiescencia ni privacidad. El helper limita tamaño en memoria a 128 MiB y no sirve como evidencia de capacidad de un piloto con videos grandes; excederlo bloquea y genera fallo, sin truncar datos. No reintenta uploads inciertos ni borra conjuntos parciales.
+
+No habilitar S11 ni GO. Pendientes nominales: Gastón para privacidad/scope/separación, custodia, canal/horario/fechas y autorización EasyPanel; QA para restauración representativa y controles del sistema restaurado; release para identidad/paridad del artefacto. Detenerse para revisión. Commit final de esta etapa: git log -1 -- scripts/pilot_backup_ops.py.
+
+---
+
+## Evidencia histórica conservada
+
 # S16 — ensayo sintético R2 / estado vigente
 
 Fecha: 2026-10-11, America/Santiago. Responsable operativo confirmado por el usuario: Gastón. Base documental `1f250ddc82e7dd9292c656d856c89073493f379d`; fuentes funcionales `03cfd4387a75f70fae60ccd2108a83d24dc57f31`. Usuario autorizó lectura y luego upload/restore sintético a `fluxio-movement-backups`; no autorizó copias del producto, scheduler, borrado, deploy ni proveedores IA. **PASS del ensayo sintético; S16 continúa PARCIAL/BLOCKED y Pilot A NO-GO.**

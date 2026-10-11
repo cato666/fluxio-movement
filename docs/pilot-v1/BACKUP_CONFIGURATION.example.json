@@ -59,7 +59,8 @@
       "WEEKLY_SHARE_KEY_VERSION"
     ],
     "all_required_versions_verified": false,
-    "application_configuration_reference": null
+    "application_configuration_reference": null,
+    "independent_recovery_verified": false
   },
   "credentials": {
     "backup_writer_secret_reference": null,
@@ -78,7 +79,9 @@
     "pre_release_keep_through_pilot": true,
     "pilot_start": null,
     "pilot_end": null,
-    "automatic_deletion_enabled": false
+    "automatic_deletion_enabled": false,
+    "synthetic_objects_keep_through_pilot": true,
+    "synthetic_objects_deletion_requires_manual_authorization": true
   },
   "ownership": {
     "primary_role": "propietario técnico del proyecto",
@@ -107,5 +110,11 @@
     "integrity_manifest_reference": null,
     "isolated_restore_evidence_reference": null,
     "synthetic_trial_evidence_reference": "S16_SYNTHETIC_R2_EVIDENCE.json"
-  }
+  },
+  "operational_adapter": {
+    "path": null,
+    "sha256": null,
+    "status": "pending_easypanel_quiescence_key_store_and_alert_channel"
+  },
+  "state_directory": null
 }

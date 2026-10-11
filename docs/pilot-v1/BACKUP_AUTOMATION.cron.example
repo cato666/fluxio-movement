@@ -1,0 +1,12 @@
+# PREPARED ONLY. Do not install until S16 operational gates are verified.
+# Hour/timezone and absolute paths need Gaston approval.
+# Daily backup entry (replace placeholders; enable only with approved adapter):
+# <minute> <hour> * * * <python> <release>/scripts/pilot_backup_ops.py run --config <private-config> --kind daily
+# Independent health watchdog (required even when backup process crashes):
+# */15 * * * * <python> <release>/scripts/pilot_backup_ops.py health --state <private-state>
+# Health exits nonzero on missing/stale/incomplete; scheduler MUST route this to
+# the approved notification adapter. stdout alone does not prove alert delivery.
+# Pre-release gate, called separately before any release:
+# <python> <release>/scripts/pilot_backup_ops.py run --config <private-config> --kind pre-release
+# Never wire a release to continue after a failed/incomplete backup.
+# No automatic deletion command exists.

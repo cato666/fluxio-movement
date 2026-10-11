@@ -1,3 +1,48 @@
+# S16 — operación preparada, todavía no activada
+
+Fecha: 2026-10-11. Consultar [reporte vigente](S16_IMPLEMENTATION_REPORT.md). Gastón es operador confirmado. Bucket fluxio-movement-backups identificado y ensayo R2 AES-256-GCM PASS; cierre operativo BLOCKED.
+
+## Privacidad y permisos: evidencias requeridas
+
+En Cloudflare, R2 → fluxio-movement-backups → Settings: comprobar Public Development URL disabled, todos los Custom Domains ausentes o disabled, y ausencia de Workers públicos que expongan este bucket. Obtener evidencia redactada con fecha sin URLs privadas/token. En Manage R2 API Tokens revisar el token de backup: Object Read & Write, Apply to specific buckets only = fluxio-movement-backups. Crear/confirmar lector de restore Object Read only separado, scope mismo bucket. Revisar token/mount de medios deportivos de EasyPanel sin copiar secretos; comprobar independencia. No cambiar settings ni crear tokens automáticamente.
+
+Referencias oficiales: [public buckets](https://developers.cloudflare.com/r2/buckets/public-buckets/) y [tokens R2](https://developers.cloudflare.com/r2/api/tokens/). S3 object credentials no son credenciales REST para consultar el panel; rechazos anónimos del endpoint S3 no prueban privacidad de dominios.
+
+## Custodia propuesta — requiere elección de Gastón
+
+Guardar cada clave AES-256 y su versión/ID en un gestor de secretos o bóveda cifrada independiente de EasyPanel y del bucket de respaldo. Acceso MFA para Gastón y suplente aún por confirmar; clave de desbloqueo/códigos de recuperación bajo custodia independiente, copia offline protegida con procedimiento aprobado. No almacenar el único ejemplar en VPS, repo, logs, objetos R2 o archivo de plantilla. El job recupera temporalmente solo la versión de clave necesaria; no registra valores. Separar el inventario de versiones WhatsApp/sharing y PHONE_HASH_KEY del ciphertext y verificar recuperación histórica.
+
+Ensayo de custodia: desde máquina aislada sin acceso al VPS, Gastón obtiene por ID una clave de la bóveda, descarga un objeto autorizado con identidad reader distinta y verifica descifrado/hashes. Clave errónea debe fallar; quitar acceso al VPS durante la prueba sin destruir servidor ni borrar claves. Registrar ID/versiones y resultado, nunca valores. El ensayo local actual simula esta recuperación, no sustituye este procedimiento ni demuestra disponibilidad de la bóveda.
+
+## Automatización y comandos preparados
+
+Dependencias ya existentes. Verificar rutas privadas, permisos y capacidad antes de ejecutar. No instalar BACKUP_AUTOMATION.cron.example hasta aprobar horario/zona, gates e integración del adaptador. En un entorno autorizado:
+
+```text
+python scripts/pilot_backup_ops.py run --config <config-privada> --kind daily
+python scripts/pilot_backup_ops.py run --config <config-privada> --kind pre-release
+python scripts/pilot_backup_ops.py health --state <directorio-privado-recibos>
+python scripts/pilot_backup_ops.py retention --state <directorio-privado-recibos>
+```
+
+Los paths relativos de ejemplo se resuelven dentro del release fijado; el scheduler usa paths absolutos. Config plantilla actual execution_enabled=false/scheduler_enabled=false: run devuelve código 2 sin recoger datos ni llamar a proveedores. Código 0 exige recibo COMPLETE y lectura remota verificada; 1 indica incomplete/busy o alerta de health; 2 indica configuración/invocación fallida. Release no continúa si backup falla.
+
+El adaptador operacional aún **no existe para EasyPanel**. Interfaz requerida, fijada por path absoluto y SHA-256 aprobado: collect_quiesced_snapshot() → dump custom completo + snapshot de storage inmóvil; put_encrypted()/get_encrypted() → transporte TLS a prefijo autorizado; recover_backup_key() → clave desde bóveda; notify_operator() → True solo tras ACK real. No pasar una carpeta de storage activa a seal_snapshot. Falta validar productor/API/worker/jobs pausados y cero escrituras en vuelo. No ejecutar entrypoint que seed/migre al restaurar.
+
+Recepción saludable: scheduler/health watchdog independiente del proceso de backup, examina recibos COMPLETE por snapshot_at y alerta >=24 h, primer backup ausente o intento más reciente INCOMPLETE. Errores tienen códigos fijos sin excepciones privadas. Recibo publicado atómicamente; crash previo conserva INCOMPLETE/lock, no last_success ficticio. Lock residual se revisa por operador y nunca se elimina automáticamente ni se toma como permiso para solapar jobs. Alert channel sin confirmar: cron stdout/journal no equivale a entrega.
+
+Retención: retention devuelve keep/proposed_manual_review, conserva siete daily COMPLETE y todos los pre-release; no contiene operación DELETE. Conjuntos incompletos se investigan y nunca se purgan automáticamente. Objetos sintéticos previos: aprobación explícita de conservar durante el piloto y eliminar solo tras aprobación manual posterior; fechas aún por definir. No hay lifecycle instalado.
+
+## Validación representativa real: pendiente de autorización específica
+
+Preparar inventario read-only de DB/version/head, todos los 29 nombres de tablas del candidato y otros schemas si existen, roles, montajes privados y versiones de claves. Dump no filtra tablas: pg_dump custom completo; capturar training-images/original (incluye whatsapp)/annotated/analysis y otros paths persistentes encontrados. La cuenta de DB necesita permisos de lectura completos y backup no incluye claves/contraseñas de proveedor. Confirmar que no faltan medios cifrados o rutas fuera del root; symlinks abortan para revisión.
+
+Gastón debe autorizar ventana coherente, copia real, destino/prefijo, costos y acceso a datos de la copia. Solo entonces tomar backup completo e íntegro, restaurar en instancia NUEVA aislada y recuperar claves desde custodia real. Verificar conteos por tabla, hashes, vínculos, imágenes/video decodificables, usuarios/analyses/reviews, API/medios privados, permisos y sharing consentido/revocado/expirado, worker sin envío ni proveedores reales. Medir desde incidente simulado incluyendo transferencia, clave, pg_restore, filesystem y arranque, no solo paso interno del helper. No extrapolar 7,58 s / muestra sintética a RTO/RPO reales. Límite actual 128 MiB requiere medir y resolver capacidad antes de producción; no activar job que no pueda empaquetar el conjunto real.
+
+---
+
+## Procedimiento histórico y política objetivo
+
 ## Actualización S16 — 2026-10-11
 
 Gastón confirmado como operador. Ensayo R2 sintético **PASS**: AES-256-GCM cliente, upload/download autenticados, DB nueva y cuatro archivos restaurados con hashes/referencias iguales; 3 usuarios, 1 sesión/foto/análisis/review, head 0024. Contenedores propios detenidos. 5,31 s y 92.197 bytes corresponden a muestra pequeña, no RTO operativo. Primer intento falló por expectativa HTTP anónima (400); corrección del harness y repetición aislada documentadas. Privacidad por dominios/r2.dev, configuración de cifrado proveedor, permisos separados, custodia definitiva, restore representativo del producto, scheduler y alertas **pendientes**. S16 sigue parcial y **NO-GO**, sin habilitar limpieza S11. Ver [reporte S16](S16_IMPLEMENTATION_REPORT.md).
