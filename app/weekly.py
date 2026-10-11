@@ -1,5 +1,5 @@
 """Authenticated weekly controls and a public live week reader."""
-from datetime import date
+from datetime import date, timedelta
 from html import escape
 import re
 from uuid import UUID
@@ -115,7 +115,14 @@ def recap(data, token):
     parts.append('</dl>')
     if data['average_rpe'] is not None:
         parts.append(f'<p class="recap-sample">{data["rpe_count"]} registros con esfuerzo</p>')
-    parts.append('</header>')
+    parts.append('<div class="recap-activity" role="group" aria-label="Actividad diaria de la semana">')
+    start = date.fromisoformat(data['week_start'])
+    for index, label in enumerate(('L', 'M', 'X', 'J', 'V', 'S', 'D')):
+        day = start + timedelta(days=index)
+        count = sum(item['trained_on'] == day.isoformat() for item in items)
+        description = f'{readable_date(day.isoformat())}: {count} entrenamientos'
+        parts.append(f'<div class="recap-activity-day" data-active="{str(count > 0).lower()}" role="img" aria-label="{escape(description, quote=True)}"><span class="recap-activity-bar" aria-hidden="true"></span><span aria-hidden="true">{label}</span></div>')
+    parts.append('</div></header>')
     if featured:
         parts.append(f'<figure class="recap-feature"><a href="/shared/week/{token}/images/{featured["source_image_id"]}" aria-label="Ver foto del entrenamiento completa"><img class="weekly-photo" src="/shared/week/{token}/images/{featured["source_image_id"]}" alt="Foto del entrenamiento" fetchpriority="high"></a><figcaption><span>La sesión más reciente con foto · {readable_date(featured["trained_on"])}</span><strong>{escape(featured["title"])}</strong></figcaption></figure>')
     parts.append('</div>')
@@ -164,4 +171,4 @@ def recap(data, token):
 
 
 def page(body):
-    return '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#08251e"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><title>Semana compartida · Fluxio</title><link rel="stylesheet" href="/static/styles.css"><link rel="stylesheet" href="/static/visual-v2.css?v=2"><link rel="stylesheet" href="/static/weekly.css?v=4"></head><body class="weekly-public"><main class="weekly-shared">' + body + '</main></body></html>'
+    return '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#08251e"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><title>Semana compartida · Fluxio</title><link rel="stylesheet" href="/static/styles.css"><link rel="stylesheet" href="/static/visual-v2.css?v=2"><link rel="stylesheet" href="/static/weekly.css?v=5"></head><body class="weekly-public"><main class="weekly-shared">' + body + '</main></body></html>'

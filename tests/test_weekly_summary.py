@@ -213,3 +213,19 @@ def test_whatsapp_week_summary_share_replay_and_revoke(client, session, monkeypa
     assert webhook(client, payload('revocar semana')).status_code == 200
     assert process_one(provider, vault)
     session.expire_all(); assert session.scalar(select(WeeklyShare)).revoked_at is not None
+
+
+def test_shared_recap_activity_uses_seven_days_and_counts_duplicates():
+    from app.weekly import recap
+    data = {'week_start': '2026-10-05', 'week_end': '2026-10-11',
+            'session_count': 3, 'active_days': 2, 'average_rpe': None, 'rpe_count': 0,
+            'items': [{'trained_on': day, 'title': 'WOD', 'workout': 'Sentadillas',
+                       'result_text': None, 'adaptations': None, 'rpe': None}
+                      for day in ['2026-10-09', '2026-10-09', '2026-10-11']]}
+    html = recap(data, 'a' * 43)
+    assert html.count('class="recap-activity-day"') == 7
+    assert html.count('data-active="true"') == 2
+    assert '9 de octubre de 2026: 2 entrenamientos' in html
+    assert '5 de octubre de 2026: 0 entrenamientos' in html
+    data.update(items=[], session_count=0, active_days=0)
+    assert 'data-active="true"' not in recap(data, 'a' * 43)

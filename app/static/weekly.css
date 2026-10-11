@@ -144,3 +144,9 @@ body.weekly-public main.weekly-shared{position:relative;max-width:1000px;padding
  .recap-feature figcaption{margin-top:10px}.recap-feature figcaption strong{font-size:16px}
  .recap-highlight-grid{grid-template-columns:1fr}
 }
+
+/* Seven-day activity uses only the authorized shared week. */
+.recap-activity { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:12px; max-width:320px; margin-top:24px; }
+.recap-activity-day { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:10px; height:48px; color:#c6d5ce; font-size:11px; }
+.recap-activity-bar { display:block; width:12px; height:4px; border-radius:3px; background:#476057; }
+.recap-activity-day[data-active="true"] .recap-activity-bar { height:24px; background:var(--lime, #c8f36a); }
