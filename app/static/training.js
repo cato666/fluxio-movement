@@ -27,17 +27,37 @@ window.setupTraining = async function (identifier) {
     return [dated,dateLabel(item.trained_on)].some(value => value.toLocaleLowerCase('es-CL') === title.toLocaleLowerCase('es-CL'))
       ? (item.blocks?.map(block => block.title).filter(Boolean).join(' · ') || 'Entrenamiento') : title;
   }
+  function showPhoto(url, trigger) {
+    const modal = make('dialog', '', 'training-photo-modal');
+    modal.setAttribute('aria-labelledby', 'training-photo-title');
+    const heading = make('h2', 'Foto de la pizarra'); heading.id = 'training-photo-title';
+    const close = make('button', 'Cerrar', 'training-photo-close'); close.type = 'button'; close.autofocus = true;
+    const header = make('header', '', 'training-photo-header'); header.append(heading, close);
+    const image = make('img'); image.alt = 'Pizarra del entrenamiento'; image.src = url;
+    const error = make('p', 'No pudimos cargar la foto. Cierra y vuelve a abrirla para reintentar.', 'training-photo-error');
+    error.hidden = true; error.setAttribute('role', 'alert');
+    image.onerror = () => { image.hidden = true; error.hidden = false; };
+    modal.append(header, image, error); root.append(modal);
+    close.addEventListener('click', () => modal.close());
+    modal.addEventListener('keydown', event => { if (event.key === 'Tab') { event.preventDefault(); close.focus(); } });
+    modal.addEventListener('click', event => {
+      const bounds = modal.getBoundingClientRect();
+      if (event.target === modal && (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom)) modal.close();
+    });
+    modal.addEventListener('close', () => { modal.remove(); if (trigger.isConnected) trigger.focus(); }, {once:true});
+    modal.showModal();
+  }
   function thumbnail(imageId, sessionId, fullPhoto = false) {
     const url = '/api/training-sessions/images/' + imageId;
-    const node = link('', fullPhoto ? url : '/training/' + sessionId);
+    const node = fullPhoto ? make('button') : link('', '/training/' + sessionId);
     node.className = 'training-thumbnail' + (fullPhoto ? ' training-thumbnail-note' : '');
-    node.setAttribute('aria-label', fullPhoto ? 'Ver foto de la pizarra en otra pestaña' : 'Abrir entrenamiento con foto de la pizarra');
-    if (fullPhoto) { node.target = '_blank'; node.rel = 'noopener'; }
+    node.setAttribute('aria-label', fullPhoto ? 'Ver foto de la pizarra' : 'Abrir entrenamiento con foto de la pizarra');
+    if (fullPhoto) { node.type = 'button'; node.classList.add('training-photo-trigger'); node.addEventListener('click', () => showPhoto(url, node)); }
     const image = make('img'); image.src = url; image.alt = 'Pizarra del entrenamiento'; image.width = 96; image.height = 72; image.loading = 'lazy'; image.decoding = 'async';
     image.onerror = () => {
       node.replaceChildren(make('span', 'Imagen no disponible'));
       node.setAttribute('aria-label', 'Imagen no disponible');
-      if (fullPhoto) { node.removeAttribute('href'); node.removeAttribute('target'); }
+      if (fullPhoto) node.disabled = true;
     };
     node.append(image); return node;
   }

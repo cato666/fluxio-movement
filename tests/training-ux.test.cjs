@@ -244,12 +244,37 @@ test('private thumbnails appear only for attached photos in list and note; missi
   await page.route('**/api/training-sessions/photo-session',route=>route.fulfill({json:session}));
   await page.evaluate(()=>window.setupTraining('photo-session'));
   const thumbnail=page.locator('.training-note .training-thumbnail');
-  assert.equal(await thumbnail.getAttribute('href'),'/api/training-sessions/images/private-photo');
-  assert.equal(await thumbnail.getAttribute('target'),'_blank');
+  assert.equal(await thumbnail.evaluate(node=>node.tagName),'BUTTON');
+  assert.equal(await thumbnail.getAttribute('target'),null);
+  const originalURL=page.url(); const originalPages=page.context().pages().length;
+  for(const width of [390,1440]) {
+    await page.setViewportSize({width,height:900});
+    await thumbnail.click();
+    const modal=page.getByRole('dialog',{name:'Foto de la pizarra'});
+    assert.equal(await modal.isVisible(),true);
+    assert.equal(await modal.locator('img').getAttribute('src'),'/api/training-sessions/images/private-photo');
+    assert.equal(page.url(),originalURL);assert.equal(page.context().pages().length,originalPages);
+    const bounds=await modal.boundingBox();assert.ok(bounds.x>=0 && bounds.x+bounds.width<=width);
+    await page.keyboard.press('Tab');
+    assert.equal(await modal.evaluate(node=>node.contains(document.activeElement)),true);
+    if(width===390) await page.keyboard.press('Escape');
+    else await modal.getByRole('button',{name:'Cerrar',exact:true}).click();
+    assert.equal(await page.getByRole('dialog',{name:'Foto de la pizarra'}).count(),0);
+    assert.equal(await thumbnail.evaluate(node=>node===document.activeElement),true);
+  }
+  await thumbnail.click();
+  await page.mouse.click(1,1);
+  assert.equal(await page.getByRole('dialog',{name:'Foto de la pizarra'}).count(),0);
   await page.route('**/api/training-sessions/images/private-photo*',route=>route.fulfill({status:404}));
+  await thumbnail.click();
+  await page.evaluate(()=>{document.querySelector('.training-photo-modal img').src+='?missing=modal'});
+  const failedModal=page.getByRole('dialog',{name:'Foto de la pizarra'});
+  await failedModal.getByRole('alert').waitFor();
+  assert.equal(await failedModal.locator('img').isVisible(),false);
+  await failedModal.getByRole('button',{name:'Cerrar',exact:true}).click();
   await page.evaluate(()=>{document.querySelector('.training-note .training-thumbnail img').src+='?missing=1'});
   await page.getByText('Imagen no disponible',{exact:true}).waitFor();
-  assert.equal(await thumbnail.getAttribute('href'),null);
+  assert.equal(await thumbnail.isDisabled(),true);
 }));
 test('chronology, weekly counts and read-only blocks use stored data; reading and editing stay distinct',()=>harness(async page=>{
   const today=await page.evaluate(()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`});
