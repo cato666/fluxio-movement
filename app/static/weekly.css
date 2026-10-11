@@ -159,3 +159,17 @@ body.weekly-public main.weekly-shared{position:relative;max-width:1000px;padding
 .recap-feature-photo[open] .recap-photo-hide { display:inline-flex; align-items:center; gap:12px; }
 .recap-photo-hide > span { font-size:24px; line-height:16px; }
 .recap-feature-photo > img { margin-top:8px; }
+
+/* Compact spacing for the shared week's opening panel. */
+.recap-hero { padding-top:88px; padding-bottom:24px; }
+.recap-metrics { margin-top:20px; }
+.recap-sample { margin-top:10px; margin-bottom:0; }
+.recap-activity { margin-top:16px; }
+.recap-feature figcaption { margin-top:6px; }
+@media(max-width:600px) {
+ .recap-hero { padding-top:64px; padding-bottom:8px; }
+ .recap-dates { margin-bottom:8px; }
+ .recap-metrics { margin-top:16px; }
+ .recap-activity { margin-top:12px; }
+ .recap-feature { padding-bottom:16px; }
+}
