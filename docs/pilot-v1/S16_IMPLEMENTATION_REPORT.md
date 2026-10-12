@@ -1,3 +1,9 @@
+# S16 — Diseño receptor durable pendiente de revisión
+
+2026-10-12. [Diseño y doce entregables](S16_DURABLE_RECEIVER_DESIGN.md). Estrategia B aprobada; implementación NO autorizada. SQLite con payload AES-GCM y volumen propio cifrado propuesto; confirmación durable antes de ACK, replay privado al inbox existente, pausa/recibos y retención72h desde incorporación. Medios reference_only no garantizan recuperación24h; spool bloqueado hasta política explícita. Durabilidad ante pérdidaVPS/RPO, capacidad/backupcola y privacidad pendientes. Diseño/revisión estática PASS; suites SKIPPED, implementación/operación NOT RUN. S16 BLOCKED / Pilot A NO-GO. Sin código funcional/servicios/proveedores/EasyPanel/push/deploy. Histórico debajo.
+
+---
+
 # S16 — Decisión de continuidad WhatsApp pendiente
 
 2026-10-12. [Comparación A/B y recomendación](S16_WHATSAPP_CONTINUITY_DECISION.md). A no garantiza recuperar entradas durante la pausa; solo ensayo previo sin atletas bajo aceptación expresa. B propuesta como mínimo para continuidad con WhatsApp obligatorio, no implementada: decidir durabilidad/RPO, retención/claves y medios, y autorizar desarrollo local. Consulta de entregas fallidas documentada; reenvío manual API/dashboard no confirmado. Revisión documental PASS, suites SKIPPED, mantenimiento no autorizado. S16 BLOCKED / Pilot A NO-GO. Sin cambios funcionales/infraestructura/envíos/push/deploy. Histórico conservado debajo.
