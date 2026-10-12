@@ -1,3 +1,9 @@
+# S16 — Primera ventana preparada, ejecución pendiente
+
+2026-10-12. [Procedimiento y autorizaciones](S16_FIRST_CONTROLLED_WINDOW.md). Revisión documental/estática PASS; S16 BLOCKED / Pilot A NO-GO. Kapso default agota tres intentos en ~50s: no garantiza recuperación tras mantenimiento prolongado. Drain del worker no implementado; requiere demostración o decisión adicional antes de detenerlo. Inventario real, recuperación de entradas, máximo propuesto 20min y pruebas representativas pendientes. No servicios detenidos, backups reales, envíos, automatización, despliegue ni push. Suites SKIPPED por documentación únicamente. Estado vigente; histórico conservado debajo.
+
+---
+
 # S16 — Preparación integración EasyPanel
 
 2026-10-12. Base 3ce40466b21c99894715e6f9dc01f0ca6dd1eed0. Preparación documental PASS; S16 operativo BLOCKED / Pilot A NO-GO. [Procedimiento completo](S16_EASYPANEL_INTEGRATION_PLAN.md).
