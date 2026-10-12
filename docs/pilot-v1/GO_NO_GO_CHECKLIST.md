@@ -1,3 +1,9 @@
+# S16 — Evaluación online, decisión pendiente
+
+2026-10-12. [Comparación A/B/C fundamentada en código](S16_ONLINE_BACKUP_EVALUATION.md). Recomendada B con publicación atómica/inmutabilidad, fence contra GC y manifest de referencias del mismo snapshot SQL. No requiere receiver nuevo ni pausar webhook, pero hoy hay uploads referenciados antes de completarse/unlink concurrente; Runner offline no admite esta estrategia sin cambios aprobados. No retirar guardas sin invariantes probadas. Diseño de receiver/medios continúa no implementado, sin autorización nueva. Revisión PASS, suites SKIPPED, collector online/restore/ensayo NOT RUN. S16 BLOCKED / Pilot A NO-GO. Sin código/Runner/EasyPanel/servicios/proveedores/push/deploy modificados. Histórico conservado debajo.
+
+---
+
 # S16 — Diseño de continuidad de medios, ejecución pendiente
 
 2026-10-12. [Contrato, pruebas e incrementos](S16_MEDIA_CONTINUITY_DESIGN.md). ACK estricto exige evento y medios completos cifrados/validados/vinculados durables y consentimiento; no200 para dependencia pendiente. Descarga temprana/replay privado/recibos procesamiento/limpieza opt-in diseñados, NO implementados. Latencia de8MiB/batches vs deadlineKapso y grants/revocación, costoescrow/recursos y RPO espejoexterno pendientes. Revisión documental PASS; pruebas NOT RUN, suites SKIPPED (sin código). S16 BLOCKED / Pilot A NO-GO. No servicios/EasyPanel/Kapso/OpenAI/mediosreales/push/deploy. Estado vigente; histórico conservado.
