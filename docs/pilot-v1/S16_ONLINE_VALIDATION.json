@@ -1,0 +1,53 @@
+{
+  "status": "PASS_LOCAL_OPERATIONAL_BLOCKED",
+  "head_before_implementation": "30d735b7e2e7118a5ebfeb5adcd86ba6f27187e0",
+  "integration": {
+    "status": "PASS",
+    "daily_online_complete": true,
+    "actual_pg_dump_restore": true,
+    "same_snapshot_references": true,
+    "concurrent_upload_delete_webhook": "PASS",
+    "restored_missing_references": 0,
+    "counts": {
+      "users": 3,
+      "training_sessions": 1,
+      "training_images": 1,
+      "analyses": 1,
+      "reviews": 1,
+      "whatsapp_inbox": 0
+    },
+    "r2_simulated": true,
+    "telegram_simulated": true,
+    "puts": 1
+  },
+  "image_id": "sha256:723a42c7f6ea4d50b64b68ca34167ef151ede48bb9c6d015a271d3bd7702fcdc",
+  "integration_evidence": "C:\\Users\\desarrollo\\AppData\\Local\\Temp\\fluxio-s16-runner-integration-ljf2ttjf",
+  "python_full": {
+    "status": "PASS",
+    "passed": 951,
+    "failed": 0,
+    "skipped": 1,
+    "skipped_reason": "actual PUBLIC_BASE_URL not configured; real domain not certified",
+    "evidence": "C:\\Users\\desarrollo\\AppData\\Local\\Temp\\fluxio-s16-suite-sc4dpw9y"
+  },
+  "backup_alert_unit_pass": 117,
+  "javascript_pass": 77,
+  "final_directed_pass": 32,
+  "real_provider_calls": 0,
+  "persistent_migrations": 0,
+  "scheduler_activated": false,
+  "original_fingerprints_unchanged": 153,
+  "source_sha256": {
+    "app/media_protocol.py": "980d472b18eebee7407f5721df1e5ff151decdf7ce1b74ee12aa2d531ddf0e0c",
+    "app/services/media_lifecycle.py": "07ca2664730d22adfbb0eb874a3de799faf9c17ee711ad98403f91a60a4b3cab",
+    "app/main.py": "68f4b875a5b0c7093dfd49fd626fda7efc3082b6e00130deca296235813541e9",
+    "app/services/training_media.py": "2355b14693ba1a1ad0b9a88338be649fe94ed8394275c92f1f3ceb1bd1cdacdf",
+    "app/services/training_service.py": "320cfe9e6c8d2dfc16f4c7a20d02e6206737761f022f5b76748e8fc7ef5e382a",
+    "app/whatsapp/media.py": "ddf231ee9776f828c37d0c1844ae18beac38b9a72da1d4c4b1754b6c593a3820",
+    "app/whatsapp/worker.py": "df9642262e39fcf0f07080e55239b740d3c30c5b8d2c546f15396cdad52e0e11",
+    "scripts/pilot_backup_runner.py": "2884a656fdeb446197075f24d8f2c4cd9c4be1dee52e54eb1740d75006901fde",
+    "scripts/pilot_backup_restore.py": "9d8f3cc5d0837a6c18cd5a8bfc6c77b9f412d82d45679c79177f134365a75505"
+  },
+  "final_owned_containers_stopped": true,
+  "last_reference_validation_cases": 3
+}

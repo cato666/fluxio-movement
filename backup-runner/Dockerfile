@@ -5,6 +5,7 @@ COPY backup-runner/requirements.txt /tmp/backup-requirements.txt
 RUN /opt/backup-venv/bin/pip install --no-cache-dir -r /tmp/backup-requirements.txt
 RUN useradd --uid 10001 --create-home fluxio-backup && mkdir -p /work /state && chown fluxio-backup:fluxio-backup /work /state
 COPY scripts/pilot_backup_runner.py scripts/pilot_backup_restore.py scripts/pilot_backup_bundle.py scripts/pilot_backup_ops.py scripts/pilot_telegram_alerts.py scripts/pilot_resend_alerts.py /opt/fluxio-backup/
+COPY app/media_protocol.py /opt/fluxio-backup/media_protocol.py
 # Reset inherited Postgres image VOLUME/entrypoint metadata. No anonymous PGDATA.
 FROM scratch
 COPY --from=rootfs / /

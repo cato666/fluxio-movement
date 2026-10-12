@@ -2,6 +2,7 @@
 
 No phone numbers, cookies, HTTP requests or provider-specific payloads belong here.
 """
+from .media_lifecycle import discard_uncommitted_image
 import hashlib
 import json
 from uuid import UUID, uuid4
@@ -91,7 +92,12 @@ class TrainingService:
             self.session.add(row)
             self._persist()
         except Exception:
-            path.unlink(missing_ok=True)
+            # Only discard after rollback plus an independent confirmed absence.
+            try:
+                self.session.rollback()
+                discard_uncommitted_image(path, identifier)
+            except Exception:
+                pass  # Retain on unknown commit outcome.
             raise
         return row
 

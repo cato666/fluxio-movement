@@ -1,3 +1,19 @@
+# S16 online — implementación local, activación pendiente
+
+Modo offline conserva las guardas y ventana anteriores. El nuevo modo `BACKUP_CAPTURE_MODE=online_v1` exige `BACKUP_MEDIA_PROTOCOL=immutable-v1`, `BACKUP_ONLINE_WRITERS_VERIFIED=true`, `BACKUP_APPLICATION_STORAGE_PATH` igual a la ruta lógica de la app y revisión SQL certificada `0024_training_save_requests`. No activar hasta comprobar que API/worker y todos los escritores ejecutan este candidato, sin scripts externos o DDL/deploy concurrentes.
+
+Online toma un fence SQL compartido contra GC antes del snapshot READ ONLY, lee todas las referencias de TrainingImage/Analysis/WhatsAppMedia del mismo snapshot exportado a pg_dump, y copia/verifica solo esas generaciones inmutables. Crecimientos del storage e inbox posteriores son permitidos; faltantes, cambios, paths inseguros o schema desconocido abortan. Dump y referencias se comprueban de nuevo al restaurar en DB/storage nuevos. Cifrado/R2/key_id/Telegram/scheduler/retención permanecen iguales y desactivados hasta aprobación.
+
+Publicación crea temporales privados, fsync y hard-link atómico sin overwrite; generaciones con permisos 0640. Configurar `BACKUP_MEDIA_READ_GID` al grupo real que permite lectura del volumen RO. No ampliar permisos a todo el sistema ni cambiar archivos persistentes sin autorización. Staging, secrets y state conservan límites/aislamiento existentes. Upload de video no publica referencia SQL hasta tener archivo completo; errores de commit conservan bytes privados para conciliación. GC se difiere sin bloquear webhook si hay captura; cleanup no borra originales compartidos.
+
+Respaldo online no promete guardar archivos temporales no referenciados ni recuperar mensajes posteriores al snapshot tras pérdida del VPS. En restore, proveedores/worker quedan apagados hasta conciliar inbox/outbox y costos; UNCERTAIN sin auto-reenvío. Legacy con referencias faltantes bloquea captura y requiere resolución explícita, nunca se omite silenciosamente.
+
+Evidencia y resultados: [reporte online](../docs/pilot-v1/S16_ONLINE_IMPLEMENTATION_REPORT.md). **S16 operativo BLOCKED / Pilot A NO-GO** hasta ensayo representativo autorizado, paridad/grupo/recursos y automatización real.
+
+---
+
+## Histórico offline (solo aplica al modo offline)
+
 # Backup Runner S16 — instalación manual preparada
 
 **No instalado ni activado.** Gastón administra EasyPanel. Codex no requiere SSH, socket Docker ni credenciales administrativas. Validación local usa únicamente PostgreSQL/media desechables, R2 y Telegram simulados. S16 operativo permanece BLOCKED hasta set representativo y automatización real autorizados.

@@ -18,6 +18,8 @@ from .provider import InboundWhatsAppMessage
 from .queue import dispatch_one
 from .security import Vault, enabled
 from . import runtime
+from ..services.media_lifecycle import deletion_guard, live_references
+from ..media_protocol import sync_directory
 
 logger = logging.getLogger(__name__)
 
@@ -89,19 +91,33 @@ def cleanup(session):
             setattr(row, field, None)
             if row.state in {'PENDING', 'RETRY', 'PROCESSING'}:
                 row.state = 'EXPIRED'
-    for row in session.scalars(select(WhatsAppMedia).where(WhatsAppMedia.expires_at <= now(),
-            WhatsAppMedia.training_session_id.is_(None)).with_for_update(skip_locked=True)):
-        # S11 initial dry-run policy: no photo removal before verified S16 restore.
-        # Preserve every image, including legacy rows and unresolved references.
-        if row.media_type == 'image' or row.path.startswith('training-images/'):
-            continue
-        root = private_root().resolve()
-        target = (root / row.path).resolve()
-        if not target.is_relative_to(root) or not row.path.startswith(('training-images/', 'original/whatsapp/')):
-            continue
-        target.unlink(missing_ok=True)
-        session.delete(row)
-    session.commit()
+    with deletion_guard() as allowed:
+        files = []
+        for row in session.scalars(select(WhatsAppMedia).where(WhatsAppMedia.expires_at <= now(),
+                WhatsAppMedia.training_session_id.is_(None)).with_for_update(skip_locked=True)):
+            if not allowed:
+                continue
+            # S11 initial dry-run policy: no photo removal before verified S16 restore.
+            # Preserve every image, including legacy rows and unresolved references.
+            if row.media_type == 'image' or row.path.startswith('training-images/'):
+                continue
+            root = private_root().resolve()
+            target = (root / row.path).resolve()
+            if not target.is_relative_to(root) or not row.path.startswith(('training-images/', 'original/whatsapp/')):
+                continue
+            files.append((target, row.path))
+            session.delete(row)
+        session.commit()  # Never destroy bytes before a successful logical commit.
+        if files:
+            references = live_references(session, str(private_root()))
+            if references is None:
+                return
+            for target, relative in files:
+                if relative not in references:
+                    target.unlink(missing_ok=True)
+                    sync_directory(target.parent)
+
+
 
 
 def run_once(provider=None, vault=None):

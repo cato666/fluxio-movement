@@ -1,3 +1,13 @@
+# S16 online — procedimiento vigente para candidato local
+
+2026-10-12. [Implementación/evidencia](S16_ONLINE_IMPLEMENTATION_REPORT.md) y [configuración exacta](../../backup-runner/README.md). Online solo con writers inmutables verificados, rutas/grupo de lectura correctos y schema certificado; default offline/flags false. No necesita parar API/worker/webhook: fence contra GC y manifest del mismo snapshot SQL. Las instrucciones históricas de pausa siguientes aplican al modo offline, no autorizan activación ni infraestructura.
+
+Recuperación desde instalación nueva: provisionar PostgreSQL compatible/roles/extensiones, storage destino nuevo y clave/versiones recuperadas de custodia independiente; descargar ciphertext aprobado y verificar SHA/key_id. Con BACKUP_RESTORE_ISOLATED_CONFIRMED=true, DB vacía movement_restore_* y providers apagados, usar pilot_backup_restore.py del mismo candidato. Verifica dump/manifest/refs y hashes, conserva rutas lógicas originales, sin seed/migración automática. Validar medios/reviews/usuarios/permisos y conciliar inbox/outbox/costos antes de activar worker o acceso público; UNCERTAIN sin reenvío automático. Este ensayo aislado no autoriza restore productivo.
+
+Daily permanece obligatorio y deshabilitado hasta backup representativo+restore autorizados, paridad real, alertas recibidas y horario/capacidad aprobados. Retención solo propone siete diarios y pre-release, sin DELETE automático. S16 operativo BLOCKED / Pilot A NO-GO.
+
+---
+
 # Runner S16 implementado, operación real aún bloqueada
 
 2026-10-12. Servicio independiente y restaurador v1/v2 localmente validados. Guía/manual/secretos/pausa: [backup-runner/README.md](../../backup-runner/README.md). Nuevo entrypoint pilot_backup_runner.py consume environment.example y adaptadores builtin; los anteriores operational_adapter.path/sha256 del entrypoint legacy no son el contrato de este servicio. AES KEY_FILE/KEY_ID ahora implementados en runner; no flags activados ni cambios a objetos v1.

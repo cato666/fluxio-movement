@@ -27,6 +27,8 @@ from .security_config import environment, session_secret
 SESSION_SECRET = session_secret()
 
 from .database import SessionLocal, get_session
+from .media_protocol import publish_writer, publish_file, GC_LOCK, reference_path, sync_directory
+from .services.media_lifecycle import deletion_guard, live_references
 from .models import AIObservation, AIObservationDecision, AIReasoningRun, AIReviewMoment, Analysis, Annotation, Athlete, Coach, CoachAnnotation, CoachReview, Repetition, User
 from .seed import DEMO_ATHLETE_ID
 from .services.analyzer import analyze_video
@@ -443,14 +445,13 @@ def _run_analysis(
         if session.get(Athlete, athlete_id) is None:
             raise HTTPException(503, 'Ejecuta el seed demo antes de analizar')
         session.add(analysis)
-        session.commit()
     except SQLAlchemyError:
         session.rollback()
         logger.error('Cannot create analysis')
         raise HTTPException(503, 'Persistencia no disponible')
 
     try:
-        with video.open('wb') as destination:
+        with publish_writer(video) as destination:
             shutil.copyfileobj(file.file, _LimitedWriter(destination, MAX_UPLOAD_BYTES))
         analysis.status = 'PROCESSING'
         session.commit()
@@ -475,8 +476,8 @@ def _run_analysis(
             (out / 'analysis.json').write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding='utf-8')
         annotated.parent.mkdir(parents=True, exist_ok=True)
         analysis_file.parent.mkdir(parents=True, exist_ok=True)
-        shutil.move(str(out / 'annotated.mp4'), annotated)
-        shutil.move(str(out / 'analysis.json'), analysis_file)
+        publish_file(out / 'annotated.mp4', annotated)
+        publish_file(out / 'analysis.json', analysis_file)
         shutil.rmtree(out, ignore_errors=True)
         result['job_id'] = job
         result['annotated_video_url'] = f'/results/{job}/annotated.mp4'
@@ -495,11 +496,26 @@ def _run_analysis(
         _run_ai_reasoning(job, exercise, view, result)
         _generate_review_moments_safely(job, result)
         return result
+    except SQLAlchemyError:
+        session.rollback()
+        saved = session.get(Analysis, job)
+        if saved is None:
+            logger.error('Cannot create analysis')
+            raise HTTPException(503, 'Persistencia no disponible') from None
+        saved.status, saved.error = 'FAILED', 'Persistencia de resultados no disponible'
+        saved.completed_at = datetime.now(timezone.utc)
+        session.commit()
+        logger.error('Analysis persistence failed')
+        raise HTTPException(500, 'Error de análisis; revisa los registros del servidor') from None
     except Exception as exc:
         session.rollback()
         logger.error('Analysis %s failed', job)
         try:
             saved = session.get(Analysis, job)
+            if saved is None:
+                saved = analysis
+                saved.video_path = ''
+                session.add(saved)
             saved.status = 'FAILED'
             saved.error = str(exc)[:2000] or type(exc).__name__
             saved.completed_at = datetime.now(timezone.utc)
@@ -510,23 +526,26 @@ def _run_analysis(
         if legacy_response:
             raise HTTPException(500, 'Error de análisis; revisa los registros del servidor')
         if isinstance(exc, UploadTooLarge):
-            video.unlink(missing_ok=True)
             raise HTTPException(413, {'message': f'El video supera el máximo de {MAX_UPLOAD_MB} MB', 'analysis_id': job})
         raise HTTPException(500, {'message': 'Error de análisis', 'analysis_id': job})
 
 
 def _thumbnail(original: Path, target: Path, duration_s: float | None) -> bool:
     target.parent.mkdir(parents=True, exist_ok=True)
+    stage = target.parent / ('.unpublished-' + uuid4().hex + '.jpg')
     moment = 1.0 if duration_s is None or duration_s >= 2 else max(0.0, duration_s / 2)
-    result = subprocess.run([
-        'ffmpeg', '-y', '-ss', str(moment), '-i', str(original), '-frames:v', '1',
-        '-vf', 'scale=480:-2', '-q:v', '4', str(target),
-    ], capture_output=True, text=True)
-    if result.returncode or not target.exists() or not target.stat().st_size:
-        logger.warning('Thumbnail failed for %s', original.name)
-        target.unlink(missing_ok=True)
-        return False
-    return True
+    try:
+        result = subprocess.run([
+            'ffmpeg', '-y', '-ss', str(moment), '-i', str(original), '-frames:v', '1',
+            '-vf', 'scale=480:-2', '-q:v', '4', str(stage),
+        ], capture_output=True, text=True)
+        if result.returncode or not stage.exists() or not stage.stat().st_size:
+            logger.warning('Thumbnail failed')
+            return False
+        publish_file(stage, target)
+        return True
+    finally:
+        stage.unlink(missing_ok=True)  # Never published or referenced.
 
 
 def _set_progress(job: str, progress: int, stage: str):
@@ -569,8 +588,8 @@ def _process_analysis(job: str, exercise: str, view: str):
             _set_progress(job, 96, 'finalizing')
             annotated.parent.mkdir(parents=True, exist_ok=True)
             analysis_file.parent.mkdir(parents=True, exist_ok=True)
-            shutil.move(str(out / 'annotated.mp4'), annotated)
-            shutil.move(str(out / 'analysis.json'), analysis_file)
+            publish_file(out / 'annotated.mp4', annotated)
+            publish_file(out / 'analysis.json', analysis_file)
             thumbnail = annotated.parent / 'thumbnail.jpg'
             has_thumbnail = _thumbnail(video, thumbnail, result.get('video', {}).get('duration_s'))
             shutil.rmtree(out, ignore_errors=True)
@@ -705,9 +724,8 @@ def _prepare_async_analysis(file: UploadFile, exercise: str, objective: str, loa
     if session.get(Athlete, athlete_id) is None:
         raise HTTPException(404, 'Atleta no encontrado')
     session.add(row)
-    session.commit()
     try:
-        with video.open('wb') as destination:
+        with publish_writer(video) as destination:
             shutil.copyfileobj(file.file, _LimitedWriter(destination, MAX_UPLOAD_BYTES))
         row.status, row.progress, row.stage = 'PROCESSING', 5, 'analyzing'
         session.commit()
@@ -718,11 +736,14 @@ def _prepare_async_analysis(file: UploadFile, exercise: str, objective: str, loa
     except Exception as exc:
         session.rollback()
         saved = session.get(Analysis, job)
+        if saved is None:
+            saved = row
+            saved.video_path = ''
+            session.add(saved)
         saved.status, saved.stage = 'FAILED', None
         saved.error, saved.completed_at = (str(exc)[:2000] or type(exc).__name__), datetime.now(timezone.utc)
         session.commit()
         if isinstance(exc, UploadTooLarge):
-            video.unlink(missing_ok=True)
             raise HTTPException(413, {'message': f'El video supera el máximo de {MAX_UPLOAD_MB} MB', 'analysis_id': job})
         raise HTTPException(500, {'message': 'No se pudo guardar el video', 'analysis_id': job})
 
@@ -919,6 +940,7 @@ def reanalyze_analysis(
     background_tasks: BackgroundTasks, athlete: User = Depends(require_athlete),
     session: Session = Depends(get_session), idempotency_key: UUID | None = Header(default=None),
 ):
+    session.execute(text('SELECT pg_advisory_xact_lock_shared(:key)'), {'key': GC_LOCK})
     source = session.get(Analysis, analysis_id)
     if source is None or source.athlete_id != athlete.id:
         raise HTTPException(404, 'Análisis no encontrado')
@@ -999,24 +1021,24 @@ def delete_analysis(analysis_id: str, athlete: User = Depends(require_athlete), 
     session.execute(update(Analysis).where(Analysis.source_analysis_id == analysis_id).values(source_analysis_id=None))
     session.delete(row)
     session.commit()
-    # Reanalyses share originals: retain every file referenced by another record.
-    for directory, relative in files:
-        if not relative:
-            continue
-        referenced = session.scalar(select(Analysis.id).where(
-            (Analysis.video_path == relative) | (Analysis.annotated_video_path == relative) |
-            (Analysis.thumbnail_path == relative) | (Analysis.analysis_json_path == relative)
-        ).limit(1))
-        if referenced:
-            continue
-        parts = Path(relative).parts[1:]
-        target = directory.joinpath(*parts).resolve()
-        if not parts or not target.is_relative_to(directory.resolve()):
-            continue
-        try:
-            target.unlink(missing_ok=True)
-        except OSError:
-            logger.error('Cannot remove file for deleted analysis %s', analysis_id)
+    with deletion_guard() as allowed:
+        if not allowed:
+            return  # Retain private orphan; S11 reconciliation remains non-destructive.
+        references = live_references(session, str(STORAGE_PATH))
+        if references is None:
+            return
+        for directory, relative in files:
+            if not relative or reference_path('analyses', relative, str(STORAGE_PATH)) in references:
+                continue
+            parts = Path(relative).parts[1:]
+            target = directory.joinpath(*parts).resolve()
+            if not parts or not target.is_relative_to(directory.resolve()):
+                continue
+            try:
+                target.unlink(missing_ok=True)
+                sync_directory(target.parent)
+            except OSError:
+                logger.error('Cannot remove file for deleted analysis %s', analysis_id)
 
 
 @app.get('/api/coaches')

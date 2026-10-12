@@ -1,3 +1,9 @@
+# S16 — Implementación online local, validada localmente
+
+2026-10-12. [Código, pruebas y riesgos](S16_ONLINE_IMPLEMENTATION_REPORT.md). Publicación inmutable/fence de GC/ref-manifest del mismo snapshot implementados, offline conservado y online opt-in con schema certificado. Daily + restore desechable concurrente PASS, cero referencias faltantes; 117 backup/alertas, 77 JS y suite completa 951 Python PASS / 0 FAIL / 1 SKIPPED (dominio real no configurado). Sin receptor/servicios/proveedores/EasyPanel/push/deploy/activación. S16 operativo BLOCKED / Pilot A NO-GO: ensayo representativo y paridad/permisos/capacidad/alertas/automatización pendientes. Histórico debajo.
+
+---
+
 # S16 — Evaluación online, decisión pendiente
 
 2026-10-12. [Comparación A/B/C fundamentada en código](S16_ONLINE_BACKUP_EVALUATION.md). Recomendada B con publicación atómica/inmutabilidad, fence contra GC y manifest de referencias del mismo snapshot SQL. No requiere receiver nuevo ni pausar webhook, pero hoy hay uploads referenciados antes de completarse/unlink concurrente; Runner offline no admite esta estrategia sin cambios aprobados. No retirar guardas sin invariantes probadas. Diseño de receiver/medios continúa no implementado, sin autorización nueva. Revisión PASS, suites SKIPPED, collector online/restore/ensayo NOT RUN. S16 BLOCKED / Pilot A NO-GO. Sin código/Runner/EasyPanel/servicios/proveedores/push/deploy modificados. Histórico conservado debajo.

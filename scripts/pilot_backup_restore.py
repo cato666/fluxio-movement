@@ -37,6 +37,13 @@ def restore(env,source,destination,expected_sha,key_id):
   if result.returncode:raise ValueError('restore_failed')
   # A target was verified NEW before work; never merges with existing media.
   import shutil
+  if magic==bundle.MAGIC and manifest.get('media_protocol'):
+   from pilot_backup_runner import reference_files, checked_source, PROTOCOL
+   if manifest['media_protocol']!=PROTOCOL:raise ValueError('media_protocol_unknown')
+   with psycopg.connect('service='+service) as connection:
+    refs=reference_files(connection,manifest['application_storage_path'])
+   if refs!=manifest['snapshot_references']:raise ValueError('restored_references_mismatch')
+   for relative in refs:checked_source(storage,relative)
   shutil.copytree(storage,destination)
   return {'status':'RESTORED_ISOLATED','format':metadata['format'],'key_id':key_id,'source_commit':metadata.get('source_commit'),'production_restore':False}
 

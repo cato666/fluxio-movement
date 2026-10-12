@@ -9,13 +9,21 @@ import pilot_backup_ops as ops
 import pilot_backup_bundle as bundle
 import pilot_telegram_alerts as telegram
 from pilot_resend_alerts import NoRedirect
+try:
+ from media_protocol import GC_LOCK, PROTOCOL, REFERENCE_COLUMNS, reference_path
+except ImportError:
+ from app.media_protocol import GC_LOCK, PROTOCOL, REFERENCE_COLUMNS, reference_path
 
 class RunnerError(Exception):pass
 
 def now():return datetime.now(timezone.utc)
 
 def config(env):
- required=['BACKUP_STATE_PATH','BACKUP_WORK_PATH','STORAGE_PATH','BACKUP_AES_KEY_FILE','BACKUP_AES_KEY_ID','BACKUP_PG_SERVICE','PGSERVICEFILE','PGPASSFILE','BACKUP_QUIESCENCE_FILE','BACKUP_SOURCE_COMMIT','R2_ENDPOINT','R2_BUCKET','R2_ACCESS_KEY_ID','R2_SECRET_ACCESS_KEY']
+ mode=env.get('BACKUP_CAPTURE_MODE','offline')
+ if mode not in ('offline','online_v1'):raise RunnerError('capture_mode_invalid')
+ if mode=='online_v1' and (env.get('BACKUP_MEDIA_PROTOCOL')!=PROTOCOL or env.get('BACKUP_ONLINE_WRITERS_VERIFIED')!='true' or not Path(env.get('BACKUP_APPLICATION_STORAGE_PATH','')).is_absolute()):raise RunnerError('online_protocol_not_verified')
+ required=['BACKUP_STATE_PATH','BACKUP_WORK_PATH','STORAGE_PATH','BACKUP_AES_KEY_FILE','BACKUP_AES_KEY_ID','BACKUP_PG_SERVICE','PGSERVICEFILE','PGPASSFILE','BACKUP_SOURCE_COMMIT','R2_ENDPOINT','R2_BUCKET','R2_ACCESS_KEY_ID','R2_SECRET_ACCESS_KEY']
+ if mode=='offline':required.append('BACKUP_QUIESCENCE_FILE')
  if env.get('BACKUP_RUNNER_ENABLED','').lower()!='true':raise RunnerError('runner_disabled')
  if any(not env.get(n) for n in required):raise RunnerError('secrets_or_config_missing')
  if not re.fullmatch('[a-f0-9]{40}',env['BACKUP_SOURCE_COMMIT']) or not re.fullmatch('[A-Za-z0-9_-]{1,100}',env['BACKUP_AES_KEY_ID']) or not re.fullmatch('[A-Za-z0-9_-]{1,64}',env['BACKUP_PG_SERVICE']):raise RunnerError('config_invalid')
@@ -62,21 +70,73 @@ def snapshot(c):
  # Read-only role, exported repeatable-read snapshot; no table locks requiring writes.
  try:
   conn=psycopg.connect('service='+c['BACKUP_PG_SERVICE'],application_name='fluxio-backup-guard',connect_timeout=10,autocommit=True)
+  if c.get('BACKUP_CAPTURE_MODE')=='online_v1':
+   if not conn.execute('SELECT pg_try_advisory_lock(%s)',(GC_LOCK+1,)).fetchone()[0]:raise RunnerError('backup_database_busy')
+   if not conn.execute('SELECT pg_try_advisory_lock_shared(%s)',(GC_LOCK,)).fetchone()[0]:raise RunnerError('media_gc_busy')
   conn.execute('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY')
-  if clients(conn):raise RunnerError('other_database_clients')
+  if c.get('BACKUP_CAPTURE_MODE')!='online_v1' and clients(conn):raise RunnerError('other_database_clients')
   unsafe=conn.execute("select rolsuper or rolcreatedb or rolcreaterole or rolreplication or rolbypassrls from pg_roles where rolname=current_user").fetchone()[0]
   if unsafe:raise RunnerError('backup_role_not_restricted')
   writable=conn.execute("select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname not in ('pg_catalog','information_schema') and c.relkind in ('r','p') and (has_table_privilege(current_user,c.oid,'INSERT') or has_table_privilege(current_user,c.oid,'UPDATE') or has_table_privilege(current_user,c.oid,'DELETE') or has_table_privilege(current_user,c.oid,'TRUNCATE'))").fetchone()[0]
   if writable:raise RunnerError('backup_role_can_write')
   sid=conn.execute('select pg_export_snapshot()').fetchone()[0]
   head=conn.execute('select version_num from alembic_version').fetchone()[0]
+  if c.get('BACKUP_CAPTURE_MODE')=='online_v1' and head!='0024_training_save_requests':raise RunnerError('online_schema_not_certified')
   yield conn,sid,head
  except RunnerError:raise
  except Exception:raise RunnerError('postgres_failed') from None
  finally:
   if 'conn' in locals():conn.close()
 
+def reference_files(conn,application_root):
+ paths=set()
+ for table,columns in REFERENCE_COLUMNS.items():
+  query_columns=columns+('status',) if table=='analyses' else columns
+  for row in conn.execute('SELECT '+','.join(query_columns)+' FROM '+table):
+   values=row[:len(columns)]
+   if not values[0] and (table!='analyses' or row[-1]!='FAILED'):raise RunnerError('required_media_reference_empty')
+   if table=='analyses' and row[-1]=='COMPLETED' and not values[1]:raise RunnerError('required_media_reference_empty')
+   for value in values:
+    try:path=reference_path(table,value,application_root)
+    except (ValueError,TypeError):raise RunnerError('invalid_media_reference') from None
+    if path:paths.add(path)
+ if len(paths)>100000:raise RunnerError('size_limit')
+ return sorted(paths)
+
+def checked_source(root,relative):
+ path=root/relative
+ if any(p.is_symlink() for p in (path,*path.parents)) or not path.is_file() or not path.resolve().is_relative_to(root.resolve()):raise RunnerError('referenced_media_missing_or_unsafe')
+ return path
+
+def capture_online(c,work):
+ with snapshot(c) as (conn,sid,head):
+  stamp=now().isoformat()
+  refs=reference_files(conn,c['BACKUP_APPLICATION_STORAGE_PATH'])
+  root=Path(c['STORAGE_PATH']);dest=work/'storage';dest.mkdir(mode=0o700)
+  for directory in ops.REQUIRED:(dest/directory).mkdir(mode=0o700)
+  size=0
+  for relative in refs:
+   source=checked_source(root,relative);before={'bytes':source.stat().st_size,'sha256':bundle.sha(source)}
+   size+=before['bytes']
+   if size>c['max_bytes']:raise RunnerError('size_limit')
+   target=dest/relative;target.parent.mkdir(parents=True,exist_ok=True,mode=0o700);shutil.copyfile(source,target)
+   if before!={'bytes':source.stat().st_size,'sha256':bundle.sha(source)} or before!={'bytes':target.stat().st_size,'sha256':bundle.sha(target)}:raise RunnerError('referenced_media_changed')
+  dump=work/'postgres.dump'
+  private_env=dict(os.environ);private_env.update(PGSERVICEFILE=c['PGSERVICEFILE'],PGPASSFILE=c['PGPASSFILE'],PGAPPNAME='fluxio-backup-dump',PGOPTIONS='-c default_transaction_read_only=on')
+  result=subprocess.run(['pg_dump','--dbname=service='+c['BACKUP_PG_SERVICE'],'--snapshot='+sid,'--format=custom','--no-owner','--no-acl','--lock-wait-timeout=5000','--file='+str(dump)],env=private_env,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,timeout=c['timeout'])
+  if result.returncode:raise RunnerError('pg_dump_failed')
+  # Recheck every pinned generation after dump; root growth is deliberately allowed.
+  for relative in refs:
+   source=checked_source(root,relative)
+   if source.stat().st_size!=(dest/relative).stat().st_size or bundle.sha(source)!=bundle.sha(dest/relative):raise RunnerError('referenced_media_changed')
+  if dump.stat().st_size+size>c['max_bytes']:raise RunnerError('size_limit')
+  with dump.open('rb') as stream:
+   if stream.read(5)!=b'PGDMP':raise RunnerError('dump_invalid')
+  c['_snapshot_references']=refs
+  return dump,dest,head,stamp
+
 def capture(c,work):
+ if c.get('BACKUP_CAPTURE_MODE')=='online_v1':return capture_online(c,work)
  window(c)
  with snapshot(c) as (conn,sid,head):
   before,dirs=inventory(c['STORAGE_PATH'],c['max_bytes']);dest=work/'storage';dest.mkdir(mode=0o700)
@@ -164,7 +224,9 @@ def backup(env,kind,store=None,collector=capture,notification=notify):
    meta={'format':'FXS16GCM2','cipher':'AES-256-GCM','key_id':c['BACKUP_AES_KEY_ID'],'backup_id':bid,'kind':kind,'snapshot_at':stamp,'alembic_head':head,'source_commit':c['BACKUP_SOURCE_COMMIT']}
    files,dirs=inventory(storage,c['max_bytes']);entries={'postgres.dump':{'bytes':dump.stat().st_size,'sha256':bundle.sha(dump)}}
    entries.update({'storage/'+name:value for name,value in files.items()});manifest={**meta,'files':entries,'storage_directories':dirs}
-   mfile=work/'manifest.json';data=json.dumps(manifest,sort_keys=True).encode()
+   mfile=work/'manifest.json'
+   if c.get('BACKUP_CAPTURE_MODE')=='online_v1':manifest.update(media_protocol=PROTOCOL,application_storage_path=c['BACKUP_APPLICATION_STORAGE_PATH'],snapshot_references=c['_snapshot_references'])
+   data=json.dumps(manifest,sort_keys=True).encode()
    if len(data)>8*1024*1024:raise RunnerError('manifest_too_large')
    mfile.write_bytes(data);plain=work/'bundle.tar'
    projected=dump.stat().st_size+sum(v['bytes'] for v in files.values())+len(data)+1024*(len(files)+len(dirs)+20)

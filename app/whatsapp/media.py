@@ -13,6 +13,7 @@ from ..services.training_service import TrainingService
 from .identity import now
 from .models import WhatsAppMedia
 from .provider import ProviderError
+from ..media_protocol import publish_bytes
 from .queue import usage
 
 VIDEO_LIMIT = 16 * 1024 * 1024
@@ -42,7 +43,7 @@ def store_video(raw):
             raise TrainingInvalid('Video inválido o superior a 3 minutos. Envía MP4 H.264/HEVC.') from None
     target = private_root() / 'original' / 'whatsapp' / (uuid4().hex + '.mp4')
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_bytes(raw)
+    publish_bytes(target, raw)
     return target.relative_to(private_root()).as_posix()
 
 
@@ -91,6 +92,6 @@ def receive(session, inbox, message, athlete_id, provider, *, reusable_audio=Non
     try:
         session.flush()
     except Exception:
-        (private_root() / path).unlink(missing_ok=True)
+        # A published generation is retained for reference-aware reconciliation.
         raise
     return row, image_id, None

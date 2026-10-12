@@ -4,6 +4,7 @@ from uuid import uuid4
 import os
 import cv2
 import numpy as np
+from ..media_protocol import publish_bytes
 from .training_errors import TrainingInvalid, TrainingTooLarge, TrainingNotFound
 
 IMAGE_LIMIT = 8 * 1024 * 1024
@@ -37,7 +38,7 @@ class TrainingMediaStore:
         identifier = uuid4()
         directory = self.directory(); directory.mkdir(parents=True, exist_ok=True)
         path = directory / f'{identifier}.jpg'
-        path.write_bytes(encoded.tobytes())
+        publish_bytes(path, encoded.tobytes())
         return identifier, path
 
     def image_path(self, name):

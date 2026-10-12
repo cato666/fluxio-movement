@@ -7,6 +7,7 @@ services:
     command: ["schedule"]
     restart: unless-stopped
     user: "10001:10001"
+    group_add: ["${BACKUP_MEDIA_READ_GID:?actual media read group required}"]
     read_only: true
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]

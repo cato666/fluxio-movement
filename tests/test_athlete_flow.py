@@ -117,16 +117,25 @@ def test_invalid_input_has_no_analysis(athlete_client, session, form, filename, 
     assert session.scalar(select(func.count()).select_from(Analysis)) == 0
 
 
-def test_pending_is_persisted_before_upload_finishes(athlete_client, monkeypatch, valid_preflight):
+def test_reference_is_not_persisted_before_atomic_upload_finishes(athlete_client, monkeypatch, valid_preflight):
     original_copy = main.shutil.copyfileobj
+    inspected = []
     def inspect_before_copy(src, dest):
-        with SessionLocal() as session:
-            row = session.scalar(select(Analysis))
-            assert row.status == 'PENDING'
+        if not inspected:
+            with SessionLocal() as session:
+                assert session.scalar(select(Analysis)) is None
+            assert not list(main.UPLOADS.glob('*.mp4'))
+            inspected.append(True)
         return original_copy(src, dest)
     monkeypatch.setattr(main.shutil, 'copyfileobj', inspect_before_copy)
     monkeypatch.setattr(main, 'analyze_video', lambda _video, output, *_, **__: write_analysis(output, copy.deepcopy(RESULT)))
-    assert post_analysis(athlete_client).status_code == 202
+    response = post_analysis(athlete_client)
+    assert response.status_code == 202
+    assert inspected == [True]
+    with SessionLocal() as session:
+        row = session.get(Analysis, response.json()['id'])
+        assert row.status == 'COMPLETED'
+        assert (main.UPLOADS / Path(row.video_path).name).is_file()
 
 
 def test_logical_restart_reads_from_postgres(athlete_client, monkeypatch, valid_preflight):
