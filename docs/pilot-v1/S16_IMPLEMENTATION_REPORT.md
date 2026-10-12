@@ -1,3 +1,51 @@
+# S16 — recuperación de clave KeePassXC: preparación y punto de intervención
+
+Fecha: 2026-10-12, America/Santiago. Base a5f61dfc8730d67afb3071be5a4545aa5443d3d0 confirmada. **Formato/mapeo preparado PASS; recuperación real desde KeePassXC BLOCKED; S16 BLOCKED / Pilot A NO-GO.** La prueba Telegram recibida mantiene PASS. No nueva generación/reemplazo/lectura de clave, red, respaldo real, restore, eliminación, EasyPanel, push ni deploy en esta etapa.
+
+## Clave y versión existentes
+
+Clave del conjunto sintético exitoso: archivo binario raw de **32 bytes (256 bits)**, no password, hexadecimal, Base64 ni keyfile de desbloqueo de KeePassXC. Existencia/tamaño comprobados mediante stat, sin abrir contenido. Ubicación actual:
+
+`C:/Users/desarrollo/AppData/Local/Temp/fluxio-s05-integrated-90w55bof/recovery-key-private/aes256.key`
+
+El conjunto autorizado es `synthetic-validation/eb25e70ccc31/backup.tar.aes256gcm`, 92.197 bytes, SHA-256 de ciphertext `028beb7fba7412ec1e8c27c5e1a71023f772f411ed3e3090475fe231821c863f`. Este checksum corresponde al objeto cifrado, **no a la clave**. Existe otro ensayo con otra clave: no mezclar ni sustituir versiones.
+
+Código vigente: MAGIC FXS16GCM1 (9 bytes) + nonce 12 bytes + ciphertext con tag GCM 16 bytes; AAD exacta `fluxio-s16-synthetic-v1`. Cambiar AAD o interpretar clave como texto impediría descifrado. Biblioteca AESGCM exige la clave raw de 32 bytes para este esquema. No identificar automáticamente la versión por un hash del secreto ni imprimir material criptográfico.
+
+Identificador no secreto asignado a la clave existente: **pilot-s16-synthetic-eb25e70ccc31-k1**. Mapeo versionado en S16_KEY_RECOVERY_PLAN.json. El ciphertext histórico y manifiesto interno no incluyen key_id; esta referencia externa evita modificar/re-subir el objeto. Para nuevos manifiestos se propone cipher/key_id/key_encoding/key_length_bytes/format_version y referencia del objeto/sha256, siempre sin key bytes. Inserción automática de key_id en producción aún pendiente; no se cambió formato ni colección activa para afirmarla implementada.
+
+## Intervención manual requerida ahora — detenerse antes de ella
+
+1. Gastón abre su KeePassXC/KDBX privado en Windows. No se encontró ejecutable en las dos rutas estándar Program Files consultadas; esto no descarta instalación portable. Indicar si ya dispone de KeePassXC; el agente no lo instala ni abre credenciales.
+2. Crear una entrada titulada `Fluxio / Backup AES / pilot-s16-synthetic-eb25e70ccc31-k1`. En adjuntos de la entrada añadir el archivo existente aes256.key desde la ruta anterior. **Adjuntar el binario**, sin copiar contenido al password de la entrada, terminal, clipboard, chat o informe; no usar generador de contraseñas para sustituirlo. Registrar solo versión, algoritmo y backup-set asociado.
+3. Guardar KDBX cifrada bajo la custodia ya elegida y conservar una copia protegida en el dispositivo externo cifrado, con factores de desbloqueo recuperables por separado. No exportar la bóveda en texto/CSV ni guardar todo únicamente en VPS o repo.
+4. Para la prueba independiente, abrir la copia externa de KDBX desde entorno controlado que no dependa de EasyPanel; recuperar **el adjunto** de esa versión hacia una carpeta nueva privada fuera de repositorios, con ACL solo del usuario Windows. No sobrescribir el archivo original ni exportar a la misma ruta Temp del ensayo. El export transitorio sigue siendo una clave en claro aunque la bóveda esté cifrada: proteger acceso y acordar su tratamiento posterior; no borrarlo implícitamente.
+5. Entregar al agente **solo la ruta absoluta del adjunto recuperado** y confirmar que proviene de la copia KeePassXC, preferentemente la copia externa. No enviar el adjunto ni la clave por chat. No dar contraseña maestra/keyfile de desbloqueo. Sin esto no puede afirmarse recuperación desde la custodia.
+
+## Ensayo autorizado que se ejecutará después de esa intervención
+
+- Usar exclusivamente la clave exportada, sin leer la clave original ni secretos de EasyPanel; bloquear proveedores IA/chat y no contactar el VPS. Credenciales R2 de lectura independientes y vigentes por referencia privada: actualmente usuario señaló .env.example local para configuración, nunca se imprime ni incorpora a Git. Reader dedicado aún pendiente para operación definitiva; writer con GET no demuestra separación de roles.
+- Descargar solo el objeto sintético señalado por HTTPS, comprobar tamaño/SHA-256 antes de descifrar. No listar/copiar contenido productivo ni alterar/borrar R2. Recuperar con clave por key_id y AAD/format existentes; GCM tag + hashes internos prueban integridad y correspondencia, sin comparar/imprimir el secreto original.
+- Restaurar pg_dump completo y storage en PostgreSQL/paths **nuevos y desechables**, red nueva interna sin puertos publicados ni redes con usuarios, usando imágenes locales existentes. No restaurar sobre producción ni ejecutar upgrade después del restore. Fuente backup 0024_training_save_requests, datos esperados 3 usuarios, 1 sesión/foto/análisis/review y cuatro archivos.
+- Comprobar schema/referencias/hash y fotografía. Este conjunto histórico contiene videos placeholder, no clips reproducibles: documentar ese límite, no certificar video por esta prueba de claves. Ya existe otra prueba local con MP4 válidos, no confundir conjuntos.
+- Registrar PASS/FAIL/BLOCKED, tiempos, evidencia y custodia efectivamente utilizada. Parar contenedores propios; conservar objeto R2. No simular caída destruyendo/reiniciando EasyPanel: ausencia de conexión/acceso al servidor demuestra independencia del ensayo, sin probar disponibilidad automática del secret runtime aún no definido.
+
+La autorización del usuario cubre restore de este respaldo **sintético**; no requerir nueva aprobación genérica para esa misma acción después de obtener la copia recuperada. Si destino, conjunto o datos cambian, preparar acción y solicitar autorización específica.
+
+## Pérdida del servidor y rotación sin perder respaldos
+
+Ante pérdida del VPS: recuperar KDBX/copia externa y factores independientes; localizar key_id por manifiesto/registro; obtener esa versión de adjunto y credenciales reader desde custodia independiente; reconstruir solo a destino nuevo aislado y comprobar integridad antes de solicitar cutover. No depender del único password/keyfile o clave AES almacenado en el servidor. Aún falta prueba de recuperación externa y diseño de entrega segura al runtime; esta preparación no los marca PASS.
+
+Rotación futura requiere autorización explícita para nueva clave. Nunca sobrescribir k1 ni modificar claves existentes: asignar k2 a una nueva clave autorizada, custodiar ambas, respaldar nuevos conjuntos con key_id correcto, restaurar una generación de cada versión y comprobar selección. Conservar claves anteriores mientras exista un backup que dependa de ellas; versiones de WhatsApp/sharing también deben mantenerse por separado. No re-cifrar ni borrar backups viejos para rotar sin autorización. No ejecutar generación, reemplazo, invalidación o subida nueva ahora.
+
+## Evidencia y pendientes
+
+PASS: rama/commit base, formato fuente, mapeo de objeto y metadatos, archivo fuente existente de 32 bytes, ausencia de lectura de clave y generación. BLOCKED: importación/recuperación real KeePassXC y copia externa, descifrado/restore usando esa copia, reader separado, runtime secret mechanism, automatización y restore representativo EasyPanel. Tests sintéticos existentes no se repiten ni certifican esta recuperación. Entregables documentales y JSON válidos; no código funcional cambiado. Detenerse para pasos manuales de Gastón.
+
+---
+
+## Evidencia histórica conservada
+
 # S16 — prueba real Telegram recibida
 
 Fecha: 2026-10-11, America/Santiago. **PASS del canal en una prueba manual:** un sendMessage autorizado aceptado HTTP 200 y recepción confirmada expresamente por el responsable. Evidencia redactada en S16_TELEGRAM_REAL_TEST_EVIDENCE.json, sin token, Chat ID, teléfono ni contenido privado. Ningún segundo envío ni retry. Esta confirmación no autoriza mensajes futuros.

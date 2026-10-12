@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-12",
+  "status": "BLOCKED_AWAITING_KEEPASSXC_IMPORT_AND_RECOVERED_ATTACHMENT",
+  "key_id": "pilot-s16-synthetic-eb25e70ccc31-k1",
+  "key_id_source": "assigned_metadata_reference_to_existing_key_not_new_key",
+  "cipher": "AES-256-GCM",
+  "key_encoding": "raw_binary",
+  "key_length_bytes": 32,
+  "format_version": "FXS16GCM1",
+  "nonce_bytes": 12,
+  "tag_bytes": 16,
+  "aad": "fluxio-s16-synthetic-v1",
+  "key_id_embedded_in_existing_ciphertext": false,
+  "manifest_mapping": {
+    "object_key": "synthetic-validation/eb25e70ccc31/backup.tar.aes256gcm",
+    "encrypted_bytes": 92197,
+    "encrypted_sha256": "028beb7fba7412ec1e8c27c5e1a71023f772f411ed3e3090475fe231821c863f"
+  },
+  "existing_key_presence_checked": true,
+  "existing_key_content_read": false,
+  "keepassxc_recovery_verified": false,
+  "external_encrypted_copy_verified": false,
+  "restore_from_keepassxc_key_executed": false,
+  "original_key_must_not_be_used_for_recovery_test": true,
+  "key_generated_or_replaced": false,
+  "r2_objects_deleted": false,
+  "production_data_accessed": false
+}
