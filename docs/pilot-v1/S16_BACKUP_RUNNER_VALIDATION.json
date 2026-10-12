@@ -1,0 +1,58 @@
+{
+  "date": "2026-10-12",
+  "status": "PASS_LOCAL_ONLY_OPERATIONAL_BLOCKED",
+  "base_commit": "49e366203bcc9ce5e7bc0079ed4216eb3b4b84b3",
+  "runner_image_id": "sha256:156a7fc62f2b8b33526bc4665ae9b7add18204a3be5ddd6e28dc723c9afaf2f0",
+  "runner_image_repo_digests": [
+    "fluxio-s16-backup-runner@sha256:156a7fc62f2b8b33526bc4665ae9b7add18204a3be5ddd6e28dc723c9afaf2f0"
+  ],
+  "runner_user": "10001:10001",
+  "no_ports_or_inherited_volumes": true,
+  "unit_tests": {
+    "new_runner": 33,
+    "legacy_ops": 28,
+    "telegram": 31,
+    "resend_utilities": 16,
+    "fail": 0,
+    "skipped": 0
+  },
+  "unit_log_reference": "C:/Users/desarrollo/AppData/Local/Temp/s16-runner-unit-final33.log",
+  "regression_log_reference": "C:/Users/desarrollo/AppData/Local/Temp/s16-runner-regressions.log",
+  "integration": {
+    "status": "PASS",
+    "actual_pg_dump_restore": true,
+    "legacy_v1_restore": "PASS",
+    "snapshot_and_readonly_role": "PASS",
+    "other_clients_blocked": "PASS",
+    "changing_files_blocked": "PASS",
+    "counts": {
+      "users": 3,
+      "training_sessions": 1,
+      "training_images": 1,
+      "analyses": 1,
+      "reviews": 1
+    },
+    "tables": 29,
+    "head": "0024_training_save_requests",
+    "original_media_preserved_before_controlled_drift": true,
+    "encrypted_format": "FXS16GCM2",
+    "key_id": "synthetic-runner-k1",
+    "r2_simulated": true,
+    "telegram_simulated": true,
+    "physical_r2_test_puts": 1,
+    "no_existing_source_or_database_touched": true
+  },
+  "integration_evidence_directory": "C:\\Users\\desarrollo\\AppData\\Local\\Temp\\fluxio-s16-runner-integration-6y0wi6h7",
+  "integration_containers_stopped": true,
+  "image_code_matches_worktree": true,
+  "source_sha256": {
+    "pilot_backup_bundle.py": "aad0734afaca83184f2d6f7b65f0eadd0a50519272bea0f669a6df69c22cf1e1",
+    "pilot_backup_ops.py": "34fdc703e3dfe3b960e8ea67af918e32f3388baf030c227bf3e7ed1ba9efcdda",
+    "pilot_backup_restore.py": "6ab4b93e21369eb06fae03a42cbd9dc06a2ed44255f5bd3488ca8e56ed63e77f",
+    "pilot_backup_runner.py": "319b4bf74edcbced71f58c2a71455e2418be03c9fab73560bd5b1d47e9a57c76"
+  },
+  "r2_real_calls": 0,
+  "telegram_real_calls": 0,
+  "production_backups": 0,
+  "real_automation_enabled": false
+}

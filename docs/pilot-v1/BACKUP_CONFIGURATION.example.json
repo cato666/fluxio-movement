@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "pilot": "Fluxio Movement Pilot A",
-  "status": "custody_and_mail_provider_selected_easypanel_access_and_real_validations_pending",
+  "status": "standalone_runner_implemented_local_pass_operational_pending",
   "execution_enabled": false,
   "scheduler_enabled": false,
   "effective_photo_cleanup_enabled": false,
@@ -135,5 +135,16 @@
     "sha256": null,
     "status": "pending_easypanel_quiescence_key_store_and_alert_channel"
   },
-  "state_directory": null
+  "state_directory": null,
+  "standalone_runner": {
+    "entrypoint": "scripts/pilot_backup_runner.py",
+    "dockerfile": "backup-runner/Dockerfile",
+    "environment_contract": "backup-runner/environment.example",
+    "format": "FXS16GCM2",
+    "legacy_restore_supported": true,
+    "external_quiescence_required": true,
+    "builtin_adapters": true,
+    "installation_authorized": false,
+    "activation_authorized": false
+  }
 }

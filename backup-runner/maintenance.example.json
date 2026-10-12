@@ -1,0 +1,9 @@
+{
+  "writers_paused": false,
+  "scope": "all-db-and-storage-writers",
+  "issued_at": null,
+  "expires_at": null,
+  "source_commit": null,
+  "storage_path": "/source/storage",
+  "operator_note": "Gaston pauses all writers externally; runner cannot assert this itself. Fresh window <=30 min required."
+}

@@ -1,3 +1,13 @@
+# Runner S16 implementado, operación real aún bloqueada
+
+2026-10-12. Servicio independiente y restaurador v1/v2 localmente validados. Guía/manual/secretos/pausa: [backup-runner/README.md](../../backup-runner/README.md). Nuevo entrypoint pilot_backup_runner.py consume environment.example y adaptadores builtin; los anteriores operational_adapter.path/sha256 del entrypoint legacy no son el contrato de este servicio. AES KEY_FILE/KEY_ID ahora implementados en runner; no flags activados ni cambios a objetos v1.
+
+Mantenimiento externo obligatorio: all writers paused/drained, fresh window <=30 min, snapshot readonly + hashes; falta integración externa de pausa para daily sin intervención. No captura insegura ni socket/admin API. Restore opt-in a DB vacía/new storage, no clean/create/upgrade; considerar rutas lógicas absolutas de medios y claves externas del producto. Streaming/staging requieren capacidad real, no inferirla del test. **S16 operativo BLOCKED; Pilot A NO-GO.**
+
+---
+
+## Histórico
+
 # S16 — recuperación independiente KeePassXC PASS (sintético)
 
 Fecha: 2026-10-12, America/Santiago. Base b25d1f31cf83bb903dd9585a7b0c2d6bbd02f438. Usuario confirmó importación binaria en KeePassXC, verificación de copia cifrada y exportó un archivo para el ensayo. **PASS: copia recuperada descifra y restaura el conjunto sintético autorizado. S16 global sigue BLOCKED / Pilot A NO-GO.**

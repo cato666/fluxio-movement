@@ -1,3 +1,22 @@
+# S16 — implementación local Backup Runner
+
+2026-10-12. **Local PASS; S16 operativo BLOCKED / Pilot A NO-GO.**
+
+- [x] Imagen independiente rootless, sin Docker socket/puertos/PGDATA heredado; env/config con flags false.
+- [x] Collector readonly pg_dump/snapshot, mantenimiento obligatorio y drift/client guards, archivos completos, AES streaming/key_id, verificación remota y restore v1/v2.
+- [x] 33 tests runner +75 regresiones PASS; recorrido PostgreSQL/tmpfs real PASS y recuperación de lock/health/concurrencia.
+- [x] No eliminación de R2/medios; retención solo plan; no nuevas llamadas reales R2/Telegram/OpenAI/Kapso.
+- [ ] Inventario y recursos reales, role SELECT mínimo, reader separado, secret runtime/custodia de claves productivas, UID/ACL/state/mounts verificados.
+- [ ] Control externo de pausa/ventana diario, no simple marker sin writers realmente detenidos.
+- [ ] Backup real representativo + restore aislado autorizados y recuperables desde KeePassXC; tiempos/refs/permisos app medidos.
+- [ ] Alerta integrada real recibida y activación/programación/watchdog observados bajo permiso; no basta canal manual previamente PASS.
+
+Guía: ../../backup-runner/README.md; reporte/evidencia: S16_IMPLEMENTATION_REPORT.md / S16_BACKUP_RUNNER_VALIDATION.json. Control manual de push autorizado vigente y S15 no modificado; resto de gates se conserva.
+
+---
+
+## Histórico
+
 # S16 — preparación operativa final 2026-10-12
 
 Base 3f8a408da61c005ed4dc06cb1f480b76abccc9c8. Lista de variables exactas, aplicación privada por Gastón, mapa Compose vs inventario EasyPanel pendiente, backup/restore representativo, activación y permisos: [S16_FINAL_OPERATIONS_GUIDE.md](S16_FINAL_OPERATIONS_GUIDE.md).

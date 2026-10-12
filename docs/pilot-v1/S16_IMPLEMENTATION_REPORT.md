@@ -1,3 +1,62 @@
+# S16 — Backup Runner implementado y validado localmente
+
+Fecha: 2026-10-12, America/Santiago. Base 49e366203bcc9ce5e7bc0079ed4216eb3b4b84b3; rama codex/pilot-v1-stabilization. **Implementación local PASS; S16 operativo BLOCKED / Pilot A NO-GO.** No instalación/activación EasyPanel, datos reales, R2/Telegram reales, OpenAI/Kapso, push/merge/deploy ni cambios al workflow. Original sin escrituras del agente.
+
+## Diseño y archivos
+
+- backup-runner/Dockerfile, requirements.txt, compose.example.yml, environment.example, maintenance.example.json y README.md: imagen independiente, cliente PostgreSQL 17.6, crypto/psycopg existentes fijados, usuario 10001, sin puertos/Docker socket/credenciales EasyPanel ni VOLUME PGDATA heredado. Runner + watchdog separados, mounts/env mínimo y todos los flags false. Base/dep fijados; paquetes Debian se resolvieron durante build, por lo que digest construido es evidencia, no garantía de rebuild byte-a-byte futuro.
+- scripts/pilot_backup_runner.py: pg_dump completo con snapshot readonly, captura filesystem, permisos/gates/espacio, AES streaming, R2 PUT/GET sin retries ni redirects, recibos atómicos y OS lock; schedule/pre-release, watchdog y plan de retención no destructivo.
+- scripts/pilot_backup_bundle.py: FXS16GCM2 para streaming mayor de 128 MiB; key_id/metadata autenticados en AAD, manifiesto/hashes cifrados. No cambia la clave existente ni formato de objetos anteriores. Directorios/archivo seguros, sin links, traversal, dispositivos o sobrescritura de targets.
+- scripts/pilot_backup_restore.py: descifrado/auth/hash antes de uso, v1/v2, restore solo opt-in a DB vacía movement_restore_* y storage nuevo; sin --clean/--create, migraciones/seed ni producción. Roles/clave/config se recuperan fuera del archivo por custodias independientes.
+- tests scripts/test_pilot_backup_runner.py y scripts/test_pilot_backup_runner_integration.py. Reutiliza ops legacy y Telegram/ledger, no reescribe producto ni añade servicios facturables.
+
+## Consistencia y límites de responsabilidad
+
+La coherencia DB/files requiere **pausa real externa de TODOS los escritores**, drenaje y cierre de conexiones por Gastón o controlador autorizado, y ventana fresca <=30 min. El runner sin admin/socket no puede parar servicios ni probar una declaración de pausa falsa. El marker controlado RO no sustituye esa comprobación. Si falta/venció/no corresponde a source_commit/source_path, aborta. Snapshot PostgreSQL exportado readonly a pg_dump y hash/inventario antes-copia-después protegen la captura bajo esa precondición; cualquier drift/cliente detectado falla, no se sube un set declarado coherente.
+
+Esto permite programación **condicional a una ventana segura**, no backup diario desatendido completo sin integración externa de pausa. No ampliar roles ni capturar storage vivo para evitar un rechazo. Config/instalación, pausa automatizada externa y recepción del job real siguen pendientes. Imagen source volume RO y DB role solo SELECT; no PGDATA. API/worker/job de video y otros escritores deben estar incluidos, no basta pausar WhatsApp.
+
+Staging privado tmpfs o disco cifrado aprobado, inicialmente ~5x set; check de espacio antes de crear archivos grandes. Default máximo 512 MiB configurable <=4 GiB, streaming probado >128 MiB, manifest hasta 8 MiB y 100k files. Compose propone recursos, no presupuesto/capacidad del VPS aprobado. Datos privados no se registran; solo ciphertext va a R2, claves/versiones del producto custodiadas separadamente. Scratch propio se limpia en ejecución normal; SIGKILL puede dejar tmpfs propio hasta reinicio/revisión, no borrar medios ni conjuntos existentes automáticamente.
+
+## Pruebas ejecutadas y resultados
+
+| Validación | Estado / alcance |
+|---|---|
+| Unit runner | **33 PASS, 0 FAIL/SKIPPED** en Linux sin red: completo/pre-release, falta de secretos, PostgreSQL simulado, cifrado/clave errónea, R2 timeout/corrupción y HTTP SigV4 streaming simulado, Telegram fallido, concurrencia, SIGKILL/liberación lock, retención sin borrado, scheduler catch-up/slot, staging y watchdog/crash/active-job. |
+| Regresiones reutilizadas | **28 legacy +31 Telegram +16 Resend PASS**, cero FAIL/SKIPPED; 75 pruebas distintas, no sumar ejecuciones repetidas. Transporte siempre fake. |
+| Streaming | PASS: 129 MiB cifrado/descifrado por chunks e igualdad SHA; supera límite v1 sin cambiar el módulo v1. |
+| Integración nueva imagen | PASS: pg_dump y pg_restore REALES solo PostgreSQL 17.6 tmpfs/red interna nueva, DB vacía v2 y otra v1. 29 tablas, 3 usuarios sintéticos, sesión/nota/foto/análisis/review; hashes y referencias. |
+| Medios | PASS de integridad: archivos restaurados iguales a cuatro fuentes sintéticas; PNG verificada y MP4 original/annotated decodificables con FFprobe. Son medios artificiales, no certificación biomecánica. |
+| Controles efectivos | PASS rol source sin DML, rechazo de cliente DB extra y cambios filesystem durante pg_dump; guardas restore/new target. Mutación de JSON exclusivamente sobre fixture nueva para probar drift; medios originales del producto no leídos/tocados. |
+| Build/config | PASS imagen local no privilegiada sin VOLUME/puertos heredados, código imagen coincide por SHA-256 con seis módulos; Compose config --quiet válido usando env/files/nombres sintéticos, no up. |
+| Interrupción | PASS proceso de ensayo terminado libera OS lock, nuevo job entra y recibos incompletos permanecen detectables. No reenvío de objeto previo incierto ni purga. Watchdog no alarma por incomplete mientras lock activo dentro del umbral; al liberar/crash sí detecta. |
+| R2/Telegram reales y producción | NOT RUN/BLOCKED por alcance; pruebas anteriores de canal/recuperación sintética se conservan pero no certifican este runner con datos reales. |
+| Suites app Python/JS completas | NOT RUN en este incremento: sin cambios app/modelos/migraciones/contratos web. Tests específicos runner y regresiones son verificación de esta etapa; antes de push rige ejecutar obligatorios del SHA candidato y aprobación manual. |
+
+Fallos durante desarrollo corregidos: nombre de usuario Debian backup ya existente, transferencia/ACL de fixture y transacción explícita ajustadas, incompatibilidad filter=data en Python Debian solucionada con extracción manual validada, fixture HTTP requería config normalizada, watchdog distinguía job en curso de incomplete. No degradación de guardas. Intentos previos registrados FAIL; resultados finales sustituyen esos intentos sin declararlos aprobados.
+
+Evidencia final detallada en S16_BACKUP_RUNNER_VALIDATION.json: image ID/digest, fuentes/hashes, entornos nuevos detenidos y logs de suites. No contiene clave/token/chat IDs ni datos privados; hashes son de código/ciphertext, nunca secretos. Contenedores anteriores ajenos no se detuvieron, ni imágenes/volúmenes/R2 existentes se borraron. Código funcional app y .github/workflows/deploy.yml permanecen iguales; untracked QA/artefactos no se agregan.
+
+## Operación, alertas y recuperación
+
+Runner y watchdog requieren estado persistente protegido compartido; UUID por set y OS file lock evitan concurrentes, marker diario antes de ejecución impide duplicados tras reinicio. Incidente health mantiene request ID hasta resolución para no convertir UNKNOWN/UNCERTAIN en nuevo intento automático. Rate limit/429 bloquea y registra fallo de notificación; sender nunca propaga fallo al backup. ACCEPTED es ACK de API, no lectura humana. Watchdog independiente no depende de que job llegue a reportar error; si watchdog muere, monitoreo de plataforma/operador debe detectarlo, no se afirma autocuración.
+
+R2 restricted bucket y solo HTTPS, sin DELETE/retry. Fallo durante upload puede dejar objeto incierto: preservar recibo, verificar SHA/presencia antes de recuperación autorizada, no sobrescribir/purgar. Retención solo planifica siete daily COMPLETE y pre-release durante piloto; incompletos requieren revisión manual, no expiración automática. Preservar versiones AES y WhatsApp/sharing por KeePassXC/copia externa sin guardarlas en Git ni junto al ciphertext.
+
+Restaurar a instancia nueva aislada, profile reader y clave por key_id recuperada; v2 metadata autenticada, v1 usa asociación externa SHA/key_id. DB/storage nuevos, proveedores apagados; reponer app con mount/ruta lógica original de medios sin reescribir DB. Si target queda parcial tras error, no repetir sobre él ni limpiar automáticamente: pedir destino nuevo/decisión.
+
+## Instalación manual y pendientes para cierre
+
+Instrucciones completas y lista exacta de secretos en backup-runner/README.md. Gastón debe confirmar inventario DB/media/mounts, rol readonly/select completo, reader R2 separado, UID/ACL, capacidad/staging protegido, secret-file raw/version productiva y perfiles libpq, estado privado, ventanas y control externo de pausa. Ningún servicio requiere socket ni credenciales administrativas. Watchdog solo Telegram/estado, sin AES/DB/R2/media.
+
+Solicitar autorización específica antes de: subir código/cualquier deploy, crear/montar servicios/volúmenes en EasyPanel, aplicar secrets, pausar escritores o tomar backup real, restore de ese set representativo aislado, envío de alerta integrada y activar daily/watchdog/pre-release. Mantener flags false. Prueba representativa con recuperación desde KeePassXC y alerta real del job, y funcionamiento programado observados, son requisito para S16 operativo PASS. Además resto de Pilot A sigue NO-GO (paridad/canales/video/costos/coaches/otros gates). S15/workflow sin modificar, riesgo CI/control manual aprobado conservado.
+
+Commit final: git log -1 -- scripts/pilot_backup_runner.py. Detenerse para revisión; no habilitar piloto ni nueva fase.
+
+---
+
+## Historial — los contratos propuestos anteriores del runner ahora están implementados localmente
+
 # S16 — preparación operativa final 2026-10-12
 
 Base 3f8a408da61c005ed4dc06cb1f480b76abccc9c8. Lista de variables exactas, aplicación privada por Gastón, mapa Compose vs inventario EasyPanel pendiente, backup/restore representativo, activación y permisos: [S16_FINAL_OPERATIONS_GUIDE.md](S16_FINAL_OPERATIONS_GUIDE.md).

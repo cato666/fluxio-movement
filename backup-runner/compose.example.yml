@@ -1,0 +1,66 @@
+# PREPARED ONLY: install manually after S16 representative trial and approval.
+services:
+  backup-runner:
+    build:
+      context: ..
+      dockerfile: backup-runner/Dockerfile
+    command: ["schedule"]
+    restart: unless-stopped
+    user: "10001:10001"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 4g
+    cpus: 1
+    pids_limit: 128
+    env_file: ["${BACKUP_PRIVATE_ENV_FILE:?private environment reference required}"]
+    environment:
+      BACKUP_STATE_PATH: /state
+      BACKUP_WORK_PATH: /work
+      STORAGE_PATH: /source/storage
+      BACKUP_AES_KEY_FILE: /run/secrets/aes256.key
+      PGSERVICEFILE: /run/secrets/pg_service.conf
+      PGPASSFILE: /run/secrets/pgpass
+      BACKUP_QUIESCENCE_FILE: /control/maintenance.json
+    tmpfs:
+      - /work:rw,size=3221225472,uid=10001,gid=10001,mode=0700
+      - /tmp:rw,size=16777216,uid=10001,gid=10001,mode=0700
+    volumes:
+      - private-media:/source/storage:ro
+      - backup-state:/state
+      - "${BACKUP_PRIVATE_SECRET_DIRECTORY:?private secret directory required}:/run/secrets:ro"
+      - "${BACKUP_MAINTENANCE_CONTROL_DIRECTORY:?approved window directory required}:/control:ro"
+    networks: [database-private]
+  backup-watchdog:
+    build:
+      context: ..
+      dockerfile: backup-runner/Dockerfile
+    command: ["watch"]
+    restart: unless-stopped
+    user: "10001:10001"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 256m
+    cpus: 0.25
+    # Separate minimal private file: Telegram + state flags only, NO AES/DB/R2.
+    env_file: ["${BACKUP_WATCHDOG_PRIVATE_ENV_FILE:?watchdog private environment reference required}"]
+    environment:
+      BACKUP_STATE_PATH: /state
+    volumes: ["backup-state:/state"]
+    tmpfs: ["/tmp:rw,size=16777216,uid=10001,gid=10001,mode=0700"]
+    networks: [alerts-egress]
+volumes:
+  private-media:
+    external: true
+    name: "${BACKUP_PRIVATE_STORAGE_VOLUME:?actual media volume required}"
+  backup-state:
+    external: true
+    name: "${BACKUP_STATE_VOLUME:?approved dedicated state volume required}"
+networks:
+  database-private:
+    external: true
+    name: "${BACKUP_PRIVATE_DB_NETWORK:?actual private DB network required}"
+  alerts-egress:
+    external: true
+    name: "${BACKUP_ALERT_EGRESS_NETWORK:?approved alerts egress network required}"
