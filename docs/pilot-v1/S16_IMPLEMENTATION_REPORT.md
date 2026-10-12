@@ -1,3 +1,9 @@
+# S16 — Diseño de continuidad de medios, ejecución pendiente
+
+2026-10-12. [Contrato, pruebas e incrementos](S16_MEDIA_CONTINUITY_DESIGN.md). ACK estricto exige evento y medios completos cifrados/validados/vinculados durables y consentimiento; no200 para dependencia pendiente. Descarga temprana/replay privado/recibos procesamiento/limpieza opt-in diseñados, NO implementados. Latencia de8MiB/batches vs deadlineKapso y grants/revocación, costoescrow/recursos y RPO espejoexterno pendientes. Revisión documental PASS; pruebas NOT RUN, suites SKIPPED (sin código). S16 BLOCKED / Pilot A NO-GO. No servicios/EasyPanel/Kapso/OpenAI/mediosreales/push/deploy. Estado vigente; histórico conservado.
+
+---
+
 # S16 — Diseño receptor durable pendiente de revisión
 
 2026-10-12. [Diseño y doce entregables](S16_DURABLE_RECEIVER_DESIGN.md). Estrategia B aprobada; implementación NO autorizada. SQLite con payload AES-GCM y volumen propio cifrado propuesto; confirmación durable antes de ACK, replay privado al inbox existente, pausa/recibos y retención72h desde incorporación. Medios reference_only no garantizan recuperación24h; spool bloqueado hasta política explícita. Durabilidad ante pérdidaVPS/RPO, capacidad/backupcola y privacidad pendientes. Diseño/revisión estática PASS; suites SKIPPED, implementación/operación NOT RUN. S16 BLOCKED / Pilot A NO-GO. Sin código funcional/servicios/proveedores/EasyPanel/push/deploy. Histórico debajo.

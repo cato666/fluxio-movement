@@ -1,3 +1,9 @@
+# Actualización normativa — medios antes del ACK
+
+2026-10-12. Decisiones base aprobadas condicionadamente; implementación NO autorizada. [Contrato vigente de medios](S16_MEDIA_CONTINUITY_DESIGN.md) sustituye reference_only, fetch posterior al ACK y todas las garantías relacionadas del texto anterior. Para foto/audio admitidos, ningún HTTP 200 hasta bytes completos validados/cifrados, asociación durable y consentimiento aplicable. SQLite/10 GiB/72h/pendientes conservados; spool4GiB, grants y mitigación externa son propuestas pendientes. S16 BLOCKED / Pilot A NO-GO. El resto del diseño se conserva como base y no habilita construcción.
+
+---
+
 # S16 — Diseño mínimo de receptor durable Kapso
 
 2026-10-12. Referencia 113e39a02de740efe845bf2b10a0dc10b4125df5. **Diseño para revisión, implementación NO autorizada. S16 BLOCKED / Pilot A NO-GO.** Sin cambios de código funcional, servicios, infraestructura, datos reales o proveedores modificados/ejecutados.
