@@ -1,3 +1,15 @@
+# S16 — preparación operativa final 2026-10-12
+
+Base 3f8a408da61c005ed4dc06cb1f480b76abccc9c8. Lista de variables exactas, aplicación privada por Gastón, mapa Compose vs inventario EasyPanel pendiente, backup/restore representativo, activación y permisos: [S16_FINAL_OPERATIONS_GUIDE.md](S16_FINAL_OPERATIONS_GUIDE.md).
+
+**S16 BLOCKED / Pilot A NO-GO.** Telegram manual y recuperación KeePassXC sintética PASS conservados sin repetición. Restan secreto runtime/versiones productivas + adaptador/colector/capacidad, backup/restore representativo y automatización/alertas integradas autorizadas. Variables R2 de los ensayos no están conectadas automáticamente a app/Compose; AES no consume env actual, BACKUP_AES_KEY_FILE/ID son contrato propuesto aún sin implementación. Flags/gates permanecen deshabilitados.
+
+No pruebas sintéticas repetidas, código funcional/CI cambiado, EasyPanel configurado, backup de producción, Telegram, OpenAI/Kapso, push/merge/deploy ni escrituras al workspace original. Validación documental de referencias/código y ausencia de diferencias fuera de docs; no afirmar pruebas pendientes PASS. Commit: git log -1 -- docs/pilot-v1/S16_FINAL_OPERATIONS_GUIDE.md.
+
+---
+
+## Evidencia histórica — prevalece este estado operativo
+
 # S16 — recuperación independiente KeePassXC PASS (sintético)
 
 Fecha: 2026-10-12, America/Santiago. Base b25d1f31cf83bb903dd9585a7b0c2d6bbd02f438. Usuario confirmó importación binaria en KeePassXC, verificación de copia cifrada y exportó un archivo para el ensayo. **PASS: copia recuperada descifra y restaura el conjunto sintético autorizado. S16 global sigue BLOCKED / Pilot A NO-GO.**
