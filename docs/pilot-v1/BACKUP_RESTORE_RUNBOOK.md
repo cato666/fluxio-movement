@@ -1,3 +1,33 @@
+# S16 — recuperación independiente KeePassXC PASS (sintético)
+
+Fecha: 2026-10-12, America/Santiago. Base b25d1f31cf83bb903dd9585a7b0c2d6bbd02f438. Usuario confirmó importación binaria en KeePassXC, verificación de copia cifrada y exportó un archivo para el ensayo. **PASS: copia recuperada descifra y restaura el conjunto sintético autorizado. S16 global sigue BLOCKED / Pilot A NO-GO.**
+
+## Evidencia ejecutada
+
+- Exclusivamente la clave raw recuperada de 32 bytes indicada por el usuario; no se abrió la clave original, no se generó/reemplazó clave de backup ni se registró contenido/hash del secreto. Procedencia KeePassXC/copia cifrada confirmada por usuario; el agente no abrió la bóveda ni recibió contraseña/keyfile de desbloqueo.
+- GET HTTPS único del objeto sintético `synthetic-validation/eb25e70ccc31/backup.tar.aes256gcm`: 92.197 bytes, SHA-256 esperado y real iguales. Sin PUT, DELETE, enumeración ni datos productivos. Credenciales R2 tomadas de configuración local privada autorizada, sin imprimir valores; reader exclusivo de producción sigue pendiente.
+- AES-256-GCM / formato FXS16GCM1 y AAD existente: tag autenticado e integridad del manifiesto DB/storage PASS. key_id externo `pilot-s16-synthetic-eb25e70ccc31-k1` queda asociado a ese conjunto, sin modificar ciphertext histórico.
+- pg_restore con --exit-on-error en base NUEVA `movement_s16_recovered`, PostgreSQL 17.6 tmpfs, red nueva interna 10.253.10.0/28, sin puertos Docker publicados ni redes con usuarios. Head restaurado 0024_training_save_requests, sin migración del target después de restore. Esquema de 29 tablas; 3 usuarios, 1 entrenamiento con nota, 1 foto, 1 análisis y 1 review.
+- Cuatro archivos restaurados en directorio NUEVO tmpfs: hashes y referencias DB/storage iguales; PNG verificada por PIL. Los videos del conjunto histórico son placeholders sintéticos: no declarar reproducción/biomecánica PASS.
+- Independencia del servidor: no acceso/conexión a EasyPanel, ninguna credencial exclusiva del VPS utilizada; clave exportada Windows y configuración R2 local bastaron. No se simuló caída destruyendo o reiniciando el servidor. Esto valida recuperación del conjunto de ensayo, no disponibilidad del secret runtime de producción.
+- 2,42 segundos dentro del ensayo (GET/descifrado/restore/verificación); excluye intervención humana, apertura de bóveda y creación del entorno. No RTO/RPO de producción. Contenedores propios detenidos tras validación; no contenedores/volúmenes/imágenes existentes eliminados ni claves/export/objetos R2 borrados.
+
+Evidencia redactada: S16_KEY_RECOVERY_EVIDENCE.json y S16_KEY_RECOVERY_PLAN.json; originales locales `C:/Users/desarrollo/AppData/Local/Temp/fluxio-s05-integrated-ys4hmzql/` (environment.json, key-recovery-results.json). Se registran hashes del harness/script y del ciphertext, nunca de la clave. No suites completas repetidas por esta entrega documental; la prueba de recuperación real solicitada sí se ejecutó, no es mock.
+
+## Riesgos y pendientes
+
+PASS de custodia/recuperación **para esta versión sintética**; flags de producción independientes permanecen false: aún falta secreto runtime seguro y versiones de claves WhatsApp/sharing recuperables, reader separado, inventario de tamaño/capacidad y conjunto representativo EasyPanel, automatización/monitorización autorizada. Prueba manual Telegram recibida sigue PASS; no se envió ninguna alerta adicional. Riesgo CI aceptado/control manual vigente, sin YAML/push/deploy.
+
+El archivo exportado es una copia en claro: Gastón debe mantener ACL privada y decidir su tratamiento después del ensayo; agente no lo modifica ni elimina. Conservar clave k1 y bóveda/copia mientras permanezca cualquier respaldo que la requiera. La copia externa y factores de desbloqueo deben continuar separados del VPS; pérdida del computador/custodia sin segunda copia sigue siendo riesgo operacional. No reutilizar una clave de ensayo como secreto productivo sin decisión explícita.
+
+Rotación: solicitar autorización de nueva clave y key_id distinto; nunca sobrescribir k1, conservar referencias de manifiestos/objetos y versiones antiguas hasta retiro autorizado de todos sus respaldos; ensayar cada versión con adjunto recuperado. No se ejecutó rotación. Para pérdida del VPS: recuperar bóveda/copia externa y versión por key_id, usar reader privado, verificar ciphertext/tag/hashes y restaurar a instancia nueva aislada; aprobación separada antes de cutover o copia de datos reales.
+
+Entregables S16_IMPLEMENTATION_REPORT.md y BACKUP_RESTORE_RUNBOOK.md actualizados; metadatos de configuración/evidencia sin secretos. Detenerse para revisión. Commit de etapa: git log -1 -- docs/pilot-v1/S16_KEY_RECOVERY_EVIDENCE.json.
+
+---
+
+## Evidencia histórica — el bloqueo de recuperación sintética está superado
+
 # S16 — recuperación de clave KeePassXC: preparación y punto de intervención
 
 Fecha: 2026-10-12, America/Santiago. Base a5f61dfc8730d67afb3071be5a4545aa5443d3d0 confirmada. **Formato/mapeo preparado PASS; recuperación real desde KeePassXC BLOCKED; S16 BLOCKED / Pilot A NO-GO.** La prueba Telegram recibida mantiene PASS. No nueva generación/reemplazo/lectura de clave, red, respaldo real, restore, eliminación, EasyPanel, push ni deploy en esta etapa.

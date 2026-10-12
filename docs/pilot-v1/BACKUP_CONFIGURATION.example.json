@@ -65,10 +65,13 @@
     "custody_decision": {
       "primary": "KeePassXC on Gaston personal Windows computer",
       "secondary": "protected copy on encrypted external device",
-      "status": "owner_selected_not_created_or_recovery_verified",
+      "status": "synthetic_key_recovered_from_owner_confirmed_vault_copy_runtime_production_pending",
       "runtime_key_delivery": "pending_secure_runtime_secret_mechanism",
       "key_generation_or_replacement_authorized": false
-    }
+    },
+    "synthetic_key_recovery_verified": true,
+    "synthetic_key_id": "pilot-s16-synthetic-eb25e70ccc31-k1",
+    "synthetic_key_evidence_reference": "S16_KEY_RECOVERY_EVIDENCE.json"
   },
   "credentials": {
     "backup_writer_secret_reference": null,

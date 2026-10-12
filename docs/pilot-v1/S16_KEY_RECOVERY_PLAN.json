@@ -1,6 +1,6 @@
 {
   "date": "2026-10-12",
-  "status": "BLOCKED_AWAITING_KEEPASSXC_IMPORT_AND_RECOVERED_ATTACHMENT",
+  "status": "PASS_RECOVERED_KEY_SYNTHETIC_RESTORE",
   "key_id": "pilot-s16-synthetic-eb25e70ccc31-k1",
   "key_id_source": "assigned_metadata_reference_to_existing_key_not_new_key",
   "cipher": "AES-256-GCM",
@@ -18,11 +18,14 @@
   },
   "existing_key_presence_checked": true,
   "existing_key_content_read": false,
-  "keepassxc_recovery_verified": false,
-  "external_encrypted_copy_verified": false,
-  "restore_from_keepassxc_key_executed": false,
+  "keepassxc_recovery_verified": true,
+  "external_encrypted_copy_verified": true,
+  "restore_from_keepassxc_key_executed": true,
   "original_key_must_not_be_used_for_recovery_test": true,
   "key_generated_or_replaced": false,
   "r2_objects_deleted": false,
-  "production_data_accessed": false
+  "production_data_accessed": false,
+  "custody_provenance_source": "explicit_user_confirmation_of_export_from_encrypted_vault_copy",
+  "original_key_accessed_during_trial": false,
+  "evidence_reference": "S16_KEY_RECOVERY_EVIDENCE.json"
 }

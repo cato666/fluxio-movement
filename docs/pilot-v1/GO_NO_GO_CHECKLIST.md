@@ -1,3 +1,16 @@
+# S16 — recuperación KeePassXC sintética validada 2026-10-12
+
+- [x] Clave recuperada por usuario desde copia cifrada de bóveda: descifrado/restore del conjunto sintético R2, integridad/referencias/imagen PASS; sin clave original ni EasyPanel. Evidencia S16_KEY_RECOVERY_EVIDENCE.json.
+- [x] Recepción manual Telegram ya confirmada; no nueva notificación.
+- [ ] Recuperación de claves/config productivos y secret runtime independiente.
+- [ ] Backup/restore representativo EasyPanel, reader dedicado, capacidad y automatización operacional autorizada.
+
+**S16 sigue BLOCKED / Pilot A NO-GO.** No convertir un set pequeño sintético en RTO/RPO o recuperación productiva certificada; resto de gates se conserva. Sin push/deploy/infra ni datos reales.
+
+---
+
+## Histórico
+
 # S16 — prueba real Telegram recibida
 
 Fecha: 2026-10-11, America/Santiago. **PASS del canal en una prueba manual:** un sendMessage autorizado aceptado HTTP 200 y recepción confirmada expresamente por el responsable. Evidencia redactada en S16_TELEGRAM_REAL_TEST_EVIDENCE.json, sin token, Chat ID, teléfono ni contenido privado. Ningún segundo envío ni retry. Esta confirmación no autoriza mensajes futuros.
