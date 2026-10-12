@@ -1,3 +1,9 @@
+# S16 — Decisión de continuidad WhatsApp pendiente
+
+2026-10-12. [Comparación A/B y recomendación](S16_WHATSAPP_CONTINUITY_DECISION.md). A no garantiza recuperar entradas durante la pausa; solo ensayo previo sin atletas bajo aceptación expresa. B propuesta como mínimo para continuidad con WhatsApp obligatorio, no implementada: decidir durabilidad/RPO, retención/claves y medios, y autorizar desarrollo local. Consulta de entregas fallidas documentada; reenvío manual API/dashboard no confirmado. Revisión documental PASS, suites SKIPPED, mantenimiento no autorizado. S16 BLOCKED / Pilot A NO-GO. Sin cambios funcionales/infraestructura/envíos/push/deploy. Histórico conservado debajo.
+
+---
+
 # S16 — Primera ventana preparada, ejecución pendiente
 
 2026-10-12. [Procedimiento y autorizaciones](S16_FIRST_CONTROLLED_WINDOW.md). Revisión documental/estática PASS; S16 BLOCKED / Pilot A NO-GO. Kapso default agota tres intentos en ~50s: no garantiza recuperación tras mantenimiento prolongado. Drain del worker no implementado; requiere demostración o decisión adicional antes de detenerlo. Inventario real, recuperación de entradas, máximo propuesto 20min y pruebas representativas pendientes. No servicios detenidos, backups reales, envíos, automatización, despliegue ni push. Suites SKIPPED por documentación únicamente. Estado vigente; histórico conservado debajo.
