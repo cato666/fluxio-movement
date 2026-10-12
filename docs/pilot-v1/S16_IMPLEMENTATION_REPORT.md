@@ -1,3 +1,16 @@
+# S16 — Preparación integración EasyPanel
+
+2026-10-12. Base 3ce40466b21c99894715e6f9dc01f0ca6dd1eed0. Preparación documental PASS; S16 operativo BLOCKED / Pilot A NO-GO. [Procedimiento completo](S16_EASYPANEL_INTEGRATION_PLAN.md).
+
+- [ ] Inventario real/versiones/roles/montajes/secretos/recursos confirmados por Gastón.
+- [ ] Ventana de todos los escritores y drenaje demostrados; webhook no permanece activo en diseño actual. Retención/replay Kapso sin pérdidas pendiente de verificar.
+- [ ] Reanudación sin upgrade implícito; no existe handshake capture-complete, esperar resultado final y proceso terminado.
+- [ ] Backup representativo, restore aislado, alerta integrada y coordinador externo diario autorizados y probados.
+
+Revisión estática PASS; suites SKIPPED por documentos únicamente, pruebas del runner ya PASS no repetidas. Sin infraestructura/datos reales/envíos/push/deploy/scheduler. Workflow existente conservado; S15 parcial y ausencia de gates automáticos aceptada temporalmente. Custodia KeePassXC y prueba Telegram anteriores conservan su evidencia; no sustituyen ensayo representativo. Esta cabecera es el estado vigente; se conserva histórico debajo. Commit documental: git log -1 -- docs/pilot-v1/S16_EASYPANEL_INTEGRATION_PLAN.md.
+
+---
+
 # S16 — Backup Runner implementado y validado localmente
 
 Fecha: 2026-10-12, America/Santiago. Base 49e366203bcc9ce5e7bc0079ed4216eb3b4b84b3; rama codex/pilot-v1-stabilization. **Implementación local PASS; S16 operativo BLOCKED / Pilot A NO-GO.** No instalación/activación EasyPanel, datos reales, R2/Telegram reales, OpenAI/Kapso, push/merge/deploy ni cambios al workflow. Original sin escrituras del agente.
