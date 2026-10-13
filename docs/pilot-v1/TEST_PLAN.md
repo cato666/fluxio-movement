@@ -1,3 +1,11 @@
+# Estado vigente — candidato Pilot A preparado, publicación pendiente
+
+2026-10-12. Candidato funcional aprobado `ee489be19c72aa0da51ff407a00d1354ecc6fa56`; motor S16 sin nuevos cambios. [Checklist operativo](PILOT_A_PUBLICATION_CHECKLIST.md) y [evidencia ejecutada](PILOT_A_PUBLICATION_VALIDATION.json). Python **951 PASS / 0 FAIL / 1 SKIPPED** (dominio real no configurado); JavaScript **77 PASS / 0 FAIL / 0 SKIPPED**; E2E integrado S05 **9 PASS** tras corregir solo harness: clave sintética ausente y apertura de foto colapsada antes de verificar carga/modal. Online daily + restauración desechable concurrente **PASS**, cero referencias faltantes, 32 regresiones dirigidas PASS. No sumar conteos superpuestos. Fallos iniciales y evidencias conservados.
+
+Resultados locales no certifican EasyPanel ni canales reales. Plan operacional vigente: PILOT_A_PUBLICATION_CHECKLIST.md.
+
+---
+
 ## Actualización S16 — 2026-10-11
 
 Gastón confirmado como operador. Ensayo R2 sintético **PASS**: AES-256-GCM cliente, upload/download autenticados, DB nueva y cuatro archivos restaurados con hashes/referencias iguales; 3 usuarios, 1 sesión/foto/análisis/review, head 0024. Contenedores propios detenidos. 5,31 s y 92.197 bytes corresponden a muestra pequeña, no RTO operativo. Primer intento falló por expectativa HTTP anónima (400); corrección del harness y repetición aislada documentadas. Privacidad por dominios/r2.dev, configuración de cifrado proveedor, permisos separados, custodia definitiva, restore representativo del producto, scheduler y alertas **pendientes**. S16 sigue parcial y **NO-GO**, sin habilitar limpieza S11. Ver [reporte S16](S16_IMPLEMENTATION_REPORT.md).

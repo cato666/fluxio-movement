@@ -1,0 +1,57 @@
+{
+  "functional_candidate": "ee489be19c72aa0da51ff407a00d1354ecc6fa56",
+  "date": "2026-10-12",
+  "status": "PASS_LOCAL_PILOT_NO_GO",
+  "python": {
+    "pass": 951,
+    "fail": 0,
+    "skipped": 1,
+    "seconds": 296.77,
+    "skip": "WEEKLY_RELEASE_PUBLIC_BASE_URL real no configurado",
+    "evidence": "C:/Users/desarrollo/AppData/Local/Temp/fluxio-s16-suite-5xyhug9j"
+  },
+  "javascript": {
+    "pass": 77,
+    "fail": 0,
+    "skipped": 0,
+    "seconds": 31.5848072,
+    "execution": "node --test tests/*.test.cjs; NODE_PATH runtime local"
+  },
+  "online_backup": {
+    "status": "PASS",
+    "missing_references": 0,
+    "directed_pass": 32,
+    "evidence": "C:/Users/desarrollo/AppData/Local/Temp/fluxio-s16-runner-integration-hb0hmba3",
+    "r2_telegram": "SIMULATED"
+  },
+  "s05_integrated": {
+    "status": "PASS",
+    "required_cases": 9,
+    "evidence": "C:/Users/desarrollo/AppData/Local/Temp/fluxio-s05-integrated-_qb62b_q",
+    "prior_attempts": [
+      {
+        "status": "FAIL",
+        "fixture_line": 75,
+        "cause": "harness sin clave de sharing",
+        "evidence": "C:/Users/desarrollo/AppData/Local/Temp/fluxio-s05-integrated-pve50twe"
+      },
+      {
+        "status": "FAIL",
+        "fixture_line": 75,
+        "cause": "repetición sin clave confirma causa",
+        "evidence": "C:/Users/desarrollo/AppData/Local/Temp/fluxio-s05-integrated-y53u5jgu"
+      },
+      {
+        "status": "FAIL",
+        "fixture_line": 81,
+        "cause": "espera de foto lazy colapsada sin abrir",
+        "evidence": "C:/Users/desarrollo/AppData/Local/Temp/fluxio-s05-integrated-fyao49fm"
+      }
+    ]
+  },
+  "persistent_migrations": 0,
+  "external_provider_calls": 0,
+  "push_deploy_scheduler": false,
+  "original_checked_unchanged_paths": 153,
+  "publication_commit": "git log -1 --format=%H -- docs/pilot-v1/PILOT_A_PUBLICATION_CHECKLIST.md"
+}

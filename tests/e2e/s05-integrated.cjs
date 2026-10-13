@@ -78,7 +78,19 @@ const headers={Origin:base};
   audit=fixture('audit');assert.equal(audit.shares,1);check(audit.consents_valid);
   const publicPage=await anon.newPage();assert.equal((await publicPage.goto(sharedUrl)).status(),200);
   await publicPage.getByRole('heading',{name:'Tu semana en movimiento'}).waitFor();
-  await publicPage.waitForFunction(()=>document.images.length>0 && [...document.images].every(i=>i.complete&&i.naturalWidth>0));
+  // The current mobile header collapses its lazy photo: exercise the real UI
+  // before asserting loading, rather than expecting hidden images to download.
+  await publicPage.locator('.recap-feature-photo > summary').click();
+  const photos=publicPage.locator('img.weekly-photo');check(await photos.count()>0);
+  for(let index=0;index<await photos.count();index++){
+   await photos.nth(index).scrollIntoViewIfNeeded();
+   await publicPage.waitForFunction(image=>image.complete&&image.naturalWidth>0,await photos.nth(index).elementHandle());
+  }
+  await publicPage.getByRole('button',{name:'Ampliar foto del entrenamiento',exact:true}).click();
+  const photoModal=publicPage.getByRole('dialog',{name:'Foto del entrenamiento',exact:true});await photoModal.waitFor();
+  await publicPage.waitForFunction(image=>image.complete&&image.naturalWidth>0,await photoModal.locator('img').elementHandle());
+  await photoModal.getByRole('button',{name:'Cerrar ×',exact:true}).click();
+  await photoModal.waitFor({state:'detached'});
   const photoUrl=sharedUrl+'/images/'+item.source_image_id;
   assert.equal((await anon.request.get(photoUrl)).status(),200);
   pass('S05-E02-explicit-consent');

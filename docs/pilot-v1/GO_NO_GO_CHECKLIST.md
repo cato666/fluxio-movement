@@ -1,3 +1,21 @@
+# Estado vigente — candidato Pilot A preparado, publicación pendiente
+
+2026-10-12. Candidato funcional aprobado `ee489be19c72aa0da51ff407a00d1354ecc6fa56`; motor S16 sin nuevos cambios. [Checklist operativo](PILOT_A_PUBLICATION_CHECKLIST.md) y [evidencia ejecutada](PILOT_A_PUBLICATION_VALIDATION.json). Python **951 PASS / 0 FAIL / 1 SKIPPED** (dominio real no configurado); JavaScript **77 PASS / 0 FAIL / 0 SKIPPED**; E2E integrado S05 **9 PASS** tras corregir solo harness: clave sintética ausente y apertura de foto colapsada antes de verificar carga/modal. Online daily + restauración desechable concurrente **PASS**, cero referencias faltantes, 32 regresiones dirigidas PASS. No sumar conteos superpuestos. Fallos iniciales y evidencias conservados.
+
+**Pilot A NO-GO / S16 operativo BLOCKED.** Esta cabecera sustituye estados actuales incompatibles del histórico inferior; no reabrir diseños de receiver ni desarrollar motor de backup.
+
+- [x] E2E integrado LOCAL S05 del candidato, PostgreSQL/storage desechables, nueve casos obligatorios.
+- [x] S16 local aprobado; snapshot/ref-manifest/archivos inmutables y GC protegidos bajo concurrencia simulada, restore sin faltantes.
+- [ ] Gastón verifica paridad real API/worker/Runner, SQL head 0024, todos los escritores certificados, proxy/secrets/grupo RO/capacidad. Migraciones de arranque y respaldo consistente del estado ANTERIOR requieren revisión antes del primer deploy.
+- [ ] Autorizar y ejecutar respaldo representativo + restore aislado, RTO/RPO, alertas integradas Telegram fallo/antigüedad recibidas; luego aprobar scheduler y observar daily real COMPLETE. KeePassXC y Telegram manual previos mantienen PASS, no sustituyen estas pruebas.
+- [ ] Aprobar/medir reservas de cómputo, almacenamiento y demás costos de video; no eludir fail-closed con ceros.
+- [ ] Validaciones reales del candidato publicado: WhatsApp texto/foto/audio/Guardar/Corregir/resumen/sharing, video certificado y revisión coach; autorización de gasto/teléfono/cuentas sintéticas independiente.
+- [ ] Coach operativo disponible, consentimiento/alta asistida y GO explícito antes de tres atletas.
+
+GitHub Actions existente intacto; push main despliega. Gastón autoriza cada push y administra EasyPanel. S15 parcial: ausencia de gates CI aceptada temporalmente, controles manuales obligatorios. No push, merge, deploy, proveedores, backups productivos ni scheduler ejecutados. Workspace original: 153 rutas fingerprint sin cambios; estado original histórico difiere por cambios existentes del usuario. Archivos locales no rastreados excluidos.
+
+---
+
 # S16 — Implementación online local, validada localmente
 
 2026-10-12. [Código, pruebas y riesgos](S16_ONLINE_IMPLEMENTATION_REPORT.md). Publicación inmutable/fence de GC/ref-manifest del mismo snapshot implementados, offline conservado y online opt-in con schema certificado. Daily + restore desechable concurrente PASS, cero referencias faltantes; 117 backup/alertas, 77 JS y suite completa 951 Python PASS / 0 FAIL / 1 SKIPPED (dominio real no configurado). Sin receptor/servicios/proveedores/EasyPanel/push/deploy/activación. S16 operativo BLOCKED / Pilot A NO-GO: ensayo representativo y paridad/permisos/capacidad/alertas/automatización pendientes. Histórico debajo.

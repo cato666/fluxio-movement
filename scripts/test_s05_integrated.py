@@ -186,8 +186,10 @@ print(json.dumps({p.relative_to(Path('app')).as_posix():hashlib.sha256(p.read_by
         origin = 'WEB_ALLOWED_ORIGINS=' + base
         docker('exec','-w','/tmp/s05-e2e','-e',origin,app,'alembic','upgrade','head')
         docker('exec','-w','/tmp/s05-e2e',app,'python','-m','tests.e2e.s05_fixture','init')
-        docker('exec','-d','-w','/tmp/s05-e2e','-e',origin,app,'uvicorn','app.main:app',
-            '--host','0.0.0.0','--port','8000','--no-access-log','--no-proxy-headers')
+        # Sharing now requires encryption even in test mode. Generate an ephemeral
+        # fixture key inside this disposable process only; never use operator keys.
+        launch = "import os;from cryptography.fernet import Fernet;os.environ['WEEKLY_SHARE_ENCRYPTION_KEY']=Fernet.generate_key().decode();os.environ['WEEKLY_SHARE_KEY_VERSION']='s05-synthetic';os.execvp('uvicorn',['uvicorn','app.main:app','--host','0.0.0.0','--port','8000','--no-access-log','--no-proxy-headers'])"
+        docker('exec','-d','-w','/tmp/s05-e2e','-e',origin,app,'python','-c',launch)
         for _ in range(45):
             try:
                 with urlopen(base+'/health',timeout=2) as response:

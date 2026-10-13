@@ -1,3 +1,9 @@
+# Revalidación S05 del candidato Pilot A — 2026-10-12
+
+Candidato funcional ee489be19c72aa0da51ff407a00d1354ecc6fa56. **PASS final: nueve casos integrados navegador/backend/PostgreSQL/storage desechables**, incluido modal de foto. Evidencia: `C:/Users/desarrollo/AppData/Local/Temp/fluxio-s05-integrated-_qb62b_q`. Primero FAIL por timeout al crear enlace: el harness carecía de WEEKLY_SHARE_ENCRYPTION_KEY requerido por recuperación de enlaces. Una repetición sin cambio confirmó el fallo. Corrección: clave efímera generada dentro del proceso aislado, sin usar/imprimir claves operativas. Tercer intento FAIL al esperar imagen lazy del header cerrado; actualizar ensayo para abrir sección, comprobar todas las fotos, abrir modal y cerrarlo. Cuarta ejecución completa PASS. No se relajaron assertions de privacidad/idempotencia; código funcional intacto. Evidencias anteriores en PILOT_A_PUBLICATION_VALIDATION.json. Contenedores propios detenidos; cero proveedores o datos persistentes. Certificación real del dominio y canales aún pendiente; Pilot NO-GO.
+
+---
+
 # Adenda vigente — cierre del E2E integrado S05 (Pilot A)
 
 Fecha: 2026-10-11. Rama codex/pilot-v1-stabilization; candidato funcional base `8db554430687147208c4f63170072dcb7a534d3e`, S17 técnicamente validada. Único objetivo: nueve casos integrados de consentimiento/privacidad. Estado de ejecución definitiva: **PASS — nueve casos obligatorios, cero FAIL/SKIPPED; tres guards adicionales PASS. El bloqueo E2E integrado local S05 queda cerrado con evidencia verificable.** **Sin cambios funcionales** en app, modelos, contratos o migraciones.
